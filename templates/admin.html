@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>USHSS — Admin DBMS Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #0E0F11;
+  --surface:  #161719;
+  --surface2: #1E2023;
+  --border:   #2A2C30;
+  --border2:  #353840;
+  --maroon:   #8B2A2A;
+  --maroon-l: #C0413A;
+  --gold:     #C9A84C;
+  --gold-l:   #E8C97A;
+  --cream:    #F5F1E8;
+  --text:     #E8E4DC;
+  --muted:    #8A8680;
+  --green:    #3DAA72;
+  --red:      #E05555;
+  --blue:     #4A7FC0;
+  --purple:   #8B6FC0;
+  --radius:   6px;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;font-size:14px}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
+.sidebar-logo{padding:20px 18px;border-bottom:1px solid var(--border)}
+.sidebar-logo-badge{width:36px;height:36px;background:var(--maroon);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px}
+.sidebar-logo h1{font-family:'Playfair Display',serif;font-size:15px;color:var(--cream);font-weight:600;line-height:1.2}
+.sidebar-logo p{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)}
+
+.sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav-section-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 8px 6px;margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;transition:all .15s;font-size:13px;color:var(--muted);font-weight:500;border:1px solid transparent;margin-bottom:2px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(139,42,42,.15);color:var(--gold);border-color:rgba(201,168,76,.2)}
+.nav-item .icon{width:18px;text-align:center;font-size:15px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--maroon);color:var(--gold-l);font-size:10px;padding:1px 6px;border-radius:20px;font-family:var(--font-mono)}
+
+.sidebar-footer{padding:14px 10px;border-top:1px solid var(--border)}
+.sidebar-user{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);background:var(--surface2)}
+.sidebar-user-avatar{width:28px;height:28px;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);font-weight:700;flex-shrink:0}
+.sidebar-user-info{flex:1;min-width:0}
+.sidebar-user-name{font-size:12px;font-weight:600;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-user-role{font-size:10px;color:var(--muted);font-family:var(--font-mono)}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;background:var(--surface)}
+.topbar-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--cream);font-weight:600}
+.topbar-breadcrumb{font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+.topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── COMPONENTS ── */
+.btn{padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:'DM Sans',sans-serif;transition:all .15s;letter-spacing:.3px;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--maroon);color:var(--gold-l);border-color:rgba(201,168,76,.2)}
+.btn-primary:hover{background:var(--maroon-l)}
+.btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+.btn-danger{background:rgba(224,85,85,.12);color:var(--red);border-color:rgba(224,85,85,.25)}
+.btn-danger:hover{background:rgba(224,85,85,.22)}
+.btn-success{background:rgba(61,170,114,.12);color:var(--green);border-color:rgba(61,170,114,.25)}
+.btn-success:hover{background:rgba(61,170,114,.22)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-icon{padding:6px;min-width:auto}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--cream);margin-bottom:4px}
+.card-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;align-items:flex-start;gap:14px;transition:border-color .2s}
+.stat-card:hover{border-color:var(--border2)}
+.stat-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--cream);line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.8px}
+.stat-trend{font-size:11px;margin-top:6px}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface2)}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--font-mono)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.mono{font-family:var(--font-mono);font-size:12px}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--font-mono)}
+.badge-student{background:rgba(74,127,192,.15);color:#7EB3E8;border:1px solid rgba(74,127,192,.3)}
+.badge-faculty{background:rgba(139,111,192,.15);color:#B99FE8;border:1px solid rgba(139,111,192,.3)}
+.badge-cr{background:rgba(61,170,114,.15);color:#7DDAB0;border:1px solid rgba(61,170,114,.3)}
+.badge-admin{background:rgba(201,168,76,.15);color:var(--gold-l);border:1px solid rgba(201,168,76,.3)}
+.badge-active{background:rgba(61,170,114,.12);color:var(--green);border:1px solid rgba(61,170,114,.25)}
+.badge-inactive{background:rgba(224,85,85,.12);color:var(--red);border:1px solid rgba(224,85,85,.25)}
+
+/* ── FORM / MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:min(600px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal-header{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-header h2{font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)}
+.modal-body{padding:22px}
+.modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono)}
+.form-input,.form-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;width:100%}
+.form-input:focus,.form-select:focus{border-color:var(--gold)}
+.form-input::placeholder{color:var(--muted)}
+.form-select option{background:var(--surface2)}
+.required{color:var(--red);margin-left:2px}
+
+/* ── SEARCH BAR ── */
+.search-bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.search-input-wrap{position:relative;flex:1;min-width:200px}
+.search-input-wrap input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px 8px 34px;font-size:13px;color:var(--text);width:100%;outline:none;font-family:'DM Sans',sans-serif}
+.search-input-wrap input:focus{border-color:var(--gold)}
+.search-input-wrap input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);pointer-events:none}
+.filter-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--font-mono);outline:none;cursor:pointer}
+.filter-select:focus{border-color:var(--gold)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;padding:4px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);width:fit-content;margin-bottom:20px}
+.tab{padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);transition:all .15s}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+/* ── GRID LAYOUTS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+
+/* ── LOG ── */
+.log-entry{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--border)}
+.log-entry:last-child{border-bottom:none}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.log-text{font-size:12px;color:var(--muted);line-height:1.5}
+.log-text strong{color:var(--text);font-weight:600}
+.log-time{font-size:10px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;margin-top:2px}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;animation:slideIn .2s ease;max-width:320px}
+.toast.success{border-color:rgba(61,170,114,.4)}
+.toast.error{border-color:rgba(224,85,85,.4)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:3rem;margin-bottom:12px;opacity:.3}
+.empty-text{font-size:13px;margin-top:6px}
+
+/* ── CONFIRM ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:600}
+.confirm-overlay.open{display:flex}
+.confirm-box{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:28px;width:min(380px,90%);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.confirm-box h3{font-family:'Playfair Display',serif;font-size:16px;color:var(--cream);margin-bottom:8px}
+.confirm-box p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.confirm-actions{display:flex;gap:10px;justify-content:flex-end}
+
+/* Responsive hide sidebar on small screens */
+@media(max-width:700px){
+  .sidebar{display:none}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .two-col,.three-col{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-badge">GGS</div>
+    <h1>USHSS Admin</h1>
+    <p>DBMS Control Panel</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-title">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
+      <span class="icon">🏛️</span> Dashboard
+    </div>
+
+    <div class="nav-section-title">User Management</div>
+    <div class="nav-item" onclick="showPage('students')" data-page="students">
+      <span class="icon">🎓</span> Students
+      <span class="nav-badge" id="badge-student">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('faculty')" data-page="faculty">
+      <span class="icon">📚</span> Faculty
+      <span class="nav-badge" id="badge-faculty">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('cr')" data-page="cr">
+      <span class="icon">🤝</span> Class Reps
+      <span class="nav-badge" id="badge-cr">0</span>
+    </div>
+    <div class="nav-item" onclick="showPage('admin')" data-page="admin">
+      <span class="icon">🔑</span> Admins
+      <span class="nav-badge" id="badge-admin">0</span>
+    </div>
+
+    <div class="nav-section-title">System</div>
+    <div class="nav-item" onclick="showPage('audit')" data-page="audit">
+      <span class="icon">📋</span> Audit Log
+    </div>
+    <div class="nav-item" onclick="showPage('schema')" data-page="schema">
+      <span class="icon">🗄️</span> DB Schema
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar" id="adminInitials">AD</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="adminName">Administrator</div>
+        <div class="sidebar-user-role">admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-breadcrumb" id="topbar-crumb">USHSS / Admin / Overview</div>
+    </div>
+    <div class="topbar-actions">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)" id="dbStatus">● Local DB</span>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Add User</button>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- CREATE / EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add New User</h2>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Role <span class="required">*</span></label>
+          <select class="form-select" id="f-role" onchange="onRoleChange()">
+            <option value="student">Student</option>
+            <option value="faculty">Faculty</option>
+            <option value="cr">Class Representative</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="label-username">Enrollment No. <span class="required">*</span></label>
+          <input class="form-input" id="f-username" placeholder="e.g. 2401001"/>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Full Name <span class="required">*</span></label>
+          <input class="form-input" id="f-name" placeholder="e.g. Priya Sharma"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="f-email" type="email" placeholder="email@ipu.ac.in"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input class="form-input" id="f-phone" placeholder="+91 98xxx xxxxx"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <select class="form-select" id="f-dept">
+            <option value="">— Select —</option>
+            <option>Humanities</option>
+            <option>Social Sciences</option>
+            <option>Economics</option>
+            <option>Psychology</option>
+            <option>Political Science</option>
+            <option>Sociology</option>
+            <option>History</option>
+            <option>Philosophy</option>
+            <option>Administration</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-prog">
+          <label class="form-label">Programme</label>
+          <select class="form-select" id="f-prog">
+            <option value="">— Select —</option>
+            <option>B.A. (Hons.) English</option>
+            <option>M.A. English</option>
+            <option>M.A. Economics</option>
+            <option>M.A. Psychology</option>
+            <option>M.A. Sociology</option>
+            <option>M.A. Political Science</option>
+            <option>M.A. History</option>
+            <option>M.A. Philosophy</option>
+            <option>Ph.D.</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-batch">
+          <label class="form-label">Batch Year</label>
+          <select class="form-select" id="f-batch">
+            <option value="">— Select —</option>
+            <option>2021</option><option>2022</option><option>2023</option>
+            <option>2024</option><option>2025</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-desig">
+          <label class="form-label">Designation</label>
+          <input class="form-input" id="f-desig" placeholder="e.g. Professor, Assistant Professor"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span class="required" id="pwd-req">*</span></label>
+          <input class="form-input" id="f-pwd" type="password" placeholder="Min 8 chars"/>
+        </div>
+        <div class="form-group" id="row-active">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="f-active">
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3>Delete User?</h3>
+    <p id="confirm-msg">This action cannot be undone. The user's login credentials will be permanently removed.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-btn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   IN-BROWSER SQLite SIMULATION (localStorage-backed)
+   In production this panel calls /api/admin/* endpoints.
+   Toggle USE_API = true and set API_BASE when deployed.
+════════════════════════════════════════════════════ */
+const USE_API  = false;
+const API_BASE = "http://localhost:3001";
+const API_TOKEN = localStorage.getItem("ushss_token") || "";
+
+/* ── DB helpers ── */
+const DB_KEY = "ushss_db_v2";
+
+function loadDB() {
+  const raw = localStorage.getItem(DB_KEY);
+  if (raw) return JSON.parse(raw);
+  return initDB();
+}
+
+function saveDB(db) {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+function hash(str) {
+  // Simple deterministic "hash" for demo — in real backend bcrypt is used
+  let h = 0;
+  for (const c of str) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
+  return "hashed_" + Math.abs(h);
+}
+
+let nextId = 1;
+function uid() { return nextId++; }
+
+function initDB() {
+  const now = () => new Date().toISOString().replace("T"," ").substring(0,19);
+  const db = {
+    users: [],
+    audit: [],
+    _nextId: 100
+  };
+  const users = [
+    { role:"admin",  username:"admin001",  password:"Admin@1234",  full_name:"USHSS Administrator",   email:"admin.ushss@ipu.ac.in",   phone:"", department:"Administration", programme:"",               batch:"",     designation:"Administrator",    is_active:1 },
+    { role:"student",username:"2301001",   password:"Student@123", full_name:"John Sharma",           email:"john.sharma@ipu.ac.in",   phone:"+91 98100 11001", department:"Humanities",     programme:"M.A. English",       batch:"2023", designation:"",                 is_active:1 },
+    { role:"student",username:"2301002",   password:"Student@123", full_name:"Priya Verma",           email:"priya.verma@ipu.ac.in",   phone:"+91 98100 11002", department:"Humanities",     programme:"M.A. Psychology",    batch:"2023", designation:"",                 is_active:1 },
+    { role:"student",username:"2401001",   password:"Student@123", full_name:"Rahul Gupta",           email:"rahul.gupta@ipu.ac.in",   phone:"+91 98100 11003", department:"Social Sciences", programme:"M.A. Economics",    batch:"2024", designation:"",                 is_active:1 },
+    { role:"student",username:"2401002",   password:"Student@123", full_name:"Sneha Kapoor",          email:"sneha.k@ipu.ac.in",       phone:"+91 98100 11004", department:"Social Sciences", programme:"M.A. Sociology",    batch:"2024", designation:"",                 is_active:1 },
+    { role:"student",username:"2301003",   password:"Student@123", full_name:"Arjun Mishra",          email:"arjun.m@ipu.ac.in",       phone:"+91 98100 11005", department:"Humanities",     programme:"M.A. Philosophy",    batch:"2023", designation:"",                 is_active:0 },
+    { role:"faculty",username:"fac001",    password:"Faculty@123", full_name:"Dr. Anup Singh Beniwal",email:"anupbeniwal@ipu.ac.in",   phone:"011-2530-2167",   department:"USHSS",          programme:"",                   batch:"",     designation:"Professor",        is_active:1 },
+    { role:"faculty",username:"fac002",    password:"Faculty@123", full_name:"Dr. Shuchi Sharma",     email:"shuchi.sharma@ipu.ac.in", phone:"011-2530-2168",   department:"USHSS",          programme:"",                   batch:"",     designation:"Dean / Professor", is_active:1 },
+    { role:"faculty",username:"fac003",    password:"Faculty@123", full_name:"Dr. Chetna Tiwari",     email:"chetna.ushss@ipu.ac.in",  phone:"011-2530-2169",   department:"USHSS",          programme:"",                   batch:"",     designation:"Associate Professor", is_active:1 },
+    { role:"faculty",username:"fac004",    password:"Faculty@123", full_name:"Dr. Vivek Sachdeva",    email:"viveksachdeva@ipu.ac.in", phone:"011-2530-2170",   department:"USHSS",          programme:"",                   batch:"",     designation:"Professor",        is_active:1 },
+    { role:"cr",     username:"cr2301001", password:"Cr@12345",    full_name:"Amit CR Leader",        email:"cr.english@ipu.ac.in",    phone:"+91 98100 22001", department:"Humanities",     programme:"M.A. English",       batch:"2023", designation:"Class Representative", is_active:1 },
+    { role:"cr",     username:"cr2401001", password:"Cr@12345",    full_name:"Neha CR Singh",         email:"cr.eco@ipu.ac.in",        phone:"+91 98100 22002", department:"Social Sciences", programme:"M.A. Economics",    batch:"2024", designation:"Class Representative", is_active:1 },
+  ];
+  let id = 1;
+  for (const u of users) {
+    db.users.push({ id: id++, ...u, password_hash: hash(u.password), created_at: now(), last_login: null });
+  }
+  db._nextId = id;
+  db.audit.push({ id:1, user_id:1, action:"INIT", detail:"Database initialised", ts: now() });
+  saveDB(db);
+  return db;
+}
+
+/* ── CRUD ── */
+function dbGetUsers(filters = {}) {
+  const db = loadDB();
+  let users = [...db.users];
+  if (filters.role) users = users.filter(u => u.role === filters.role);
+  if (filters.search) {
+    const q = filters.search.toLowerCase();
+    users = users.filter(u => u.full_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q));
+  }
+  return users.sort((a,b) => b.id - a.id);
+}
+
+function dbGetStats() {
+  const db = loadDB();
+  const counts = {};
+  for (const u of db.users) counts[u.role] = (counts[u.role]||0) + 1;
+  const active = db.users.filter(u => u.is_active).length;
+  const recentLogins = db.users.filter(u=>u.last_login).sort((a,b)=>b.last_login.localeCompare(a.last_login)).slice(0,8);
+  return { counts, active, total: db.users.length, recentLogins, log: [...db.audit].reverse().slice(0,30) };
+}
+
+function dbCreateUser(data) {
+  const db = loadDB();
+  if (db.users.find(u => u.username === data.username)) throw new Error("Username already exists");
+  const user = {
+    id: db._nextId++,
+    role: data.role,
+    username: data.username,
+    password_hash: hash(data.password),
+    full_name: data.full_name,
+    email: data.email || "",
+    phone: data.phone || "",
+    department: data.department || "",
+    programme: data.programme || "",
+    batch: data.batch || "",
+    designation: data.designation || "",
+    is_active: 1,
+    created_at: new Date().toISOString().replace("T"," ").substring(0,19),
+    last_login: null
+  };
+  db.users.push(user);
+  db.audit.push({ id: db._nextId++, user_id: 1, action:"CREATE_USER", detail:`Created ${data.role} ${data.username}`, ts: user.created_at });
+  saveDB(db);
+  return user;
+}
+
+function dbUpdateUser(id, data) {
+  const db = loadDB();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) throw new Error("User not found");
+  const user = db.users[idx];
+  Object.assign(user, {
+    full_name:   data.full_name   ?? user.full_name,
+    email:       data.email       ?? user.email,
+    phone:       data.phone       ?? user.phone,
+    department:  data.department  ?? user.department,
+    programme:   data.programme   ?? user.programme,
+    batch:       data.batch       ?? user.batch,
+    designation: data.designation ?? user.designation,
+    is_active:   data.is_active   !== undefined ? Number(data.is_active) : user.is_active,
+  });
+  if (data.password) user.password_hash = hash(data.password);
+  const ts = new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({ id: db._nextId++, user_id: 1, action:"UPDATE_USER", detail:`Updated ${user.username}`, ts });
+  saveDB(db);
+  return user;
+}
+
+function dbDeleteUser(id) {
+  const db = loadDB();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) throw new Error("User not found");
+  const user = db.users[idx];
+  db.users.splice(idx, 1);
+  const ts = new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({ id: db._nextId++, user_id: 1, action:"DELETE_USER", detail:`Deleted ${user.role} ${user.username}`, ts });
+  saveDB(db);
+}
+
+function dbGetAudit() {
+  const db = loadDB();
+  return [...db.audit].reverse();
+}
+
+/* ═══ PAGES ═══ */
+let currentPage = "dashboard";
+let editingId = null;
+let deleteId = null;
+
+const titles = {
+  dashboard: ["Dashboard", "USHSS / Admin / Overview"],
+  students:  ["Students", "USHSS / Admin / Users / Students"],
+  faculty:   ["Faculty", "USHSS / Admin / Users / Faculty"],
+  cr:        ["Class Representatives", "USHSS / Admin / Users / CR"],
+  admin:     ["Administrators", "USHSS / Admin / Users / Admin"],
+  audit:     ["Audit Log", "USHSS / Admin / System / Audit"],
+  schema:    ["Database Schema", "USHSS / Admin / System / Schema"],
+};
+
+function showPage(page) {
+  currentPage = page;
+  document.querySelectorAll(".nav-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.page === page);
+  });
+  const [title, crumb] = titles[page] || [page, ""];
+  document.getElementById("topbar-title").textContent = title;
+  document.getElementById("topbar-crumb").textContent = crumb;
+  renderPage(page);
+}
+
+function renderPage(page) {
+  const c = document.getElementById("content");
+  updateBadges();
+  if (page === "dashboard")  c.innerHTML = renderDashboard();
+  else if (page === "audit") c.innerHTML = renderAudit();
+  else if (page === "schema") c.innerHTML = renderSchema();
+  else c.innerHTML = renderUserTable(page);
+}
+
+/* ── DASHBOARD ── */
+function renderDashboard() {
+  const s = dbGetStats();
+  const roleColor = { student: "#4A7FC0", faculty: "#8B6FC0", cr: "#3DAA72", admin: "#C9A84C" };
+  const roleIcon  = { student: "🎓", faculty: "📚", cr: "🤝", admin: "🔑" };
+
+  const statCards = ["student","faculty","cr","admin"].map(r => `
+    <div class="stat-card" onclick="showPage('${r}')" style="cursor:pointer">
+      <div class="stat-icon" style="background:${roleColor[r]}22">${roleIcon[r]}</div>
+      <div>
+        <div class="stat-num">${s.counts[r]||0}</div>
+        <div class="stat-label">${r === "cr" ? "Class Reps" : r.charAt(0).toUpperCase()+r.slice(1)+"s"}</div>
+        <div class="stat-trend" style="color:var(--green)">● active: ${dbGetUsers({role:r}).filter(u=>u.is_active).length}</div>
+      </div>
+    </div>
+  `).join("");
+
+  const recentLogins = (s.recentLogins.length > 0) ? s.recentLogins.map(u => `
+    <div class="log-entry">
+      <div class="log-dot" style="background:${roleColor[u.role]||"#555"}"></div>
+      <div style="flex:1">
+        <div class="log-text"><strong>${u.full_name}</strong> <span class="badge badge-${u.role}" style="font-size:9px">${u.role}</span></div>
+        <div class="log-time">${u.last_login||"Never"}</div>
+      </div>
+    </div>
+  `).join("") : `<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">No logins yet</div></div>`;
+
+  const recentAudit = s.log.slice(0,12).map(l => `
+    <div class="log-entry">
+      <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":"var(--blue)"}"></div>
+      <div style="flex:1">
+        <div class="log-text"><strong>${l.action}</strong> — ${l.detail||""}</div>
+        <div class="log-time">${l.ts}</div>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="stats-grid">${statCards}<div class="stat-card" style="grid-column:span 2">
+        <div class="stat-icon" style="background:rgba(255,255,255,.05)">👥</div>
+        <div>
+          <div class="stat-num">${s.total}</div>
+          <div class="stat-label">Total Users</div>
+          <div class="stat-trend" style="color:var(--green)">● ${s.active} active &nbsp;<span style="color:var(--red)">● ${s.total - s.active} inactive</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Recent Logins</div>
+        <div class="card-sub" style="margin-bottom:14px">Last sessions by user</div>
+        <div style="max-height:280px;overflow-y:auto">${recentLogins}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Activity Log</div>
+        <div class="card-sub" style="margin-bottom:14px">Admin actions</div>
+        <div style="max-height:280px;overflow-y:auto">${recentAudit}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Default Credentials</div>
+      <div class="card-sub" style="margin-bottom:16px">Change these immediately in production</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Role</th><th>Username</th><th>Default Password</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge badge-admin">admin</span></td><td class="mono">admin001</td><td class="mono">Admin@1234</td><td style="color:var(--red);font-size:12px">⚠ Change immediately</td></tr>
+            <tr><td><span class="badge badge-student">student</span></td><td class="mono">2301001 / 2301002 / 2401001 / 2401002</td><td class="mono">Student@123</td><td style="color:var(--muted);font-size:12px">Batch-based reset recommended</td></tr>
+            <tr><td><span class="badge badge-faculty">faculty</span></td><td class="mono">fac001 – fac004</td><td class="mono">Faculty@123</td><td style="color:var(--muted);font-size:12px">Email reset preferred</td></tr>
+            <tr><td><span class="badge badge-cr">cr</span></td><td class="mono">cr2301001 / cr2401001</td><td class="mono">Cr@12345</td><td style="color:var(--muted);font-size:12px">CR-specific credentials</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ── USER TABLE ── */
+let searchQuery = "";
+let statusFilter = "";
+
+function renderUserTable(role) {
+  const users = dbGetUsers({ role, search: searchQuery, status: statusFilter });
+  const filtered = statusFilter === "" ? users : users.filter(u => String(u.is_active) === statusFilter);
+  const hasStudentFields = role === "student" || role === "cr";
+  const hasFacultyFields = role === "faculty";
+
+  const rows = filtered.length ? filtered.map(u => `
+    <tr>
+      <td class="mono" style="color:var(--muted)">#${u.id}</td>
+      <td><div style="font-weight:600;color:var(--text)">${u.full_name}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.username}</div></td>
+      <td>${u.email ? `<span style="font-size:12px">${u.email}</span>` : `<span style="color:var(--muted)">—</span>`}</td>
+      ${hasStudentFields ? `<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div></td>` : ""}
+      ${hasFacultyFields ? `<td style="font-size:12px">${u.designation||"—"}</td>` : ""}
+      ${role==="admin" ? `<td style="font-size:12px">${u.designation||"—"}</td>` : ""}
+      <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
+      <td><span class="badge ${u.is_active ? "badge-active":"badge-inactive"}">${u.is_active?"Active":"Inactive"}</span></td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${u.last_login||"Never"}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `).join("") : `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
+
+  const roleLabel = { student:"Student", faculty:"Faculty", cr:"Class Representative", admin:"Administrator" };
+
+  return `
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search by name, username or email…" value="${searchQuery}"
+          oninput="searchQuery=this.value; renderPage('${role}')"/>
+      </div>
+      <select class="filter-select" onchange="statusFilter=this.value; renderPage('${role}')">
+        <option value="" ${statusFilter===""?"selected":""}>All Status</option>
+        <option value="1" ${statusFilter==="1"?"selected":""}>Active</option>
+        <option value="0" ${statusFilter==="0"?"selected":""}>Inactive</option>
+      </select>
+      <button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role]}</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} record${filtered.length!==1?"s":""}</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name / Username</th><th>Email</th>
+            ${hasStudentFields ? "<th>Programme / Batch</th>" : ""}
+            ${hasFacultyFields ? "<th>Designation</th>" : ""}
+            ${role==="admin" ? "<th>Designation</th>" : ""}
+            <th>Dept.</th><th>Status</th><th>Last Login</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ── AUDIT ── */
+function renderAudit() {
+  const entries = dbGetAudit();
+  const actionColor = a => a.includes("DELETE") ? "var(--red)" : a.includes("CREATE") ? "var(--green)" : a.includes("LOGIN") ? "var(--blue)" : "var(--muted)";
+  const rows = entries.map(l => `
+    <tr>
+      <td class="mono" style="color:var(--muted)">#${l.id}</td>
+      <td><span style="color:${actionColor(l.action)};font-family:var(--font-mono);font-size:12px;font-weight:600">${l.action}</span></td>
+      <td style="font-size:12px">${l.detail||"—"}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${l.ts}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="4"><div class="empty-state"><div>No audit events</div></div></td></tr>`;
+
+  return `
+    <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;color:var(--muted)">${entries.length} total events recorded</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="if(confirm('Clear audit log?')){const db=loadDB();db.audit=[];saveDB(db);renderPage('audit')}">🗑 Clear Log</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Action</th><th>Detail</th><th>Timestamp</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ── SCHEMA ── */
+function renderSchema() {
+  return `
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Table: users</div>
+        <div class="card-sub" style="margin-bottom:16px">Primary user credential & profile store</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+            <tbody>
+              ${[
+                ["id","INTEGER","PRIMARY KEY AUTOINCREMENT"],
+                ["role","TEXT","NOT NULL, CHECK IN (student|faculty|cr|admin)"],
+                ["username","TEXT","NOT NULL UNIQUE"],
+                ["password_hash","TEXT","NOT NULL (bcrypt)"],
+                ["full_name","TEXT","NOT NULL"],
+                ["email","TEXT",""],
+                ["phone","TEXT",""],
+                ["department","TEXT",""],
+                ["programme","TEXT","(students/CR only)"],
+                ["batch","TEXT","(students/CR only)"],
+                ["designation","TEXT","(faculty/admin)"],
+                ["is_active","INTEGER","DEFAULT 1"],
+                ["created_at","TEXT","DEFAULT datetime('now')"],
+                ["last_login","TEXT","Nullable"],
+              ].map(([col,type,con])=>`<tr><td class="mono" style="color:var(--gold-l)">${col}</td><td class="mono" style="color:var(--blue)">${type}</td><td style="font-size:11px;color:var(--muted)">${con}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-title">Table: audit_log</div>
+          <div class="card-sub" style="margin-bottom:16px">Admin action tracking</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Column</th><th>Type</th></tr></thead>
+              <tbody>
+                ${[["id","INTEGER PK"],["user_id","INTEGER → users.id"],["action","TEXT"],["detail","TEXT"],["ip","TEXT"],["ts","TEXT datetime"]].map(([c,t])=>`<tr><td class="mono" style="color:var(--gold-l)">${c}</td><td class="mono" style="color:var(--blue);font-size:11px">${t}</td></tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Backend Setup</div>
+          <div class="card-sub" style="margin-bottom:14px">Production deployment commands</div>
+          <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--gold-l);overflow-x:auto;line-height:1.8"><span style="color:var(--muted)"># Install dependencies</span>
+npm install
+
+<span style="color:var(--muted)"># Set environment variables</span>
+export JWT_SECRET=your_secret_here
+export PORT=3001
+
+<span style="color:var(--muted)"># Start server</span>
+node server.js
+
+<span style="color:var(--muted)"># Database file created at</span>
+./ushss.db  <span style="color:var(--muted)">(SQLite WAL mode)</span></pre>
+        </div>
+        <div class="card">
+          <div class="card-title">API Endpoints</div>
+          <div class="card-sub" style="margin-bottom:14px">REST API reference</div>
+          <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;overflow-x:auto;line-height:1.9"><span style="color:var(--green)">POST</span>   /api/login
+<span style="color:var(--blue)">GET</span>    /api/me
+<span style="color:var(--blue)">GET</span>    /api/admin/users
+<span style="color:var(--green)">POST</span>   /api/admin/users
+<span style="color:var(--gold)">PUT</span>    /api/admin/users/:id
+<span style="color:var(--red)">DELETE</span> /api/admin/users/:id
+<span style="color:var(--blue)">GET</span>    /api/admin/stats
+<span style="color:var(--blue)">GET</span>    /api/admin/audit</pre>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ═══ MODAL LOGIC ═══ */
+function openCreateModal(role = "student") {
+  editingId = null;
+  document.getElementById("modal-title").textContent = "Add New User";
+  document.getElementById("modal-save-btn").textContent = "Create User";
+  document.getElementById("pwd-req").style.display = "inline";
+  document.getElementById("f-role").value = role;
+  document.getElementById("f-username").value = "";
+  document.getElementById("f-name").value = "";
+  document.getElementById("f-email").value = "";
+  document.getElementById("f-phone").value = "";
+  document.getElementById("f-dept").value = "";
+  document.getElementById("f-prog").value = "";
+  document.getElementById("f-batch").value = "";
+  document.getElementById("f-desig").value = "";
+  document.getElementById("f-pwd").value = "";
+  document.getElementById("f-active").value = "1";
+  document.getElementById("row-active").style.display = "none";
+  onRoleChange();
+  document.getElementById("modal").classList.add("open");
+}
+
+function openEditModal(id) {
+  const db = loadDB();
+  const user = db.users.find(u => u.id === id);
+  if (!user) return;
+  editingId = id;
+  document.getElementById("modal-title").textContent = "Edit User";
+  document.getElementById("modal-save-btn").textContent = "Save Changes";
+  document.getElementById("pwd-req").style.display = "none";
+  document.getElementById("f-role").value = user.role;
+  document.getElementById("f-role").disabled = true;
+  document.getElementById("f-username").value = user.username;
+  document.getElementById("f-username").disabled = true;
+  document.getElementById("f-name").value = user.full_name;
+  document.getElementById("f-email").value = user.email||"";
+  document.getElementById("f-phone").value = user.phone||"";
+  document.getElementById("f-dept").value = user.department||"";
+  document.getElementById("f-prog").value = user.programme||"";
+  document.getElementById("f-batch").value = user.batch||"";
+  document.getElementById("f-desig").value = user.designation||"";
+  document.getElementById("f-pwd").value = "";
+  document.getElementById("f-active").value = String(user.is_active);
+  document.getElementById("row-active").style.display = "flex";
+  onRoleChange();
+  document.getElementById("modal").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("open");
+  document.getElementById("f-role").disabled = false;
+  document.getElementById("f-username").disabled = false;
+  editingId = null;
+}
+
+function onRoleChange() {
+  const role = document.getElementById("f-role").value;
+  const labels = { student:"Enrollment No.", faculty:"Faculty ID", cr:"CR Roll No.", admin:"Admin ID" };
+  document.getElementById("label-username").innerHTML = `${labels[role]||"Username"} <span class="required">*</span>`;
+  const showStudentFields = role === "student" || role === "cr";
+  const showDesig = role === "faculty" || role === "admin" || role === "cr";
+  document.getElementById("row-prog").style.display  = showStudentFields ? "flex" : "none";
+  document.getElementById("row-batch").style.display = showStudentFields ? "flex" : "none";
+  document.getElementById("row-desig").style.display = showDesig ? "flex" : "none";
+}
+
+function saveUser() {
+  const role     = document.getElementById("f-role").value;
+  const username = document.getElementById("f-username").value.trim();
+  const name     = document.getElementById("f-name").value.trim();
+  const email    = document.getElementById("f-email").value.trim();
+  const phone    = document.getElementById("f-phone").value.trim();
+  const dept     = document.getElementById("f-dept").value;
+  const prog     = document.getElementById("f-prog").value;
+  const batch    = document.getElementById("f-batch").value;
+  const desig    = document.getElementById("f-desig").value.trim();
+  const pwd      = document.getElementById("f-pwd").value;
+  const isActive = document.getElementById("f-active").value;
+
+  if (!name) return toast("Full name is required", "error");
+  if (!editingId) {
+    if (!username) return toast("Username is required", "error");
+    if (!pwd) return toast("Password is required for new users", "error");
+  }
+
+  try {
+    if (editingId) {
+      dbUpdateUser(editingId, { full_name:name, email, phone, department:dept, programme:prog, batch, designation:desig, is_active:isActive, password: pwd||undefined });
+      toast("User updated successfully", "success");
+    } else {
+      dbCreateUser({ role, username, password:pwd, full_name:name, email, phone, department:dept, programme:prog, batch, designation:desig });
+      toast("User created successfully", "success");
+    }
+    closeModal();
+    renderPage(currentPage);
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+/* ── DELETE ── */
+function openDeleteConfirm(id, name) {
+  deleteId = id;
+  document.getElementById("confirm-msg").textContent = `Delete "${name}"? This cannot be undone.`;
+  document.getElementById("confirm-overlay").classList.add("open");
+}
+function closeConfirm() {
+  deleteId = null;
+  document.getElementById("confirm-overlay").classList.remove("open");
+}
+function confirmDelete() {
+  if (!deleteId) return;
+  dbDeleteUser(deleteId);
+  toast("User deleted", "success");
+  closeConfirm();
+  renderPage(currentPage);
+}
+
+/* ── TOAST ── */
+function toast(msg, type = "success") {
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type==="success"?"✓":"✕"}</span> ${msg}`;
+  document.getElementById("toast-container").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+/* ── BADGES ── */
+function updateBadges() {
+  ["student","faculty","cr","admin"].forEach(role => {
+    const n = dbGetUsers({role}).length;
+    const el = document.getElementById(`badge-${role}`);
+    if (el) el.textContent = n;
+  });
+}
+
+/* ── KEYBOARD CLOSE ── */
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeModal(); closeConfirm(); }
+});
+
+/* ── INIT ── */
+showPage("dashboard");
+document.getElementById("adminName").textContent = "USHSS Admin";
+</script>
+</body>
+</html>

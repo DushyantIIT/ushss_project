@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>USHSS — Student Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#FAF8F4;--surface:#FFFFFF;--surface2:#F5F1EA;--surface3:#EDE8DE;
+  --border:#E0D9CC;--border2:#CFC6B5;
+  --maroon:#6B1A1A;--maroon-d:#4A0E0E;--maroon-l:#8B2E2E;
+  --gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+  --ink:#1A1209;--ink-mid:#3D2B1F;--muted:#8A7B6E;
+  --green:#1E7A3D;--green-bg:#E8F5EE;--green-light:#C6E8D5;
+  --red:#C0392B;--red-bg:#FAEAE8;
+  --blue:#1A5BA8;--blue-bg:#E8F0FA;
+  --amber:#9A6B00;--amber-bg:#FBF3DC;
+  --purple:#6B2D9A;--purple-bg:#F3EAF9;
+  --radius:10px;--mono:'JetBrains Mono',monospace;
+  --shadow:0 2px 12px rgba(107,26,26,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);display:flex;font-size:14px}
+
+/* SIDEBAR — warm cream + maroon accent */
+.sidebar{width:260px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;box-shadow:2px 0 16px rgba(107,26,26,.04)}
+.sb-head{padding:22px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--maroon-d) 0%,var(--maroon) 100%)}
+.sb-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sb-logo-badge{width:36px;height:36px;background:rgba(201,168,76,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:13px;color:var(--gold-l);font-weight:700;border:1px solid rgba(201,168,76,.3)}
+.sb-logo-text{font-family:'Playfair Display',serif;font-size:14px;color:rgba(240,235,224,.9);font-weight:600}
+.sb-logo-sub{font-size:10px;color:rgba(201,168,76,.6);font-family:var(--mono)}
+.sb-profile{background:rgba(255,255,255,.08);border-radius:var(--radius);padding:12px;border:1px solid rgba(255,255,255,.1)}
+.sb-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-l));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;color:var(--maroon-d);font-weight:700;flex-shrink:0;margin-bottom:8px}
+.sb-pname{font-family:'Playfair Display',serif;font-size:15px;color:#F5F0E8;line-height:1.2}
+.sb-pmeta{font-size:10px;color:rgba(201,168,76,.7);font-family:var(--mono);margin-top:2px}
+.sb-roll{display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.25);font-size:10px;color:var(--gold-l);font-family:var(--mono)}
+
+.sb-nav{flex:1;padding:14px 12px;overflow-y:auto}
+.sb-section{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 8px 5px;margin-top:4px;font-family:var(--mono)}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;font-size:13px;color:var(--muted);font-weight:500;margin-bottom:1px;border:1px solid transparent}
+.sb-item:hover{background:var(--surface2);color:var(--ink-mid)}
+.sb-item.active{background:var(--gold-pale);color:var(--maroon);border-color:rgba(201,168,76,.35);font-weight:600}
+.sb-item .ico{width:18px;text-align:center;font-size:14px;flex-shrink:0}
+.sb-badge{margin-left:auto;background:var(--maroon);color:var(--gold-l);font-size:10px;padding:1px 6px;border-radius:20px;font-family:var(--mono)}
+.sb-foot{padding:12px;border-top:1px solid var(--border)}
+.sb-att-mini{background:var(--gold-pale);border:1px solid rgba(201,168,76,.3);border-radius:8px;padding:12px;margin-bottom:10px}
+.sb-att-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-family:var(--mono)}
+.sb-att-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon);line-height:1}
+.progress{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.progress-green{background:var(--green)}.progress-amber{background:var(--amber)}.progress-red{background:var(--red)}.progress-maroon{background:var(--maroon)}
+.sb-logout{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s}
+.sb-logout:hover{background:var(--red-bg);color:var(--red)}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0;box-shadow:var(--shadow)}
+.tb-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--maroon-d);font-weight:700}
+.tb-crumb{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.tb-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--surface2)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* COMPONENTS */
+.btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:'DM Sans',sans-serif;transition:all .15s;display:inline-flex;align-items:center;gap:6px;letter-spacing:.3px}
+.btn-primary{background:var(--maroon);color:var(--gold-l)}
+.btn-primary:hover{background:var(--maroon-d)}
+.btn-gold{background:var(--gold);color:var(--maroon-d);font-weight:700}
+.btn-gold:hover{background:var(--gold-l)}
+.btn-ghost{background:transparent;color:var(--muted);border-color:var(--border2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--ink-mid)}
+.btn-outline-maroon{background:transparent;color:var(--maroon);border-color:var(--maroon)}
+.btn-outline-maroon:hover{background:var(--maroon);color:var(--gold-l)}
+.btn-sm{padding:5px 11px;font-size:11px}
+.btn-lg{padding:12px 24px;font-size:14px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card-title{font-family:'Playfair Display',serif;font-size:15px;color:var(--maroon-d);font-weight:700;margin-bottom:4px}
+.card-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;font-family:var(--mono)}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-light)}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(192,57,43,.2)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(154,107,0,.2)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(26,91,168,.2)}
+.badge-purple{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(107,45,154,.2)}
+.badge-maroon{background:rgba(107,26,26,.08);color:var(--maroon);border:1px solid rgba(107,26,26,.2)}
+.badge-gold{background:var(--gold-pale);color:var(--amber);border:1px solid rgba(201,168,76,.3)}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--shadow);transition:transform .2s,border-color .2s}
+.stat-card:hover{transform:translateY(-1px);border-color:var(--border2)}
+.stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--maroon-d);line-height:1}
+.stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid-60-40{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-family:var(--mono)}
+.form-input,.form-select,.form-textarea{width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);color:var(--ink);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--muted)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.overlay{position:fixed;inset:0;background:rgba(26,18,9,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(540px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(107,26,26,.12)}
+.modal-head{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-head h2{font-family:'Playfair Display',serif;font-size:18px;color:var(--maroon-d)}
+.modal-body{padding:22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+
+.table-wrap{border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse}
+thead{background:var(--surface2)}
+th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--gold-pale)}
+
+/* ATTENDANCE MARK SPECIAL */
+.att-hero{background:linear-gradient(135deg,var(--maroon-d) 0%,var(--maroon) 60%,var(--maroon-l) 100%);border-radius:14px;padding:28px;margin-bottom:20px;color:white;position:relative;overflow:hidden}
+.att-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,168,76,.08)}
+.att-hero::after{content:'';position:absolute;bottom:-30px;left:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.04)}
+.att-hero-title{font-family:'Playfair Display',serif;font-size:22px;color:rgba(245,241,232,.95);margin-bottom:4px}
+.att-hero-sub{font-size:12px;color:rgba(201,168,76,.7);font-family:var(--mono);margin-bottom:20px}
+.session-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:24px;font-size:12px;font-weight:600;border:1px solid}
+.session-pill.open{background:rgba(30,122,61,.2);color:#6EE89A;border-color:rgba(30,122,61,.4)}
+.session-pill.closed{background:rgba(192,57,43,.2);color:#F08080;border-color:rgba(192,57,43,.4)}
+.session-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+
+.loc-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px;margin:16px 0}
+.loc-coords{font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.8);margin-top:4px}
+.mark-btn-big{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:'Playfair Display',serif;letter-spacing:.5px;transition:all .2s;margin-top:4px}
+.mark-btn-big:not(:disabled){background:linear-gradient(135deg,var(--gold),var(--gold-l));color:var(--maroon-d)}
+.mark-btn-big:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,.3)}
+.mark-btn-big:disabled{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:not-allowed}
+.mark-success{background:rgba(30,122,61,.15);border:1px solid rgba(30,122,61,.3);border-radius:10px;padding:16px;margin-top:12px;display:none;text-align:center}
+.mark-success-icon{font-size:2.5rem;margin-bottom:8px}
+.mark-success-title{font-family:'Playfair Display',serif;font-size:16px;color:#6EE89A;margin-bottom:4px}
+.mark-success-sub{font-size:11px;color:rgba(255,255,255,.5);font-family:var(--mono)}
+
+/* ITEM CARDS */
+.item-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px;transition:border-color .2s,transform .2s}
+.item-card:hover{border-color:var(--gold);transform:translateX(2px)}
+.item-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.item-title{font-family:'Playfair Display',serif;font-size:14px;color:var(--maroon-d);font-weight:700}
+.item-body{font-family:'Lora',serif;font-size:13px;color:var(--muted);line-height:1.65}
+.item-footer{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap}
+.item-time{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* MATERIAL GRID */
+.mat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);transition:all .2s;cursor:pointer}
+.mat-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(107,26,26,.08)}
+
+/* SECTION HEADER */
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.sec-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);font-family:var(--mono)}
+.sec-title{font-family:'Playfair Display',serif;font-size:21px;color:var(--maroon-d);font-weight:700;margin-top:2px}
+.page{display:none}.page.active{display:block}
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:2.5rem;opacity:.2;margin-bottom:10px}
+
+/* DIVIDER */
+.divider{width:40px;height:3px;background:var(--gold);border-radius:2px;margin:8px 0 16px}
+
+/* CALENDAR DOT */
+.cal-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(107,26,26,.12);animation:tin .2s ease;max-width:300px}
+.toast.ok{border-color:var(--green-light);color:var(--green)}
+.toast.err{border-color:rgba(192,57,43,.3);color:var(--red)}
+@keyframes tin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:900px){.sidebar{display:none}.stats-row{grid-template-columns:1fr 1fr}.grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-logo-row">
+      <div class="sb-logo-badge">GGS</div>
+      <div><div class="sb-logo-text">USHSS</div><div class="sb-logo-sub">Student Portal</div></div>
+    </div>
+    <div class="sb-profile">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="sb-avatar">AS</div>
+        <div>
+          <div class="sb-pname">Arjun Sharma</div>
+          <div class="sb-pmeta">M.A. English · 2023</div>
+          <div class="sb-roll">2301001</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Overview</div>
+    <div class="sb-item active" onclick="goPage('dashboard',this)"><span class="ico">🏠</span> Dashboard</div>
+    <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Mark Attendance</div>
+
+    <div class="sb-section">Class</div>
+    <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-badge" id="ann-cnt">4</span></div>
+    <div class="sb-item" onclick="goPage('assignments',this)"><span class="ico">📝</span> Assignments <span class="sb-badge" id="asgn-cnt">3</span></div>
+    <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📂</span> Study Materials <span class="sb-badge" id="mat-cnt">5</span></div>
+
+    <div class="sb-section">Records</div>
+    <div class="sb-item" onclick="goPage('myattendance',this)"><span class="ico">📊</span> My Attendance</div>
+    <div class="sb-item" onclick="goPage('timetable',this)"><span class="ico">🗓️</span> Timetable</div>
+
+    <div class="sb-section">Account</div>
+    <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
+  </nav>
+  <div class="sb-foot">
+    <div class="sb-att-mini">
+      <div class="sb-att-label">Attendance</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;margin-top:4px">
+        <div class="sb-att-val">82%</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:5px">12/15 sessions</div>
+      </div>
+      <div class="progress"><div class="progress-fill progress-green" style="width:82%"></div></div>
+    </div>
+    <div class="sb-logout" onclick="toast('Logging out…','ok')"><span style="font-size:14px">🚪</span> Sign Out</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div>
+      <div class="tb-title" id="pg-title">Dashboard</div>
+      <div class="tb-crumb" id="pg-crumb">USHSS / Student / Overview</div>
+    </div>
+    <div class="tb-right">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="live-indicator"></span>
+      <button class="btn btn-gold btn-sm" onclick="goPage('attendance',document.querySelector('[onclick*=attendance]'))">Mark Attendance</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="pg-dashboard">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(107,26,26,.08)">📊</div>
+          <div>
+            <div class="stat-num">82%</div>
+            <div class="stat-lbl">Attendance</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--green)">✓ Above 75%</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--blue-bg)">📝</div>
+          <div>
+            <div class="stat-num">3</div>
+            <div class="stat-lbl">Assignments</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--amber)">1 due soon</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--amber-bg)">📢</div>
+          <div>
+            <div class="stat-num">4</div>
+            <div class="stat-lbl">Announcements</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--muted)">2 unread</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--purple-bg)">📂</div>
+          <div>
+            <div class="stat-num">5</div>
+            <div class="stat-lbl">Materials</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--muted)">New PDFs</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-60-40" style="margin-bottom:16px">
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Attendance Overview</div>
+            <div class="divider"></div>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+              <div style="position:relative;width:100px;height:100px;flex-shrink:0">
+                <svg viewBox="0 0 100 100" style="transform:rotate(-90deg);width:100px;height:100px">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" stroke-width="10"/>
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--maroon)" stroke-width="10" stroke-dasharray="251" stroke-dashoffset="45" stroke-linecap="round"/>
+                </svg>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                  <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--maroon-d)">82%</div>
+                  <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">ATTEND</div>
+                </div>
+              </div>
+              <div style="flex:1">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                  <div style="background:var(--green-bg);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--green-light)">
+                    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green)">12</div>
+                    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Present</div>
+                  </div>
+                  <div style="background:var(--red-bg);border-radius:8px;padding:10px;text-align:center;border:1px solid rgba(192,57,43,.15)">
+                    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--red)">3</div>
+                    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Absent</div>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--muted)">Minimum required: <strong style="color:var(--maroon)">75%</strong>. You need <strong style="color:var(--green)">0 more</strong> absences to stay safe.</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:14px">Recent Announcements</div>
+            <div id="dash-ann"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="margin-bottom:12px">Pending Assignments</div>
+            <div id="dash-asgn"></div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px">Today's Schedule</div>
+            <div id="dash-schedule"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARK ATTENDANCE -->
+    <div class="page" id="pg-attendance">
+      <div class="sec-head">
+        <div><div class="sec-label">Attendance</div><div class="sec-title">Mark Your Attendance</div></div>
+      </div>
+
+      <div style="max-width:540px">
+        <div class="att-hero">
+          <div class="att-hero-title">Live Attendance Session</div>
+          <div class="att-hero-sub">Your location is used for verification</div>
+
+          <div id="no-session" style="display:none">
+            <div class="session-pill closed"><span>⭕</span> No Active Session</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:10px">No teacher has opened an attendance session. Check back later.</div>
+          </div>
+
+          <div id="has-session">
+            <div class="session-pill open"><div class="dot"></div> Session Open</div>
+            <div style="font-size:13px;color:rgba(240,235,224,.75);margin-top:10px;margin-bottom:14px">
+              <strong style="color:rgba(240,235,224,.9)">M.A. English — Sem III</strong><br/>
+              Postcolonial Theory · Dr. Shuchi Sharma<br/>
+              <span style="font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.7)">Ends in ~14 minutes</span>
+            </div>
+
+            <div class="loc-box">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-size:16px">📍</span>
+                <div style="font-size:13px;color:rgba(240,235,224,.9);font-weight:600">Location Verification</div>
+              </div>
+              <div class="loc-coords" id="loc-text">Requesting location access…</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:6px">Location is captured once and attached to your attendance record.</div>
+            </div>
+
+            <button class="mark-btn-big" id="mark-btn" disabled onclick="markMyAttendance()">⏳ Getting your location…</button>
+
+            <div class="mark-success" id="mark-success">
+              <div class="mark-success-icon">✅</div>
+              <div class="mark-success-title">Attendance Marked!</div>
+              <div class="mark-success-sub" id="mark-detail">Present at 10:32 AM · Location verified</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Your Attendance Log</div>
+          <div id="att-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANNOUNCEMENTS -->
+    <div class="page" id="pg-announcements">
+      <div class="sec-head">
+        <div><div class="sec-label">Class Updates</div><div class="sec-title">Announcements</div></div>
+      </div>
+      <div id="ann-list"></div>
+    </div>
+
+    <!-- ASSIGNMENTS -->
+    <div class="page" id="pg-assignments">
+      <div class="sec-head">
+        <div><div class="sec-label">Academic</div><div class="sec-title">Assignments</div></div>
+        <select class="form-select" style="width:160px;padding:7px 11px;font-size:12px" onchange="filterAssignments(this.value)">
+          <option value="">All</option><option value="pending">Pending</option><option value="overdue">Overdue</option>
+        </select>
+      </div>
+      <div id="asgn-list"></div>
+    </div>
+
+    <!-- MATERIALS -->
+    <div class="page" id="pg-materials">
+      <div class="sec-head">
+        <div><div class="sec-label">Resources</div><div class="sec-title">Study Materials</div></div>
+        <input class="form-input" style="width:200px;padding:7px 11px;font-size:12px" placeholder="Search materials…" oninput="filterMats(this.value)"/>
+      </div>
+      <div class="grid-3" id="mat-grid"></div>
+    </div>
+
+    <!-- MY ATTENDANCE -->
+    <div class="page" id="pg-myattendance">
+      <div class="sec-head">
+        <div><div class="sec-label">Records</div><div class="sec-title">My Attendance History</div></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="card-title">Monthly Summary</div>
+          <div class="divider"></div>
+          <div id="monthly-summary"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Subject-wise Attendance</div>
+          <div class="divider"></div>
+          <div id="subject-att"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Subject</th><th>Topic</th><th>Teacher</th><th>Status</th><th>Location</th></tr></thead>
+          <tbody id="att-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TIMETABLE -->
+    <div class="page" id="pg-timetable">
+      <div class="sec-head"><div><div class="sec-label">Schedule</div><div class="sec-title">Weekly Timetable</div></div></div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table style="min-width:700px">
+            <thead>
+              <tr>
+                <th style="width:80px">Time</th>
+                <th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th>
+              </tr>
+            </thead>
+            <tbody id="tt-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="page" id="pg-profile">
+      <div class="sec-head"><div><div class="sec-label">Account</div><div class="sec-title">My Profile</div></div></div>
+      <div class="grid-2" style="max-width:900px">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:16px;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--border)">
+            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--maroon),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:white;font-weight:700">AS</div>
+            <div>
+              <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--maroon-d)">Arjun Sharma</div>
+              <div style="font-size:12px;color:var(--gold);margin-top:2px">Student · M.A. English</div>
+              <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px">2301001 · Batch 2023</div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Arjun Sharma"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="arjun.sharma@ipu.ac.in"/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="+91 98100 11001"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Programme</label><input class="form-input" value="M.A. English" readonly/></div>
+            <div class="form-group"><label class="form-label">Batch</label><input class="form-input" value="2023" readonly/></div>
+          </div>
+          <button class="btn btn-primary" onclick="toast('Profile updated','ok')">Save Changes</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Change Password</div>
+          <div class="form-group"><label class="form-label">Current Password</label><input class="form-input" type="password" placeholder="••••••••"/></div>
+          <div class="form-group"><label class="form-label">New Password</label><input class="form-input" type="password"/></div>
+          <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" type="password"/></div>
+          <button class="btn btn-primary" onclick="toast('Password changed','ok')">Update Password</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast-wrap" id="tw"></div>
+
+<script>
+/* ═══ DATA ═══ */
+const DB = {
+  announcements: [
+    {id:1,title:"Seminar Attendance is Mandatory — 22nd April",body:"Prof. Ramesh Gupta from Delhi University will be speaking. All students must attend. Reach Seminar Hall A by 2:45 PM sharp.",type:"urgent",from:"Dr. Shuchi Sharma",ts:"2025-04-14 10:00",read:false},
+    {id:2,title:"Assignment 2 Deadline Extended to 30th April",body:"The submission deadline for Assignment 2 (Postcolonial Literature Essay) has been extended. Please submit via the portal or in person before 5 PM.",type:"reminder",from:"Amit Kumar (CR)",ts:"2025-04-12 09:30",read:false},
+    {id:3,title:"Guest Lecture on Environmental Humanities",body:"A guest lecture by Dr. Kavita Singh on Environmental Humanities and Climate Justice will be held on 28th April at 11 AM.",type:"info",from:"Dr. Shuchi Sharma",ts:"2025-04-10 11:00",read:true},
+    {id:4,title:"Mid-Semester Results Published",body:"Mid-semester examination results are now available on the university portal. Visit ipu.ac.in to check your scores.",type:"info",from:"USHSS Admin",ts:"2025-04-08 14:00",read:true},
+  ],
+  assignments: [
+    {id:1,title:"Essay on Said's Orientalism",desc:"Write a 2000-word critical essay analyzing Edward Said's Orientalism and its implications for contemporary postcolonial literary studies.",subject:"Postcolonial Literature",due:"2025-04-30",file:"Orientalism_Essay_Guidelines.pdf",posted:"2025-04-10"},
+    {id:2,title:"Linguistics — Phonology Exercises",desc:"Complete exercises 3.1–3.8 from the coursebook. Handwritten or typed (A4 size), submit in class.",subject:"Linguistics",due:"2025-04-22",file:null,posted:"2025-04-08"},
+    {id:3,title:"Mid-Term Reflection Paper",desc:"Write a 500-word reflection on any text studied this semester and its relevance to contemporary social issues.",subject:"Literary Theory",due:"2025-05-05",file:"Reflection_Paper_Format.pdf",posted:"2025-04-05"},
+  ],
+  materials: [
+    {id:1,title:"Unit 3 Notes — Postcolonial Theory",subject:"Postcolonial Literature",type:"pdf",size:"2.3 MB",ts:"2025-04-12",desc:"Comprehensive notes covering Said, Spivak and Bhabha",by:"Dr. Sharma"},
+    {id:2,title:"Mid-Sem Question Papers 2022–24",subject:"All Subjects",type:"past-paper",size:"5.1 MB",ts:"2025-04-10",desc:"Past 3 years mid-semester papers for reference",by:"Amit Kumar (CR)"},
+    {id:3,title:"Phonology Lecture Slides",subject:"Linguistics",type:"slides",size:"8.7 MB",ts:"2025-04-08",desc:"Weeks 5–8 lecture slides",by:"Dr. Sharma"},
+    {id:4,title:"Literary Theory Quick Reference",subject:"Literary Theory",type:"reference",size:"1.2 MB",ts:"2025-04-05",desc:"One-page summary for all major theories",by:"Amit Kumar (CR)"},
+    {id:5,title:"Modern Fiction Reading List",subject:"Modern Fiction",type:"pdf",size:"0.4 MB",ts:"2025-04-01",desc:"Curated reading list with annotations",by:"Dr. Sharma"},
+  ],
+  attLog: [
+    {date:"2025-04-14",subject:"Postcolonial Literature",topic:"Bhabhian Mimicry",teacher:"Dr. Sharma",status:"present",loc:"28.5355, 77.3910"},
+    {date:"2025-04-12",subject:"Linguistics",topic:"Phonological Rules",teacher:"Dr. Sharma",status:"present",loc:"28.5355, 77.3910"},
+    {date:"2025-04-10",subject:"Literary Theory",topic:"Structuralism",teacher:"Dr. Sharma",status:"absent",loc:"—"},
+    {date:"2025-04-08",subject:"Modern Fiction",topic:"Partition Narratives",teacher:"Dr. Sharma",status:"present",loc:"28.5355, 77.3910"},
+    {date:"2025-04-05",subject:"Postcolonial Literature",topic:"Said's Orientalism",teacher:"Dr. Sharma",status:"absent",loc:"—"},
+    {date:"2025-04-03",subject:"Linguistics",topic:"Morphology",teacher:"Dr. Sharma",status:"present",loc:"28.5355, 77.3910"},
+  ],
+  timetable: [
+    ["9–10",     "Postcolonial Lit","—","Linguistics","—","Modern Fiction"],
+    ["10–11",    "Literary Theory","Postcolonial Lit","—","Linguistics","—"],
+    ["11–12",    "—","Literary Theory","Postcolonial Lit","—","Linguistics"],
+    ["12–1 PM",  "Library/Study","Library/Study","Library/Study","Library/Study","Library/Study"],
+    ["2–3 PM",   "Modern Fiction","—","Literary Theory","Postcolonial Lit","—"],
+    ["3–4 PM",   "—","Modern Fiction","—","Literary Theory","—"],
+  ],
+};
+
+let locOk=false,userLat=null,userLng=null;
+
+/* NAVIGATION */
+const pgs={
+  dashboard:["Dashboard","USHSS / Student / Overview"],
+  attendance:["Mark Attendance","USHSS / Student / Attendance"],
+  announcements:["Announcements","USHSS / Student / Announcements"],
+  assignments:["Assignments","USHSS / Student / Assignments"],
+  materials:["Study Materials","USHSS / Student / Materials"],
+  myattendance:["My Attendance","USHSS / Student / My Attendance"],
+  timetable:["Timetable","USHSS / Student / Timetable"],
+  profile:["My Profile","USHSS / Student / Profile"],
+};
+function goPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const[t,c]=pgs[id]||[id,""];
+  document.getElementById('pg-title').textContent=t;
+  document.getElementById('pg-crumb').textContent=c;
+  if(id==='announcements')renderAnn();
+  if(id==='assignments')renderAssignments(DB.assignments);
+  if(id==='materials')renderMaterials(DB.materials);
+  if(id==='myattendance'){renderAttTable();renderSubjectAtt();renderMonthlySummary();}
+  if(id==='timetable')renderTimetable();
+  if(id==='attendance')initAttPage();
+}
+
+/* DASHBOARD INIT */
+function initDashboard(){
+  // Announcements
+  document.getElementById('dash-ann').innerHTML=DB.announcements.slice(0,2).map(a=>`
+    <div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
+      <div style="width:6px;height:6px;border-radius:50%;background:${a.type==='urgent'?'var(--red)':a.type==='reminder'?'var(--amber)':'var(--blue)'};margin-top:5px;flex-shrink:0"></div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink-mid)">${a.title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">${a.ts} · ${a.from}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Assignments
+  document.getElementById('dash-asgn').innerHTML=DB.assignments.map(a=>{
+    const overdue=new Date(a.due)<new Date();
+    return `<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${a.title}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Due ${a.due}</div>
+      </div>
+      <span class="badge ${overdue?'badge-red':'badge-amber'}">${overdue?'OVERDUE':'PENDING'}</span>
+    </div>`;
+  }).join('');
+
+  // Schedule
+  const schedule=[
+    {time:"9:00 AM",sub:"Postcolonial Literature",room:"Seminar Hall A"},
+    {time:"11:00 AM",sub:"Literary Theory",room:"Room 204"},
+    {time:"2:00 PM",sub:"Linguistics",room:"Room 201"},
+  ];
+  document.getElementById('dash-schedule').innerHTML=schedule.map(s=>`
+    <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:65px;font-size:11px;font-family:var(--mono);color:var(--gold);font-weight:600">${s.time}</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${s.sub}</div>
+        <div style="font-size:10px;color:var(--muted)">📍 ${s.room}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ATTENDANCE MARK */
+function initAttPage(){
+  if(!locOk && navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        userLat=pos.coords.latitude;userLng=pos.coords.longitude;locOk=true;
+        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Within campus ✓</span>`;
+        const btn=document.getElementById('mark-btn');
+        btn.disabled=false;btn.textContent='✅ Mark Myself Present';
+        document.getElementById('live-indicator').textContent='🔴 Session Live';
+      },
+      err=>{
+        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Will mark without location</span>`;
+        const btn=document.getElementById('mark-btn');
+        btn.disabled=false;btn.textContent='⚠ Mark Present (No Location)';
+      },
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  }
+  renderAttLog();
+}
+
+function markMyAttendance(){
+  const btn=document.getElementById('mark-btn');
+  btn.disabled=true;btn.textContent='Submitting…';
+  setTimeout(()=>{
+    btn.style.display='none';
+    const suc=document.getElementById('mark-success');
+    suc.style.display='block';
+    document.getElementById('mark-detail').textContent=`Present at ${new Date().toLocaleTimeString()} · ${locOk?`Location: ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`:'No location (flagged)'}`;
+    const entry={date:new Date().toISOString().slice(0,10),subject:"Postcolonial Literature",topic:"Postcolonial Theory",teacher:"Dr. Sharma",status:"present",loc:locOk?`${userLat.toFixed(4)}, ${userLng.toFixed(4)}`:"—"};
+    DB.attLog.unshift(entry);
+    renderAttLog();
+    toast('Attendance marked!','ok');
+  },1000);
+}
+
+function renderAttLog(){
+  const el=document.getElementById('att-log');
+  if(!el)return;
+  el.innerHTML=DB.attLog.slice(0,5).map(a=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status.toUpperCase()}</span>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${a.subject}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${a.date} · ${a.topic}</div>
+      </div>
+      ${a.loc!=='—'?`<span style="font-size:9px;color:var(--green);font-family:var(--mono)">📍</span>`:''}
+    </div>
+  `).join('');
+}
+
+/* ANNOUNCEMENTS */
+const typeIcon={urgent:'🚨',reminder:'⏰',info:'📢'};
+const typeBadge={urgent:'badge-red',reminder:'badge-amber',info:'badge-blue'};
+function renderAnn(){
+  document.getElementById('ann-list').innerHTML=DB.announcements.map(a=>`
+    <div class="item-card ${!a.read?'':''}">
+      <div class="item-card-top">
+        <div class="item-title">${typeIcon[a.type]||'📢'} ${a.title}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <span class="badge ${typeBadge[a.type]||'badge-blue'}">${a.type.toUpperCase()}</span>
+          ${!a.read?`<span class="badge badge-maroon">NEW</span>`:''}
+        </div>
+      </div>
+      <div class="item-body">${a.body}</div>
+      <div class="item-footer">
+        <span class="item-time">🕒 ${a.ts}</span>
+        <span class="badge badge-gold">From: ${a.from}</span>
+        ${!a.read?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="markRead(${a.id})">Mark Read</button>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+function markRead(id){const a=DB.announcements.find(x=>x.id===id);if(a){a.read=true;}renderAnn();updateCounts();}
+
+/* ASSIGNMENTS */
+function renderAssignments(arr){
+  document.getElementById('asgn-list').innerHTML=arr.length?arr.map(a=>{
+    const overdue=new Date(a.due)<new Date();
+    const daysLeft=Math.ceil((new Date(a.due)-new Date())/86400000);
+    return `<div class="item-card">
+      <div class="item-card-top">
+        <div class="item-title">📝 ${a.title}</div>
+        <span class="badge ${overdue?'badge-red':daysLeft<=5?'badge-amber':'badge-green'}">${overdue?'OVERDUE':`${daysLeft}d left`}</span>
+      </div>
+      <div class="item-body">${a.desc}</div>
+      <div class="item-footer">
+        <span class="badge badge-blue">${a.subject}</span>
+        ${a.file?`<button class="btn btn-ghost btn-sm" onclick="toast('Downloading…','ok')">📎 ${a.file}</button>`:''}
+        <span class="item-time" style="margin-left:auto">Posted ${a.posted}</span>
+        <span class="item-time">Due <strong style="color:${overdue?'var(--red)':'var(--ink-mid)'}">${a.due}</strong></span>
+      </div>
+    </div>`;
+  }).join(''):`<div class="empty"><div class="empty-icon">✅</div><div>No assignments pending!</div></div>`;
+}
+function filterAssignments(v){
+  if(!v){renderAssignments(DB.assignments);return;}
+  if(v==='overdue')renderAssignments(DB.assignments.filter(a=>new Date(a.due)<new Date()));
+  if(v==='pending')renderAssignments(DB.assignments.filter(a=>new Date(a.due)>=new Date()));
+}
+
+/* MATERIALS */
+const matIcon={pdf:'📄',slides:'📊','past-paper':'📋',reference:'📚'};
+const matBadge={pdf:'badge-red',slides:'badge-blue','past-paper':'badge-purple',reference:'badge-gold'};
+function renderMaterials(arr){
+  document.getElementById('mat-grid').innerHTML=arr.length?arr.map(m=>`
+    <div class="mat-card">
+      <div style="font-size:2rem;margin-bottom:10px;opacity:.65">${matIcon[m.type]||'📄'}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--maroon-d);margin-bottom:5px;line-height:1.3">${m.title}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Lora',serif;font-style:italic;line-height:1.5">${m.desc}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="badge ${matBadge[m.type]||'badge-blue'}">${m.type.replace('-',' ').toUpperCase()}</span>
+        <span class="badge badge-gold">${m.size}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · by ${m.by}</div>
+      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" onclick="toast('Downloading…','ok')">⬇ Download PDF</button>
+    </div>
+  `).join(''):`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No materials yet</div></div>`;
+}
+function filterMats(v){const f=v.toLowerCase();renderMaterials(DB.materials.filter(m=>m.title.toLowerCase().includes(f)||m.subject.toLowerCase().includes(f)));}
+
+/* ATTENDANCE RECORDS */
+function renderAttTable(){
+  document.getElementById('att-table-body').innerHTML=DB.attLog.map(a=>`
+    <tr>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${a.date}</td>
+      <td style="font-size:12px;font-weight:600">${a.subject}</td>
+      <td style="font-size:12px;color:var(--muted)">${a.topic}</td>
+      <td style="font-size:12px;color:var(--muted)">${a.teacher}</td>
+      <td><span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status.toUpperCase()}</span></td>
+      <td style="font-size:10px;font-family:var(--mono);color:var(--muted)">${a.loc}</td>
+    </tr>
+  `).join('');
+}
+function renderSubjectAtt(){
+  const subjects=['Postcolonial Literature','Linguistics','Literary Theory','Modern Fiction'];
+  document.getElementById('subject-att').innerHTML=subjects.map(s=>{
+    const entries=DB.attLog.filter(a=>a.subject===s);
+    const pct=entries.length?Math.round(entries.filter(a=>a.status==='present').length/entries.length*100):0;
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="color:var(--ink-mid)">${s}</span>
+        <span style="font-weight:700;color:${pct>=75?'var(--green)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</span>
+      </div>
+      <div class="progress"><div class="progress-fill ${pct>=75?'progress-green':pct>=60?'progress-amber':'progress-red'}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+function renderMonthlySummary(){
+  const months=[{m:'April 2025',present:8,total:10},{m:'March 2025',present:6,total:8},{m:'February 2025',present:10,total:12}];
+  document.getElementById('monthly-summary').innerHTML=months.map(m=>{
+    const pct=Math.round(m.present/m.total*100);
+    return `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;color:var(--ink-mid)">${m.m}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--maroon)">${m.present}/${m.total}</span>
+      </div>
+      <div class="progress"><div class="progress-fill progress-maroon" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* TIMETABLE */
+function renderTimetable(){
+  const days=['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const colors={'Postcolonial Literature':'rgba(107,26,26,.08)','Literary Theory':'rgba(26,91,168,.08)','Linguistics':'rgba(30,122,61,.08)','Modern Fiction':'rgba(107,45,154,.08)','Library/Study':'transparent'};
+  document.getElementById('tt-body').innerHTML=DB.timetable.map(row=>`
+    <tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap">${row[0]}</td>
+      ${row.slice(1).map(cell=>`<td style="background:${colors[cell]||'transparent'};font-size:12px;${cell==='—'?'color:var(--muted)':cell==='Library/Study'?'color:var(--muted);font-style:italic':'color:var(--ink-mid);font-weight:600'}">${cell}</td>`).join('')}
+    </tr>
+  `).join('');
+}
+
+/* COUNTS */
+function updateCounts(){
+  document.getElementById('ann-cnt').textContent=DB.announcements.filter(a=>!a.read).length||DB.announcements.length;
+}
+
+/* TOAST */
+function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span> ${msg}`;document.getElementById('tw').appendChild(el);setTimeout(()=>el.remove(),3500);}
+
+/* INIT */
+initDashboard();
+</script>
+</body>
+</html>

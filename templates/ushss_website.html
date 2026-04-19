@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>USHSS — University School of Humanities & Social Sciences | GGSIPU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"/>
+<style>
+:root{
+  --maroon:#6B1A1A;
+  --maroon-deep:#4A0E0E;
+  --maroon-light:#8B2E2E;
+  --gold:#C9A84C;
+  --gold-light:#E8C97A;
+  --cream:#FAF7F2;
+  --cream-dark:#F0EBE0;
+  --ink:#1A1209;
+  --ink-mid:#3D2B1F;
+  --ink-muted:#6B5B4E;
+  --white:#FFFFFF;
+  --border:#D4C4A8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);overflow-x:hidden}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--cream-dark)}
+::-webkit-scrollbar-thumb{background:var(--maroon);border-radius:3px}
+
+/* ── NAVBAR ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 2.5rem;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(250,247,242,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);transition:box-shadow .3s}
+nav.scrolled{box-shadow:0 2px 20px rgba(107,26,26,0.08)}
+.nav-brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.nav-logo{width:38px;height:38px;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:13px;color:var(--gold);font-weight:700;letter-spacing:0.5px;flex-shrink:0}
+.nav-title{display:flex;flex-direction:column}
+.nav-title span:first-child{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--maroon);letter-spacing:.3px}
+.nav-title span:last-child{font-size:10px;color:var(--ink-muted);letter-spacing:.5px;text-transform:uppercase}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{font-size:13px;color:var(--ink-mid);text-decoration:none;letter-spacing:.3px;transition:color .2s;position:relative}
+.nav-links a::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:1.5px;background:var(--gold);transform:scaleX(0);transition:transform .25s}
+.nav-links a:hover{color:var(--maroon)}.nav-links a:hover::after{transform:scaleX(1)}
+.nav-cta{padding:8px 18px;background:var(--maroon);color:var(--gold-light)!important;border-radius:4px;font-size:12px!important;letter-spacing:.6px!important;text-transform:uppercase}
+.nav-cta::after{display:none!important}
+.nav-login-btn{padding:8px 16px;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);border-radius:4px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.nav-login-btn:hover{border-color:var(--gold);color:var(--maroon)}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+.hamburger span{width:22px;height:1.5px;background:var(--maroon);display:block;transition:all .3s}
+
+/* ── PORTAL LOGIN POPUP ── */
+.portal-login-overlay{position:fixed;inset:0;background:rgba(14,10,8,.58);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:250;padding:1rem}
+.portal-login-overlay.open{display:flex}
+.portal-login-card{width:min(430px,100%);background:#2d2e2f;border:1px solid rgba(255,255,255,.14);border-radius:3px;padding:1.75rem 1.9rem;box-shadow:0 18px 42px rgba(0,0,0,.35);position:relative}
+.portal-login-close{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.24);background:transparent;color:#d5d1c8;font-size:16px;line-height:1;cursor:pointer}
+.portal-login-title{font-family:'Playfair Display',serif;font-size:2.1rem;color:#f5f1e8;margin-bottom:.15rem}
+.portal-login-sub{color:#d4cfc5;font-size:14px;margin-bottom:1.15rem}
+.portal-role-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;margin-bottom:1rem}
+.portal-role-tab{border:1px solid rgba(255,255,255,.22);background:transparent;color:#e8e3d7;padding:.5rem .3rem;border-radius:9px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
+.portal-role-tab.active{border-color:#e8dcc1;background:rgba(255,255,255,.08)}
+.portal-label{display:block;color:#d4cec2;font-size:14px;font-family:'DM Sans',sans-serif;margin:.45rem 0 .35rem}
+.portal-input{width:100%;padding:.75rem .85rem;border:1px solid rgba(255,255,255,.18);border-radius:7px;background:transparent;color:#f5f2ea;font-size:16px;outline:none;font-family:'DM Sans',sans-serif}
+.portal-input::placeholder{color:#9f9a8f}
+.portal-input:focus{border-color:#e3c881}
+.portal-signin{width:100%;margin-top:1.05rem;padding:.7rem;border:1px solid rgba(255,255,255,.28);border-radius:9px;background:transparent;color:#f1ede3;font-family:'Playfair Display',serif;font-size:18px;cursor:pointer}
+.portal-signin:hover{border-color:#e3c881;color:#fff}
+.portal-login-foot{margin-top:.9rem;text-align:center;font-size:14px;color:#d4cdc0}
+.portal-login-foot a{color:#2a64b6}
+.portal-login-error{display:none;margin-top:.6rem;color:#ffb4b4;font-size:13px}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;position:relative;overflow:hidden}
+.hero-left{padding:10rem 3.5rem 5rem;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
+.hero-eyebrow{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:1.5rem;display:flex;align-items:center;gap:10px}
+.hero-eyebrow::before{content:'';width:32px;height:1px;background:var(--gold);display:block}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.6rem,5vw,4.2rem);line-height:1.12;font-weight:700;color:var(--maroon-deep);margin-bottom:1.5rem}
+.hero h1 em{font-style:italic;color:var(--maroon-light)}
+.hero-sub{font-family:'EB Garamond',serif;font-size:1.15rem;color:var(--ink-muted);line-height:1.8;margin-bottom:2.5rem;max-width:460px}
+.hero-actions{display:flex;gap:1rem;flex-wrap:wrap}
+.btn-gold{padding:13px 28px;background:var(--maroon);color:var(--gold-light);border:none;border-radius:3px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;text-decoration:none;font-family:'DM Sans',sans-serif;transition:all .25s;display:inline-block}
+.btn-gold:hover{background:var(--maroon-deep);transform:translateY(-1px)}
+.btn-outline{padding:12px 26px;border:1.5px solid var(--maroon);color:var(--maroon);border-radius:3px;font-size:13px;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;text-decoration:none;background:transparent;font-family:'DM Sans',sans-serif;transition:all .25s;display:inline-block}
+.btn-outline:hover{background:var(--maroon);color:var(--gold-light)}
+.hero-stats{display:flex;gap:2.5rem;margin-top:3rem;padding-top:2.5rem;border-top:1px solid var(--border)}
+.stat{display:flex;flex-direction:column}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--maroon);line-height:1}
+.stat-lbl{font-size:11px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:1px;margin-top:5px}
+
+.hero-right{position:relative;overflow:hidden}
+.hero-img-grid{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:3px}
+.hero-img-cell{overflow:hidden;position:relative}
+.hero-img-cell::after{content:'';position:absolute;inset:0;background:rgba(74,14,14,0.35)}
+.hero-img-cell img{width:100%;height:100%;object-fit:cover;filter:sepia(20%) contrast(110%)}
+.hero-img-cell:nth-child(1){grid-row:1/3}
+.hero-overlay-text{position:absolute;bottom:2.5rem;right:2.5rem;z-index:3;text-align:right}
+.hero-overlay-text p{font-family:'Playfair Display',serif;font-style:italic;font-size:1.1rem;color:rgba(255,255,255,0.85);line-height:1.5}
+.hero-overlay-text span{font-size:11px;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase}
+
+/* decorative vertical line */
+.hero-left::after{content:'';position:absolute;top:12%;bottom:12%;right:0;width:1px;background:linear-gradient(to bottom,transparent,var(--border) 30%,var(--border) 70%,transparent)}
+
+/* ── MARQUEE ── */
+.marquee-strip{background:var(--maroon);padding:12px 0;overflow:hidden;white-space:nowrap}
+.marquee-inner{display:inline-block;animation:marquee 30s linear infinite}
+.marquee-item{display:inline-block;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);padding:0 2.5rem}
+.marquee-item::before{content:'◆';margin-right:2.5rem;opacity:.5}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ── SECTIONS COMMON ── */
+section{padding:6rem 0}
+.section-inner{max-width:1180px;margin:0 auto;padding:0 2.5rem}
+.section-label{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);font-weight:500;display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.section-label::before{content:'';width:24px;height:1px;background:var(--gold)}
+.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,3.5vw,2.8rem);font-weight:700;color:var(--maroon-deep);line-height:1.2;margin-bottom:1rem}
+.section-title em{font-style:italic;color:var(--maroon-light)}
+.section-body{font-family:'EB Garamond',serif;font-size:1.1rem;color:var(--ink-muted);line-height:1.85;max-width:660px}
+.divider{width:48px;height:2px;background:var(--gold);margin:1.5rem 0}
+
+/* ── ABOUT ── */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.about-img-wrap{position:relative}
+.about-img-wrap img{width:100%;border-radius:2px;display:block}
+.about-img-accent{position:absolute;top:-20px;left:-20px;width:140px;height:140px;border:2px solid var(--gold);border-radius:2px;z-index:-1}
+.about-img-caption{position:absolute;bottom:-1rem;right:-1.5rem;background:var(--maroon);color:var(--gold-light);font-family:'Playfair Display',serif;font-style:italic;font-size:.9rem;padding:1rem 1.25rem;line-height:1.4;max-width:200px}
+.about-values{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem}
+.value-card{padding:1.25rem;border:1px solid var(--border);border-radius:3px;background:var(--white);transition:border-color .2s,transform .2s}
+.value-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.value-icon{font-size:1.4rem;margin-bottom:.6rem}
+.value-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--maroon);margin-bottom:.3rem}
+.value-desc{font-size:.8rem;color:var(--ink-muted);line-height:1.6}
+
+/* ── PROGRAMMES ── */
+.programmes{background:var(--maroon-deep)}
+.programmes .section-title{color:var(--cream)}
+.programmes .section-label{color:var(--gold)}
+.programmes .section-label::before{background:var(--gold)}
+.programmes .section-body{color:rgba(250,247,242,.7)}
+.prog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;margin-top:3rem;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.prog-card{background:rgba(250,247,242,.04);padding:2rem 1.75rem;transition:background .25s;cursor:default;position:relative;overflow:hidden}
+.prog-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);transform:scaleX(0);transition:transform .3s}
+.prog-card:hover{background:rgba(250,247,242,.09)}.prog-card:hover::before{transform:scaleX(1)}
+.prog-badge{display:inline-block;padding:3px 10px;border:1px solid var(--gold);border-radius:2px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.prog-name{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:600;color:var(--cream);margin-bottom:.5rem;line-height:1.3}
+.prog-desc{font-size:.82rem;color:rgba(250,247,242,.55);line-height:1.65;margin-bottom:1.25rem}
+.prog-duration{font-size:.75rem;letter-spacing:1px;text-transform:uppercase;color:var(--gold);opacity:.8}
+
+/* ── FACULTY ── */
+.faculty-carousel{position:relative;margin-top:3rem;padding:0 3rem}
+.faculty-grid{display:flex;gap:1.25rem;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;padding:.5rem 0;scrollbar-width:none;-ms-overflow-style:none}
+.faculty-grid::-webkit-scrollbar{display:none}
+.faculty-card{background:var(--white);border:1px solid var(--border);border-radius:3px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s;flex:0 0 clamp(250px,27vw,320px);transform-origin:center center}
+.faculty-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 12px 32px rgba(107,26,26,.1)}
+.faculty-card.is-center{transform:scale(1.06);border-color:var(--gold);box-shadow:0 14px 34px rgba(107,26,26,.16)}
+.faculty-card.is-center:hover{transform:scale(1.06) translateY(-2px)}
+.faculty-arrow{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(107,26,26,.12);z-index:4;transition:all .2s}
+.faculty-arrow:hover{border-color:var(--gold);color:var(--gold-deep);box-shadow:0 10px 22px rgba(107,26,26,.18)}
+.faculty-arrow.left{left:.4rem}
+.faculty-arrow.right{right:.4rem}
+.faculty-img{height:220px;background:var(--cream-dark);overflow:hidden;position:relative}
+.faculty-img img{width:100%;height:100%;object-fit:cover;filter:grayscale(20%);transition:filter .3s}
+.faculty-card:hover .faculty-img img{filter:grayscale(0)}
+.faculty-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--cream-dark),var(--border));font-family:'Playfair Display',serif;font-size:2.5rem;color:var(--maroon);opacity:.4}
+.faculty-body{padding:1.25rem}
+.faculty-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--maroon-deep);margin-bottom:.25rem}
+.faculty-role{font-size:.75rem;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.75rem}
+.faculty-spec{font-size:.8rem;color:var(--ink-muted);line-height:1.5;font-family:'EB Garamond',serif;font-style:italic}
+.faculty-mail{font-size:.82rem;color:var(--maroon);text-decoration:none;border-bottom:1px dotted rgba(107,26,26,.35);padding-bottom:1px}
+.faculty-mail:hover{color:var(--maroon-deep);border-bottom-color:rgba(107,26,26,.65)}
+
+/* ── RESEARCH ── */
+.research{background:var(--cream-dark)}
+.research-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:4rem;margin-top:3rem;align-items:start}
+.research-areas{display:flex;flex-direction:column;gap:1px}
+.research-area{padding:1.5rem;background:var(--white);border-left:3px solid transparent;transition:all .25s;cursor:default}
+.research-area:hover,.research-area.active{border-left-color:var(--gold);background:var(--white);padding-left:2rem}
+.research-area h4{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--maroon-deep);margin-bottom:.4rem}
+.research-area p{font-size:.82rem;color:var(--ink-muted);line-height:1.6}
+.research-stats-panel{position:sticky;top:80px;background:var(--maroon-deep);border-radius:3px;padding:2rem;color:var(--cream)}
+.research-stats-panel h3{font-family:'Playfair Display',serif;font-size:1.2rem;font-style:italic;color:var(--gold-light);margin-bottom:1.5rem}
+.r-stat{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.r-stat:last-child{border-bottom:none}
+.r-stat-num{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--gold)}
+.r-stat-label{font-size:.78rem;color:rgba(250,247,242,.6);text-transform:uppercase;letter-spacing:.8px;text-align:right;max-width:130px;line-height:1.4}
+
+/* ── NEWS ── */
+.news-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:2rem;margin-top:3rem}
+.news-featured{background:var(--white);border:1px solid var(--border);border-radius:3px;overflow:hidden;transition:all .25s}
+.news-featured:hover{border-color:var(--gold)}
+.news-featured-img{height:260px;background:var(--cream-dark);overflow:hidden;position:relative}
+.news-featured-img img{width:100%;height:100%;object-fit:cover}
+.news-featured-img-placeholder{width:100%;height:100%;background:linear-gradient(135deg,var(--maroon-deep),var(--maroon-light));display:flex;align-items:center;justify-content:center}
+.news-featured-img-placeholder span{font-family:'Playfair Display',serif;font-style:italic;font-size:1.5rem;color:rgba(255,255,255,.25);text-align:center;padding:1rem}
+.news-featured-body{padding:1.75rem}
+.news-tag{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:.75rem;display:block}
+.news-title{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:600;color:var(--maroon-deep);line-height:1.35;margin-bottom:.75rem}
+.news-excerpt{font-family:'EB Garamond',serif;font-size:.95rem;color:var(--ink-muted);line-height:1.7;margin-bottom:1rem}
+.news-meta{font-size:.75rem;color:var(--ink-muted);display:flex;gap:1rem}
+.news-sidebar{display:flex;flex-direction:column;gap:1px}
+.news-item{background:var(--white);border:1px solid var(--border);border-radius:3px;padding:1.25rem;display:flex;gap:1rem;transition:all .2s;cursor:default}
+.news-item:hover{border-color:var(--gold);transform:translateX(3px)}
+.news-item-date{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;color:var(--maroon);line-height:1;flex-shrink:0;min-width:36px}
+.news-item-tag{font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px}
+.news-item-title{font-size:.85rem;color:var(--ink-mid);line-height:1.4;font-family:'EB Garamond',serif}
+
+/* ── EVENTS ── */
+.events{background:var(--maroon-deep)}
+.events .section-title{color:var(--cream)}
+.events .section-label{color:var(--gold)}
+.events .section-label::before{background:var(--gold)}
+.events-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:3rem}
+.event-card{background:rgba(250,247,242,.05);border:1px solid rgba(201,168,76,.2);border-radius:3px;padding:1.75rem;transition:all .25s}
+.event-card:hover{background:rgba(250,247,242,.09);border-color:var(--gold)}
+.event-date-badge{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem}
+.event-month{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
+.event-day{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:700;color:var(--cream);line-height:1}
+.event-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--cream);margin-bottom:.5rem}
+.event-desc{font-size:.82rem;color:rgba(250,247,242,.55);line-height:1.6;margin-bottom:1rem}
+.event-venue{font-size:.75rem;color:var(--gold);opacity:.75;letter-spacing:.8px}
+
+/* ── GALLERY ── */
+.gallery-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:220px 180px;gap:4px;margin-top:3rem}
+.gallery-item{overflow:hidden;border-radius:2px;background:var(--cream-dark);position:relative;cursor:pointer}
+.gallery-item::after{content:'';position:absolute;inset:0;background:rgba(74,14,14,0);transition:background .3s}
+.gallery-item:hover::after{background:rgba(74,14,14,.35)}
+.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.gallery-item:hover img{transform:scale(1.05)}
+.gallery-item:nth-child(1){grid-column:span 2;grid-row:span 2}
+.gallery-item:nth-child(2){grid-column:span 2}
+.gallery-item:nth-child(5){grid-column:span 2}
+.gallery-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--cream-dark),var(--border));font-size:2rem;color:var(--maroon);opacity:.2}
+
+/* ── CONTACT ── */
+.contact-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:4rem;margin-top:3rem;align-items:start}
+.contact-info h3{font-family:'Playfair Display',serif;font-size:1.4rem;font-style:italic;color:var(--maroon);margin-bottom:1.5rem}
+.contact-detail{display:flex;gap:1rem;margin-bottom:1.25rem;align-items:flex-start}
+.contact-icon{width:36px;height:36px;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:var(--white)}
+.contact-text label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
+.contact-text span{font-size:.9rem;color:var(--ink-mid);line-height:1.5}
+.contact-form{background:var(--white);border:1px solid var(--border);border-radius:3px;padding:2rem}
+.contact-form h3{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--maroon);margin-bottom:1.5rem}
+.form-group{margin-bottom:1.25rem}
+.form-group label{display:block;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink-muted);margin-bottom:.5rem}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:3px;font-size:.9rem;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);outline:none;transition:border-color .2s;resize:vertical}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--gold);background:var(--white)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-submit{width:100%;padding:12px;background:var(--maroon);color:var(--gold-light);border:none;border-radius:3px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;margin-top:.5rem}
+.form-submit:hover{background:var(--maroon-deep)}
+
+/* ── FOOTER ── */
+footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
+.footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
+.footer-brand .nav-logo{margin-bottom:1rem;width:44px;height:44px;font-size:14px}
+.footer-brand p{font-size:.82rem;line-height:1.7;margin-top:.75rem;max-width:240px}
+.footer-col h4{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--cream);margin-bottom:1.25rem;font-weight:600}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:.65rem}
+.footer-col ul li a{font-size:.8rem;color:rgba(250,247,242,.5);text-decoration:none;transition:color .2s;letter-spacing:.2px}
+.footer-col ul li a:hover{color:var(--gold)}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:2rem;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem}
+.footer-bottom a{color:var(--gold);text-decoration:none}
+
+/* ── MOBILE ── */
+@media(max-width:900px){
+  .hero{grid-template-columns:1fr;min-height:auto}
+  .hero-left{padding:8rem 1.5rem 3rem}
+  .hero-right{height:300px;display:block}
+  .hero-left::after{display:none}
+  .nav-links{display:none}
+  .hamburger{display:flex}
+  .about-grid,.research-grid,.contact-grid,.news-grid{grid-template-columns:1fr;gap:2rem}
+  .prog-grid,.events-grid{grid-template-columns:1fr 1fr}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);grid-template-rows:auto}
+  .gallery-item:nth-child(1){grid-column:span 2;grid-row:span 1}
+  .gallery-item:nth-child(2){grid-column:span 1}
+  .gallery-item:nth-child(5){grid-column:span 1}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:2rem}
+  .about-img-accent,.about-img-caption{display:none}
+  .hero-stats{gap:1.5rem}
+  .metrics{gap:1.25rem}
+  .faculty-carousel{padding:0 2.4rem}
+  .faculty-arrow{width:36px;height:36px;font-size:19px}
+}
+@media(max-width:560px){
+  .prog-grid,.events-grid{grid-template-columns:1fr}
+  .footer-grid{grid-template-columns:1fr}
+  .footer-bottom{flex-direction:column;gap:.5rem;text-align:center}
+  .form-row{grid-template-columns:1fr}
+  section{padding:4rem 0}
+  .faculty-carousel{padding:0 2rem}
+}
+
+/* ── ANIMATIONS ── */
+.fade-up{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+.fade-up.visible{opacity:1;transform:translateY(0)}
+.fade-up-delay-1{transition-delay:.1s}
+.fade-up-delay-2{transition-delay:.2s}
+.fade-up-delay-3{transition-delay:.3s}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a class="nav-brand" href="#">
+    <div class="nav-logo">GGS</div>
+    <div class="nav-title">
+      <span>USHSS</span>
+      <span>GGSIPU · New Delhi</span>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#programmes">Programmes</a></li>
+    <li><a href="#faculty">Faculty</a></li>
+    <li><a href="#research">Research</a></li>
+    <li><a href="#news">News</a></li>
+    <li><a href="#events">Events</a></li>
+    <li><button class="nav-login-btn" type="button" onclick="openPortalLogin()">Login</button></li>
+    <li><a href="#contact" class="nav-cta">Contact</a></li>
+  </ul>
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="portal-login-overlay" id="portal-login-overlay">
+  <div class="portal-login-card" role="dialog" aria-modal="true" aria-labelledby="portal-login-title">
+    <button class="portal-login-close" type="button" aria-label="Close login" onclick="closePortalLogin()">&times;</button>
+    <h3 class="portal-login-title" id="portal-login-title">USHSS Portal Login</h3>
+    <p class="portal-login-sub">Select your role and sign in to continue</p>
+    <div class="portal-role-tabs">
+      <button class="portal-role-tab active" type="button" onclick="setPortalRole(this,'student')">Student</button>
+      <button class="portal-role-tab" type="button" onclick="setPortalRole(this,'faculty')">Faculty</button>
+      <button class="portal-role-tab" type="button" onclick="setPortalRole(this,'cr')">CR</button>
+      <button class="portal-role-tab" type="button" onclick="setPortalRole(this,'admin')">Admin</button>
+    </div>
+    <label class="portal-label" id="portal-id-label">Enrollment Number</label>
+    <input class="portal-input" id="portal-id" type="text" placeholder="Enter your enrollment number"/>
+    <label class="portal-label">Password</label>
+    <input class="portal-input" id="portal-password" type="password" placeholder="Enter password"/>
+    <div class="portal-login-error" id="portal-login-error">Please fill both fields.</div>
+    <button class="portal-signin" type="button" onclick="submitPortalLogin()">Sign In</button>
+    <div class="portal-login-foot">Forgot password? Contact <a href="mailto:admin.ushss@ipu.ac.in">admin.ushss@ipu.ac.in</a></div>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-left">
+    <div class="hero-eyebrow">University School of Humanities &amp; Social Sciences</div>
+    <h1>Where Ideas<br/><em>Shape Society</em></h1>
+    <p class="hero-sub">A centre of academic excellence at GGSIPU, dedicated to the study of human culture, society, and thought — fostering critical minds and compassionate scholars.</p>
+    <div class="hero-actions">
+      <a href="#programmes" class="btn-gold">Explore Programmes</a>
+      <a href="#about" class="btn-outline">Learn More</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num">12+</span><span class="stat-lbl">Programmes</span></div>
+      <div class="stat"><span class="stat-num">40+</span><span class="stat-lbl">Faculty Members</span></div>
+      <div class="stat"><span class="stat-num">2000+</span><span class="stat-lbl">Alumni Worldwide</span></div>
+      <div class="stat"><span class="stat-num">1998</span><span class="stat-lbl">Established</span></div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-img-grid">
+      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#4A0E0E,#8B2E2E)"></div></div>
+      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#6B5B4E,#3D2B1F)"></div></div>
+      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#3D2B1F,#6B1A1A)"></div></div>
+    </div>
+    <div class="hero-overlay-text">
+      <p>"The unexamined life<br/>is not worth living."</p>
+      <span>— Socrates</span>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-inner">
+    <span class="marquee-item">M.A. English</span>
+    <span class="marquee-item">M.A. Economics</span>
+    <span class="marquee-item">M.A. Psychology</span>
+    <span class="marquee-item">M.A. Sociology</span>
+    <span class="marquee-item">M.A. Political Science</span>
+    <span class="marquee-item">Ph.D. Research</span>
+    <span class="marquee-item">M.A. History</span>
+    <span class="marquee-item">M.A. Philosophy</span>
+    <span class="marquee-item">M.A. English</span>
+    <span class="marquee-item">M.A. Economics</span>
+    <span class="marquee-item">M.A. Psychology</span>
+    <span class="marquee-item">M.A. Sociology</span>
+    <span class="marquee-item">M.A. Political Science</span>
+    <span class="marquee-item">Ph.D. Research</span>
+    <span class="marquee-item">M.A. History</span>
+    <span class="marquee-item">M.A. Philosophy</span>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-inner">
+    <div class="about-grid">
+      <div class="about-img-wrap fade-up">
+        <div style="height:440px;background:linear-gradient(135deg,var(--maroon-deep) 0%,var(--maroon-light) 60%,var(--gold) 100%);border-radius:2px;display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;padding:2rem">
+            <div style="font-family:'Playfair Display',serif;font-size:5rem;color:rgba(255,255,255,.12);font-weight:700;line-height:1">HSS</div>
+            <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:1.1rem;color:rgba(250,247,242,.6);margin-top:1rem">Est. 1998</div>
+          </div>
+        </div>
+        <div class="about-img-accent"></div>
+        <div class="about-img-caption">Nurturing scholars since the university's founding year</div>
+      </div>
+      <div class="fade-up fade-up-delay-1">
+        <div class="section-label">About USHSS</div>
+        <h2 class="section-title">A Legacy of <em>Intellectual Excellence</em></h2>
+        <div class="divider"></div>
+        <p class="section-body">The University School of Humanities and Social Sciences (USHSS) is one of the founding schools of Guru Gobind Singh Indraprastha University, established in 1998 under the Government of NCT of Delhi.</p>
+        <br/>
+        <p class="section-body">Our school offers a vibrant academic environment that integrates rigorous scholarship with contemporary relevance — preparing students to engage deeply with the complex social, cultural, and philosophical questions of our time.</p>
+        <div class="about-values">
+          <div class="value-card fade-up">
+            <div class="value-icon">📚</div>
+            <div class="value-title">Academic Rigour</div>
+            <div class="value-desc">Grounded in classics, enriched by contemporary discourse</div>
+          </div>
+          <div class="value-card fade-up fade-up-delay-1">
+            <div class="value-icon">🌏</div>
+            <div class="value-title">Social Relevance</div>
+            <div class="value-desc">Research that speaks to India's dynamic social landscape</div>
+          </div>
+          <div class="value-card fade-up fade-up-delay-2">
+            <div class="value-icon">🔬</div>
+            <div class="value-title">Research Culture</div>
+            <div class="value-desc">Active PhD programmes and interdisciplinary inquiry</div>
+          </div>
+          <div class="value-card fade-up fade-up-delay-3">
+            <div class="value-icon">🤝</div>
+            <div class="value-title">Inclusive Ethos</div>
+            <div class="value-desc">A welcoming space for diverse perspectives and voices</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROGRAMMES -->
+<section class="programmes" id="programmes">
+  <div class="section-inner">
+    <div class="section-label fade-up">Academic Programmes</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Pathways to <em>Deep Learning</em></h2>
+    <p class="section-body fade-up fade-up-delay-2">From Master's programmes to doctoral research, USHSS offers a range of courses designed to develop critical thinking and scholarly depth.</p>
+    <div class="prog-grid">
+      <div class="prog-card fade-up">
+        <div class="prog-badge">B.A. · 4 Years</div>
+        <div class="prog-badge">M.A. · 2 Years</div>
+        <div class="prog-name">English Language &amp; Literature</div>
+        <div class="prog-desc">Explore literary traditions from Chaucer to postcolonial fiction, linguistics, and critical theory.</div>
+      </div>
+      <div class="prog-card fade-up fade-up-delay-1">
+        <div class="prog-badge">B.A. · 4 Years</div>
+        <div class="prog-badge">M.A. · 2 Years</div>
+        <div class="prog-name">Economics</div>
+        <div class="prog-desc">Microeconomics, macroeconomics, econometrics, development economics and Indian economic policy.</div>
+      </div>
+      <div class="prog-card fade-up fade-up-delay-2">
+        <div class="prog-badge">Ph.D. · 3–5 Years</div>
+        <div class="prog-name">Doctoral Research</div>
+        <div class="prog-desc">Full-time and part-time research across all humanities and social science disciplines.</div>
+        <div class="prog-duration">JRF / UGC-NET · Rolling Admission</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FACULTY -->
+<section id="faculty">
+  <div class="section-inner">
+    <div class="section-label fade-up">Our People</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Meet the <em>Faculty</em></h2>
+    <p class="section-body fade-up fade-up-delay-2">Our faculty team includes 13 members across Professor, Associate Professor, and Assistant Professor designations.</p>
+    <div class="faculty-carousel">
+      <button class="faculty-arrow left" type="button" aria-label="Scroll faculty left">&#8249;</button>
+    <div class="faculty-grid" id="faculty-grid">
+      <div class="faculty-card fade-up">
+        <div class="faculty-img"><div class="faculty-placeholder">ASB</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Anup Singh Beniwal</div>
+          <div class="faculty-role">Professor</div>
+          <a class="faculty-mail" href="mailto:anupbeniwal@ipu.ac.in">anupbeniwal@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-1">
+        <div class="faculty-img"><div class="faculty-placeholder">AM</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Ashutosh Mohan</div>
+          <div class="faculty-role">Professor</div>
+          <a class="faculty-mail" href="mailto:ashutosh.ushss@ipu.ac.in">ashutosh.ushss@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-2">
+        <div class="faculty-img"><div class="faculty-placeholder">MK</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Manpreet Kaur Kang</div>
+          <div class="faculty-role">Professor</div>
+          <a class="faculty-mail" href="mailto:manpreetkaurkang@ipu.ac.in">manpreetkaurkang@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-3">
+        <div class="faculty-img"><div class="faculty-placeholder">VS</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Vivek Sachdeva</div>
+          <div class="faculty-role">Professor</div>
+          <a class="faculty-mail" href="mailto:viveksachdeva@ipu.ac.in">viveksachdeva@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up">
+        <div class="faculty-img"><div class="faculty-placeholder">SS</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Shuchi Sharma</div>
+          <div class="faculty-role">Dean of the Department</div>
+          <a class="faculty-mail" href="mailto:shuchi.sharma@ipu.ac.in">shuchi.sharma@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-1">
+        <div class="faculty-img"><div class="faculty-placeholder">CT</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Chetna Tiwari</div>
+          <div class="faculty-role">Associate Professor</div>
+          <a class="faculty-mail" href="mailto:chetna.ushss@ipu.ac.in">chetna.ushss@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-2">
+        <div class="faculty-img"><div class="faculty-placeholder">NV</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Naresh Kumar Vats</div>
+          <div class="faculty-role">Associate Professor</div>
+          <a class="faculty-mail" href="mailto:naresh.ushss@ipu.ac.in">naresh.ushss@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-3">
+        <div class="faculty-img"><div class="faculty-placeholder">SK</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Shubhanku Kochar</div>
+          <div class="faculty-role">Associate Professor</div>
+          <a class="faculty-mail" href="mailto:shubhankukochar@ipu.ac.in">shubhankukochar@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up">
+        <div class="faculty-img"><div class="faculty-placeholder">PG</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Prarthna Agarwal Goel</div>
+          <div class="faculty-role">Assistant Professor</div>
+          <a class="faculty-mail" href="mailto:prarthna@ipu.ac.in">prarthna@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-1">
+        <div class="faculty-img"><div class="faculty-placeholder">PR</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Pooja Rathore</div>
+          <div class="faculty-role">Assistant Professor</div>
+          <a class="faculty-mail" href="mailto:poojarathore@ipu.ac.in">poojarathore@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-2">
+        <div class="faculty-img"><div class="faculty-placeholder">SAK</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Sami Ahmad Khan</div>
+          <div class="faculty-role">Assistant Professor</div>
+          <a class="faculty-mail" href="mailto:samikhan@ipu.ac.in">samikhan@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up fade-up-delay-3">
+        <div class="faculty-img"><div class="faculty-placeholder">SM</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Saurabh Maji</div>
+          <div class="faculty-role">Assistant Professor</div>
+          <a class="faculty-mail" href="mailto:saurabh.m@ipu.ac.in">saurabh.m@ipu.ac.in</a>
+        </div>
+      </div>
+      <div class="faculty-card fade-up">
+        <div class="faculty-img"><div class="faculty-placeholder">SR</div></div>
+        <div class="faculty-body">
+          <div class="faculty-name">Dr. Sonika Redhu</div>
+          <div class="faculty-role">Assistant Professor</div>
+          <a class="faculty-mail" href="mailto:sonika.ushss@ipu.ac.in">sonika.ushss@ipu.ac.in</a>
+        </div>
+      </div>
+    </div>
+      <button class="faculty-arrow right" type="button" aria-label="Scroll faculty right">&#8250;</button>
+    </div>
+  </div>
+</section>
+
+<!-- RESEARCH -->
+<section class="research" id="research">
+  <div class="section-inner">
+    <div class="section-label fade-up">Scholarship &amp; Inquiry</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Research <em>Focus Areas</em></h2>
+    <div class="research-grid">
+      <div class="research-areas fade-up">
+        <div class="research-area active">
+          <h4>Gender, Society &amp; Culture</h4>
+          <p>Examining the interplay of gender, caste, class and culture in contemporary Indian society through interdisciplinary lenses.</p>
+        </div>
+        <div class="research-area">
+          <h4>Political Economy &amp; Development</h4>
+          <p>Research on economic inequality, public policy, urban development, and inclusive growth in the Indian subcontinent.</p>
+        </div>
+        <div class="research-area">
+          <h4>Literature, Identity &amp; Diaspora</h4>
+          <p>Exploring how literary texts construct and challenge notions of national identity, belonging, and diaspora experience.</p>
+        </div>
+        <div class="research-area">
+          <h4>Mental Health &amp; Wellbeing</h4>
+          <p>Community-level studies on psychological wellbeing, stigma, counselling interventions and policy implications.</p>
+        </div>
+        <div class="research-area">
+          <h4>Constitutional Democracy &amp; Governance</h4>
+          <p>Analysing evolving democratic institutions, judicial review, and federal structure in India's political system.</p>
+        </div>
+        <div class="research-area">
+          <h4>Environmental Humanities</h4>
+          <p>Cross-disciplinary work on ecology, climate justice, environmental ethics and human-nature relationships.</p>
+        </div>
+      </div>
+      <div class="research-stats-panel fade-up fade-up-delay-1">
+        <h3>Research at a Glance</h3>
+        <div class="r-stat">
+          <span class="r-stat-num">85+</span>
+          <span class="r-stat-label">Research papers published (last 3 years)</span>
+        </div>
+        <div class="r-stat">
+          <span class="r-stat-num">22</span>
+          <span class="r-stat-label">Active PhD scholars</span>
+        </div>
+        <div class="r-stat">
+          <span class="r-stat-num">8</span>
+          <span class="r-stat-label">Funded research projects</span>
+        </div>
+        <div class="r-stat">
+          <span class="r-stat-num">4</span>
+          <span class="r-stat-label">National conferences hosted annually</span>
+        </div>
+        <div class="r-stat">
+          <span class="r-stat-num">3</span>
+          <span class="r-stat-label">International collaborations</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWS -->
+<section id="news">
+  <div class="section-inner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="section-label fade-up">Latest from USHSS</div>
+        <h2 class="section-title fade-up fade-up-delay-1">News &amp; <em>Announcements</em></h2>
+      </div>
+      <a href="#" class="btn-outline fade-up" style="align-self:flex-end">View All News</a>
+    </div>
+    <div class="news-grid">
+      <div class="news-featured fade-up">
+        <div class="news-featured-img"><div class="news-featured-img-placeholder"><span>Annual Humanities<br/>Conclave 2025</span></div></div>
+        <div class="news-featured-body">
+          <span class="news-tag">Featured · Seminar</span>
+          <div class="news-title">USHSS Hosts Annual Humanities Conclave: "Reimagining India's Social Contract"</div>
+          <div class="news-excerpt">Leading scholars, policymakers, and student researchers gathered for a two-day conclave exploring the future of democratic participation and social equity in post-pandemic India.</div>
+          <div class="news-meta"><span>March 2025</span><span>·</span><span>Seminar Hall, GGSIPU</span></div>
+        </div>
+      </div>
+      <div class="news-sidebar">
+        <div class="news-item fade-up">
+          <div class="news-item-date">14</div>
+          <div class="news-item-body"><span class="news-item-tag">Apr · Admissions</span><div class="news-item-title">M.A. Admissions 2025–26 now open via IPU CET. Last date: May 15, 2025.</div></div>
+        </div>
+        <div class="news-item fade-up fade-up-delay-1">
+          <div class="news-item-date">08</div>
+          <div class="news-item-body"><span class="news-item-tag">Apr · Achievement</span><div class="news-item-title">Dr. Sunita Mehta receives UGC Major Research Project grant of ₹12 lakhs for postcolonial fiction study.</div></div>
+        </div>
+        <div class="news-item fade-up fade-up-delay-2">
+          <div class="news-item-date">02</div>
+          <div class="news-item-body"><span class="news-item-tag">Apr · Placement</span><div class="news-item-title">Three USHSS alumni selected for Indian Administrative Service in UPSC CSE 2024.</div></div>
+        </div>
+        <div class="news-item fade-up fade-up-delay-3">
+          <div class="news-item-date">25</div>
+          <div class="news-item-body"><span class="news-item-tag">Mar · Workshop</span><div class="news-item-title">Research Methodology workshop for PhD scholars: "Qualitative Methods in Social Science" — 3-day intensive.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS -->
+<section class="events" id="events">
+  <div class="section-inner">
+    <div class="section-label fade-up">Calendar</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Upcoming <em>Events</em></h2>
+    <div class="events-grid">
+      <div class="event-card fade-up">
+        <div class="event-date-badge">
+          <div><div class="event-month">April</div><div class="event-day">22</div></div>
+        </div>
+        <div class="event-name">Guest Lecture: Indian Constitutionalism &amp; Federalism</div>
+        <div class="event-desc">A special lecture by a former IAS officer on the evolving nature of centre-state relations in India.</div>
+        <div class="event-venue">Seminar Hall A · 3:00 PM</div>
+      </div>
+      <div class="event-card fade-up fade-up-delay-1">
+        <div class="event-date-badge">
+          <div><div class="event-month">May</div><div class="event-day">05</div></div>
+        </div>
+        <div class="event-name">National Seminar on Gender &amp; Labour in Contemporary India</div>
+        <div class="event-desc">Two-day academic seminar with paper presentations from scholars across India's leading universities.</div>
+        <div class="event-venue">Conference Hall · GGSIPU Campus</div>
+      </div>
+      <div class="event-card fade-up fade-up-delay-2">
+        <div class="event-date-badge">
+          <div><div class="event-month">May</div><div class="event-day">15</div></div>
+        </div>
+        <div class="event-name">M.A. Admissions 2025–26 — Last Date</div>
+        <div class="event-desc">Deadline for submission of IPU CET applications for all USHSS postgraduate programmes.</div>
+        <div class="event-venue">Online · ipu.admissions.nic.in</div>
+      </div>
+      <div class="event-card fade-up">
+        <div class="event-date-badge">
+          <div><div class="event-month">Jun</div><div class="event-day">10</div></div>
+        </div>
+        <div class="event-name">Annual Psychology Awareness Day</div>
+        <div class="event-desc">Interactive sessions, mental health screenings, and panel discussions open to all GGSIPU students.</div>
+        <div class="event-venue">Main Auditorium · 10:00 AM</div>
+      </div>
+      <div class="event-card fade-up fade-up-delay-1">
+        <div class="event-date-badge">
+          <div><div class="event-month">Jun</div><div class="event-day">20</div></div>
+        </div>
+        <div class="event-name">Alumni Meet 2025 — Humanities &amp; Social Sciences</div>
+        <div class="event-desc">Annual homecoming event for USHSS graduates to reconnect, network, and engage with current students.</div>
+        <div class="event-venue">USHSS Lawn · 5:00 PM Onwards</div>
+      </div>
+      <div class="event-card fade-up fade-up-delay-2">
+        <div class="event-date-badge">
+          <div><div class="event-month">Jul</div><div class="event-day">01</div></div>
+        </div>
+        <div class="event-name">Orientation 2025 — Welcome New Scholars</div>
+        <div class="event-desc">Formal orientation ceremony for the incoming 2025–26 batch of M.A. and Ph.D. students.</div>
+        <div class="event-venue">Seminar Hall · 9:30 AM</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery" style="padding-bottom:6rem">
+  <div class="section-inner">
+    <div class="section-label fade-up">Campus Life</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Moments from <em>USHSS</em></h2>
+    <div class="gallery-grid fade-up">
+      <div class="gallery-item"><div class="gallery-placeholder">📸</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">🎓</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">📖</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">🎤</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">🏛️</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">🌿</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">🔬</div></div>
+      <div class="gallery-item"><div class="gallery-placeholder">💬</div></div>
+    </div>
+    <p style="font-size:.78rem;color:var(--ink-muted);margin-top:1rem;text-align:center">Replace placeholder cells with your actual photos in the HTML</p>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" style="background:var(--cream-dark);padding:6rem 0">
+  <div class="section-inner">
+    <div class="section-label fade-up">Get in Touch</div>
+    <h2 class="section-title fade-up fade-up-delay-1">Contact <em>USHSS</em></h2>
+    <div class="contact-grid">
+      <div class="contact-info fade-up">
+        <h3>We'd love to hear from you</h3>
+        <p class="section-body" style="margin-bottom:2rem">Whether you're a prospective student, researcher, or collaborating institution — our team is here to help.</p>
+        <div class="contact-detail">
+          <div class="contact-icon">📍</div>
+          <div class="contact-text"><label>Address</label><span>University School of Humanities &amp; Social Sciences<br/>Guru Gobind Singh Indraprastha University<br/>Sector 16-C, Dwarka, New Delhi – 110078</span></div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-icon">📞</div>
+          <div class="contact-text"><label>Phone</label><span>011 – 2530 2167<br/>011 – 2530 2169</span></div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-icon">✉️</div>
+          <div class="contact-text"><label>Email</label><span>ushss@ipu.ac.in<br/>director.ushss@ipu.ac.in</span></div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-icon">🕐</div>
+          <div class="contact-text"><label>Office Hours</label><span>Monday – Friday: 9:00 AM – 5:00 PM<br/>Saturday: 9:00 AM – 1:00 PM</span></div>
+        </div>
+      </div>
+      <div class="contact-form fade-up fade-up-delay-1">
+        <h3>Send us a message</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>First name</label>
+            <input type="text" placeholder="Arjun"/>
+          </div>
+          <div class="form-group">
+            <label>Last name</label>
+            <input type="text" placeholder="Sharma"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email address</label>
+          <input type="email" placeholder="arjun@example.com"/>
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select>
+            <option>Admissions Enquiry</option>
+            <option>Research Collaboration</option>
+            <option>Faculty Information</option>
+            <option>General Enquiry</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea rows="4" placeholder="Your message..."></textarea>
+        </div>
+        <button class="form-submit" onclick="handleSubmit(event)">Send Message</button>
+        <p id="form-msg" style="font-size:.8rem;margin-top:.75rem;display:none;color:var(--maroon)"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="section-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="background:rgba(201,168,76,.15);color:var(--gold)">GGS</div>
+        <p style="font-family:'EB Garamond',serif;font-style:italic;font-size:.95rem;color:rgba(250,247,242,.5);margin-top:.75rem">University School of Humanities &amp; Social Sciences — Guru Gobind Singh Indraprastha University, New Delhi</p>
+        <p style="font-size:.78rem;margin-top:.75rem">NAAC Accredited A++ · Est. 1998</p>
+      </div>
+      <div class="footer-col">
+        <h4>Academics</h4>
+        <ul>
+          <li><a href="#">M.A. English</a></li>
+          <li><a href="#">M.A. Economics</a></li>
+          <li><a href="#">M.A. Psychology</a></li>
+          <li><a href="#">M.A. Sociology</a></li>
+          <li><a href="#">M.A. Political Science</a></li>
+          <li><a href="#">Ph.D. Programmes</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="#">Faculty Profiles</a></li>
+          <li><a href="#">Research Publications</a></li>
+          <li><a href="#">Exam Results</a></li>
+          <li><a href="#">Timetable</a></li>
+          <li><a href="#">Notifications</a></li>
+          <li><a href="#">Alumni Network</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>University</h4>
+        <ul>
+          <li><a href="https://ipu.ac.in" target="_blank">GGSIPU Official Site</a></li>
+          <li><a href="#">Examination Division</a></li>
+          <li><a href="#">Library</a></li>
+          <li><a href="#">Student Welfare</a></li>
+          <li><a href="#">NAAC Report</a></li>
+          <li><a href="#">NIRF Ranking</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 USHSS — Guru Gobind Singh Indraprastha University. All rights reserved.</span>
+      <span>Designed for USHSS · <a href="https://ipu.ac.in">ipu.ac.in</a></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Navbar scroll effect
+window.addEventListener("scroll", () => {
+  document.getElementById("navbar").classList.toggle("scrolled", window.scrollY > 30);
+});
+
+// Hamburger menu (mobile)
+function toggleMenu() {
+  const links = document.querySelector(".nav-links");
+  links.style.display = links.style.display === "flex" ? "none" : "flex";
+  links.style.flexDirection = "column";
+  links.style.position = "fixed";
+  links.style.top = "64px";
+  links.style.left = "0";
+  links.style.right = "0";
+  links.style.background = "var(--cream)";
+  links.style.padding = "1.5rem 2rem";
+  links.style.borderBottom = "1px solid var(--border)";
+  links.style.gap = "1.25rem";
+  links.style.zIndex = "99";
+}
+
+let portalRole = "student";
+
+function openPortalLogin() {
+  document.getElementById("portal-login-overlay").classList.add("open");
+}
+function closePortalLogin() {
+  const overlay = document.getElementById("portal-login-overlay");
+  const err = document.getElementById("portal-login-error");
+  overlay.classList.remove("open");
+  err.style.display = "none";
+}
+function setPortalRole(btn, role) {
+  portalRole = role;
+  document.querySelectorAll(".portal-role-tab").forEach(tab => tab.classList.remove("active"));
+  btn.classList.add("active");
+  const labels = {
+    student: "Enrollment Number",
+    faculty: "Faculty ID / Email",
+    cr: "CR Roll Number",
+    admin: "Admin ID"
+  };
+  const label = labels[role];
+  document.getElementById("portal-id-label").textContent = label;
+  document.getElementById("portal-id").placeholder = `Enter your ${label.toLowerCase()}`;
+}
+async function submitPortalLogin() {
+  const uid = document.getElementById("portal-id").value.trim();
+  const pwd = document.getElementById("portal-password").value.trim();
+  const err = document.getElementById("portal-login-error");
+  const btn = document.querySelector(".portal-signin");
+  if (!uid || !pwd) {
+    err.style.display = "block";
+    err.textContent = "Please fill both fields.";
+    return;
+  }
+  try {
+    btn.disabled = true;
+    btn.textContent = "Signing In...";
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: uid,
+        password: pwd,
+        role: portalRole
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || "Login failed");
+    }
+    err.style.display = "none";
+    closePortalLogin();
+    window.location.href = data.redirect_url || "/";
+  } catch (e) {
+    err.style.display = "block";
+    err.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Sign In";
+  }
+}
+document.getElementById("portal-login-overlay").addEventListener("click", e => {
+  if (e.target.id === "portal-login-overlay") closePortalLogin();
+});
+window.addEventListener("keydown", e => {
+  if (e.key === "Escape") closePortalLogin();
+});
+
+// Intersection Observer for fade-up animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("visible"); observer.unobserve(e.target); }});
+}, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+document.querySelectorAll(".fade-up").forEach(el => observer.observe(el));
+
+// Research area hover
+document.querySelectorAll(".research-area").forEach(el => {
+  el.addEventListener("mouseenter", () => {
+    document.querySelectorAll(".research-area").forEach(a => a.classList.remove("active"));
+    el.classList.add("active");
+  });
+});
+
+// Contact form
+function handleSubmit(e) {
+  e.preventDefault();
+  const msg = document.getElementById("form-msg");
+  msg.style.display = "block";
+  msg.style.color = "var(--maroon)";
+  msg.textContent = "Thank you! Your message has been sent. We will respond within 2 working days.";
+}
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener("click", e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute("href"));
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Close mobile menu
+    const links = document.querySelector(".nav-links");
+    if (window.innerWidth <= 900) links.style.display = "none";
+  });
+});
+
+// Faculty carousel: manual scroll + arrows + larger center card
+const facultyRail = document.getElementById("faculty-grid");
+const facultyLeftBtn = document.querySelector(".faculty-arrow.left");
+const facultyRightBtn = document.querySelector(".faculty-arrow.right");
+if (facultyRail) {
+  const updateCenterCard = () => {
+    const cards = facultyRail.querySelectorAll(".faculty-card");
+    const centerX = facultyRail.scrollLeft + facultyRail.clientWidth / 2;
+    let closest = null;
+    let minDist = Number.POSITIVE_INFINITY;
+
+    cards.forEach(card => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(cardCenter - centerX);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = card;
+      }
+    });
+
+    cards.forEach(card => card.classList.remove("is-center"));
+    if (closest) closest.classList.add("is-center");
+  };
+
+  const stepByArrow = direction => {
+    const firstCard = facultyRail.querySelector(".faculty-card");
+    if (!firstCard) return;
+    const gap = 20;
+    const offset = firstCard.getBoundingClientRect().width + gap;
+    facultyRail.scrollBy({ left: direction * offset, behavior: "smooth" });
+  };
+
+  if (facultyLeftBtn) facultyLeftBtn.addEventListener("click", () => stepByArrow(-1));
+  if (facultyRightBtn) facultyRightBtn.addEventListener("click", () => stepByArrow(1));
+
+  facultyRail.addEventListener("scroll", updateCenterCard, { passive: true });
+  window.addEventListener("resize", updateCenterCard);
+
+  updateCenterCard();
+}
+</script>
+</body>
+</html>
