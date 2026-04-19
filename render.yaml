@@ -1,0 +1,35 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploy this whole file by connecting your GitHub repo on Render
+
+services:
+  - type: web
+    name: ushss-portal
+    runtime: python
+    region: singapore   # closest to India — change to: oregon, frankfurt, ohio
+    plan: free          # change to: starter, standard for production
+
+    # ── Build ────────────────────────────────────────────────────────────────
+    buildCommand: pip install -r requirements.txt
+
+    # ── Start ────────────────────────────────────────────────────────────────
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    # ── Health check ─────────────────────────────────────────────────────────
+    healthCheckPath: /health
+
+    # ── Environment variables ─────────────────────────────────────────────────
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render auto-generates a random secure value
+
+      - key: DATABASE_URL
+        value: sqlite:///./ushss.db  # swap to a Render PostgreSQL URL for prod
+
+      - key: CORS_ORIGINS
+        value: "*"                   # change to your frontend domain in production
+
+      - key: DEBUG
+        value: "false"
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
