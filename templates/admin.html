@@ -4,80 +4,79 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>USHSS — Admin DBMS Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-:root {
-  --bg:       #0E0F11;
-  --surface:  #161719;
-  --surface2: #1E2023;
-  --border:   #2A2C30;
-  --border2:  #353840;
-  --maroon:   #8B2A2A;
-  --maroon-l: #C0413A;
-  --gold:     #C9A84C;
-  --gold-l:   #E8C97A;
-  --cream:    #F5F1E8;
-  --text:     #E8E4DC;
-  --muted:    #8A8680;
-  --green:    #3DAA72;
-  --red:      #E05555;
-  --blue:     #4A7FC0;
-  --purple:   #8B6FC0;
-  --radius:   6px;
-  --font-mono: 'JetBrains Mono', monospace;
+:root{
+  --bg:#0E0F11;--surface:#161719;--surface2:#1E2023;--surface3:#252830;
+  --border:#2A2C30;--border2:#353840;
+  --maroon:#8B2A2A;--maroon-l:#C0413A;--maroon-d:#5A1010;
+  --gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:rgba(201,168,76,.08);
+  --cream:#F5F1E8;--text:#E8E4DC;--muted:#8A8680;
+  --green:#3DAA72;--green-bg:rgba(61,170,114,.1);
+  --red:#E05555;--red-bg:rgba(224,85,85,.1);
+  --blue:#4A7FC0;--blue-bg:rgba(74,127,192,.1);
+  --amber:#D4A017;--amber-bg:rgba(212,160,23,.1);
+  --teal:#20A89B;--teal-bg:rgba(32,168,155,.1);
+  --purple:#8B6FC0;--purple-bg:rgba(139,111,192,.1);
+  --radius:6px;--mono:'JetBrains Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;font-size:14px}
 
-/* ── SIDEBAR ── */
+/* SIDEBAR */
 .sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
 .sidebar-logo{padding:20px 18px;border-bottom:1px solid var(--border)}
 .sidebar-logo-badge{width:36px;height:36px;background:var(--maroon);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:13px;color:var(--gold);font-weight:700;margin-bottom:10px}
 .sidebar-logo h1{font-family:'Playfair Display',serif;font-size:15px;color:var(--cream);font-weight:600;line-height:1.2}
-.sidebar-logo p{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)}
-
+.sidebar-logo p{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
 .sidebar-nav{flex:1;padding:12px 10px;overflow-y:auto}
 .nav-section-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:10px 8px 6px;margin-top:4px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius);cursor:pointer;transition:all .15s;font-size:13px;color:var(--muted);font-weight:500;border:1px solid transparent;margin-bottom:2px}
 .nav-item:hover{background:var(--surface2);color:var(--text)}
 .nav-item.active{background:rgba(139,42,42,.15);color:var(--gold);border-color:rgba(201,168,76,.2)}
 .nav-item .icon{width:18px;text-align:center;font-size:15px;flex-shrink:0}
-.nav-badge{margin-left:auto;background:var(--maroon);color:var(--gold-l);font-size:10px;padding:1px 6px;border-radius:20px;font-family:var(--font-mono)}
-
+.nav-badge{margin-left:auto;background:var(--maroon);color:var(--gold-l);font-size:10px;padding:1px 6px;border-radius:20px;font-family:var(--mono)}
+.nav-badge-live{margin-left:auto;background:var(--green);color:#fff;font-size:9px;padding:1px 6px;border-radius:20px;font-family:var(--mono);animation:pulse-live 1.5s infinite}
+@keyframes pulse-live{0%,100%{opacity:1}50%{opacity:.5}}
 .sidebar-footer{padding:14px 10px;border-top:1px solid var(--border)}
 .sidebar-user{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius);background:var(--surface2)}
 .sidebar-user-avatar{width:28px;height:28px;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);font-weight:700;flex-shrink:0}
-.sidebar-user-info{flex:1;min-width:0}
 .sidebar-user-name{font-size:12px;font-weight:600;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sidebar-user-role{font-size:10px;color:var(--muted);font-family:var(--font-mono)}
+.sidebar-user-role{font-size:10px;color:var(--muted);font-family:var(--mono)}
 
-/* ── MAIN ── */
+/* MAIN */
 .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;background:var(--surface)}
 .topbar-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--cream);font-weight:600}
-.topbar-breadcrumb{font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+.topbar-breadcrumb{font-size:12px;color:var(--muted);font-family:var(--mono)}
 .topbar-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
 .content{flex:1;overflow-y:auto;padding:24px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-/* ── COMPONENTS ── */
+/* COMPONENTS */
 .btn{padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:'DM Sans',sans-serif;transition:all .15s;letter-spacing:.3px;display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:var(--maroon);color:var(--gold-l);border-color:rgba(201,168,76,.2)}
 .btn-primary:hover{background:var(--maroon-l)}
+.btn-gold{background:var(--gold);color:var(--maroon-d);font-weight:700}
+.btn-gold:hover{background:var(--gold-l)}
 .btn-ghost{background:transparent;color:var(--muted);border-color:var(--border)}
 .btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
-.btn-danger{background:rgba(224,85,85,.12);color:var(--red);border-color:rgba(224,85,85,.25)}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:rgba(224,85,85,.25)}
 .btn-danger:hover{background:rgba(224,85,85,.22)}
-.btn-success{background:rgba(61,170,114,.12);color:var(--green);border-color:rgba(61,170,114,.25)}
+.btn-success{background:var(--green-bg);color:var(--green);border-color:rgba(61,170,114,.25)}
 .btn-success:hover{background:rgba(61,170,114,.22)}
+.btn-teal{background:var(--teal-bg);color:var(--teal);border-color:rgba(32,168,155,.3)}
+.btn-teal:hover{background:rgba(32,168,155,.2)}
+.btn-amber{background:var(--amber-bg);color:var(--amber);border-color:rgba(212,160,23,.3)}
 .btn-sm{padding:4px 10px;font-size:11px}
-.btn-icon{padding:6px;min-width:auto}
+.btn-lg{padding:10px 20px;font-size:13px}
 
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
 .card-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--cream);margin-bottom:4px}
-.card-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
-
+.card-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;align-items:flex-start;gap:14px;transition:border-color .2s}
 .stat-card:hover{border-color:var(--border2)}
 .stat-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
@@ -85,90 +84,166 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .stat-label{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.8px}
 .stat-trend{font-size:11px;margin-top:6px}
 
-/* ── TABLE ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.badge-student{background:rgba(74,127,192,.15);color:#7EB3E8;border:1px solid rgba(74,127,192,.3)}
+.badge-faculty{background:var(--purple-bg);color:#B99FE8;border:1px solid rgba(139,111,192,.3)}
+.badge-cr{background:var(--green-bg);color:#7DDAB0;border:1px solid rgba(61,170,114,.3)}
+.badge-admin{background:var(--gold-pale);color:var(--gold-l);border:1px solid rgba(201,168,76,.3)}
+.badge-active{background:var(--green-bg);color:var(--green);border:1px solid rgba(61,170,114,.25)}
+.badge-inactive{background:var(--red-bg);color:var(--red);border:1px solid rgba(224,85,85,.25)}
+.badge-live{background:rgba(61,170,114,.2);color:var(--green);border:1px solid rgba(61,170,114,.4)}
+.badge-closed{background:var(--red-bg);color:var(--red);border:1px solid rgba(224,85,85,.3)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(212,160,23,.3)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(74,127,192,.3)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid rgba(32,168,155,.3)}
+
+/* TABLE */
 .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse}
 thead{background:var(--surface2)}
-th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--font-mono)}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;font-family:var(--mono)}
 td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.02)}
-.mono{font-family:var(--font-mono);font-size:12px}
+.mono{font-family:var(--mono);font-size:12px}
 
-/* ── BADGES ── */
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--font-mono)}
-.badge-student{background:rgba(74,127,192,.15);color:#7EB3E8;border:1px solid rgba(74,127,192,.3)}
-.badge-faculty{background:rgba(139,111,192,.15);color:#B99FE8;border:1px solid rgba(139,111,192,.3)}
-.badge-cr{background:rgba(61,170,114,.15);color:#7DDAB0;border:1px solid rgba(61,170,114,.3)}
-.badge-admin{background:rgba(201,168,76,.15);color:var(--gold-l);border:1px solid rgba(201,168,76,.3)}
-.badge-active{background:rgba(61,170,114,.12);color:var(--green);border:1px solid rgba(61,170,114,.25)}
-.badge-inactive{background:rgba(224,85,85,.12);color:var(--red);border:1px solid rgba(224,85,85,.25)}
+/* FORM */
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-family:var(--mono)}
+.form-input,.form-select,.form-textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold)}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--muted)}
+.form-select option{background:var(--surface2)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.required{color:var(--red);margin-left:2px}
 
-/* ── FORM / MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.68);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
 .modal-overlay.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:min(600px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;width:min(680px,100%);max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.6)}
 .modal-header{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:2}
 .modal-header h2{font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)}
 .modal-body{padding:22px}
 .modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
 
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.form-group{display:flex;flex-direction:column;gap:6px}
-.form-group.full{grid-column:1/-1}
-.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono)}
-.form-input,.form-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s;width:100%}
-.form-input:focus,.form-select:focus{border-color:var(--gold)}
-.form-input::placeholder{color:var(--muted)}
-.form-select option{background:var(--surface2)}
-.required{color:var(--red);margin-left:2px}
-
-/* ── SEARCH BAR ── */
+/* SEARCH BAR */
 .search-bar{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
 .search-input-wrap{position:relative;flex:1;min-width:200px}
 .search-input-wrap input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px 8px 34px;font-size:13px;color:var(--text);width:100%;outline:none;font-family:'DM Sans',sans-serif}
 .search-input-wrap input:focus{border-color:var(--gold)}
 .search-input-wrap input::placeholder{color:var(--muted)}
 .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--muted);pointer-events:none}
-.filter-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--font-mono);outline:none;cursor:pointer}
+.filter-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 12px;font-size:12px;color:var(--text);font-family:var(--mono);outline:none;cursor:pointer}
 .filter-select:focus{border-color:var(--gold)}
 
-/* ── TABS ── */
-.tabs{display:flex;gap:4px;padding:4px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);width:fit-content;margin-bottom:20px}
-.tab{padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);transition:all .15s}
-.tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
-
-/* ── GRID LAYOUTS ── */
+/* GRIDS */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid-60-40{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
 
-/* ── LOG ── */
+/* LOG */
 .log-entry{display:flex;gap:12px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--border)}
 .log-entry:last-child{border-bottom:none}
 .log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
 .log-text{font-size:12px;color:var(--muted);line-height:1.5}
 .log-text strong{color:var(--text);font-weight:600}
-.log-time{font-size:10px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;margin-top:2px}
+.log-time{font-size:10px;color:var(--muted);font-family:var(--mono);white-space:nowrap;margin-top:2px}
 
-/* ── TOAST ── */
-.toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;animation:slideIn .2s ease;max-width:320px}
-.toast.success{border-color:rgba(61,170,114,.4)}
-.toast.error{border-color:rgba(224,85,85,.4)}
-@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+/* ══════════════════════════════════════
+   TIMETABLE — PROGRAMME TAB SYSTEM
+══════════════════════════════════════ */
+.tt-tab-bar{display:flex;align-items:stretch;gap:0;border-bottom:2px solid var(--border2);margin-bottom:20px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:0}
+.tt-tab-bar::-webkit-scrollbar{height:3px}
+.tt-prog-tab{display:flex;flex-direction:column;align-items:flex-start;padding:10px 18px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .18s;position:relative;flex-shrink:0;min-width:0}
+.tt-prog-tab:hover{background:var(--surface2)}
+.tt-prog-tab.active{border-bottom-color:var(--gold)}
+.tt-prog-tab.active .tt-tab-name{color:var(--gold)}
+.tt-tab-name{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;transition:color .18s}
+.tt-tab-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px;white-space:nowrap;opacity:.6}
+.tt-tab-add{display:flex;align-items:center;justify-content:center;width:40px;padding:10px 0 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;flex-shrink:0;transition:all .18s}
+.tt-tab-add:hover{background:var(--surface2)}
+.tt-tab-add-icon{width:28px;height:28px;border-radius:50%;border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--muted);transition:all .2s;line-height:1}
+.tt-tab-add:hover .tt-tab-add-icon{border-color:var(--gold);color:var(--gold);background:var(--gold-pale);transform:scale(1.08)}
 
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* Section tabs (inside a programme) */
+.tt-section-bar{display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tt-section-tab{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);transition:all .15s;font-family:var(--mono)}
+.tt-section-tab:hover{border-color:var(--gold);color:var(--gold)}
+.tt-section-tab.active{background:rgba(201,168,76,.12);border-color:var(--gold);color:var(--gold-l)}
+.tt-section-add{padding:5px 12px;border-radius:20px;font-size:11px;cursor:pointer;border:1.5px dashed var(--border2);background:transparent;color:var(--muted);transition:all .15s;font-family:var(--mono);display:flex;align-items:center;gap:5px}
+.tt-section-add:hover{border-color:var(--teal);color:var(--teal)}
+.tt-section-del{padding:3px 7px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid transparent;background:transparent;color:var(--muted);transition:all .15s;margin-left:-4px;opacity:0}
+.tt-section-tab:hover .tt-section-del{opacity:1}
 
-/* ── EMPTY STATE ── */
-.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
-.empty-icon{font-size:3rem;margin-bottom:12px;opacity:.3}
-.empty-text{font-size:13px;margin-top:6px}
+/* Timetable grid */
+.tt-grid{display:grid;grid-template-columns:80px repeat(5,1fr);gap:2px;margin-top:0}
+.tt-head{background:var(--surface2);padding:10px 8px;text-align:center;font-size:11px;font-weight:600;color:var(--gold);border-radius:var(--radius) var(--radius) 0 0;border:1px solid var(--border2);font-family:var(--mono);letter-spacing:.5px}
+.tt-time{background:var(--surface2);padding:8px 6px;text-align:center;font-size:10px;color:var(--muted);border:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;justify-content:center;min-height:56px}
+.tt-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px;min-height:56px;cursor:pointer;transition:all .15s;position:relative}
+.tt-cell:hover{border-color:var(--gold);background:var(--surface2)}
+.tt-cell.has-class{background:rgba(139,42,42,.12);border-color:rgba(139,42,42,.3)}
+.tt-cell.has-class:hover{background:rgba(139,42,42,.2);border-color:var(--gold)}
+.tt-cell.break{background:rgba(201,168,76,.05);border-color:rgba(201,168,76,.15)}
+.tt-cell-subject{font-size:11px;font-weight:600;color:var(--cream);line-height:1.3;margin-bottom:3px}
+.tt-cell-room{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.tt-cell-teacher{font-size:10px;color:var(--gold);font-family:var(--mono)}
+.tt-cell-empty{font-size:11px;color:var(--border2);text-align:center;line-height:3}
+.tt-edit-btn{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:3px;background:var(--surface3);border:1px solid var(--border2);color:var(--muted);font-size:10px;display:none;align-items:center;justify-content:center;cursor:pointer}
+.tt-cell:hover .tt-edit-btn{display:flex}
 
-/* ── CONFIRM ── */
+/* Programme colour accents */
+.tt-acc-0{border-left:3px solid #8B2A2A}
+.tt-acc-1{border-left:3px solid #2B5BA8}
+.tt-acc-2{border-left:3px solid #2D7A4A}
+.tt-acc-3{border-left:3px solid #7A5B2D}
+.tt-acc-4{border-left:3px solid #5A2B7A}
+.tt-acc-5{border-left:3px solid #20A89B}
+.tt-acc-6{border-left:3px solid #C9A84C}
+
+/* Empty timetable state */
+.tt-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--muted);text-align:center}
+.tt-empty-icon{font-size:3.5rem;margin-bottom:14px;opacity:.25}
+.tt-empty-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--text);margin-bottom:8px}
+.tt-empty-sub{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:20px}
+
+/* ATTENDANCE EDITOR */
+.att-filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;padding:14px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)}
+.att-record{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);transition:background .15s}
+.att-record:last-child{border-bottom:none}
+.att-record:hover{background:rgba(255,255,255,.01)}
+.att-init{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;flex-shrink:0}
+.att-toggle{display:flex;gap:6px}
+.att-btn{width:34px;height:28px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:'DM Sans',sans-serif;font-weight:600}
+.att-btn.present{background:var(--green-bg);border-color:rgba(61,170,114,.4);color:var(--green)}
+.att-btn.absent{background:var(--red-bg);border-color:rgba(224,85,85,.4);color:var(--red)}
+.att-btn.late{background:var(--amber-bg);border-color:rgba(212,160,23,.4);color:var(--amber)}
+.att-btn:hover{transform:scale(1.08)}
+
+/* LIVE ATTENDANCE HOST */
+.live-host-card{background:linear-gradient(135deg,var(--maroon-d) 0%,var(--maroon) 60%,rgba(139,42,42,.5) 100%);border:1px solid rgba(201,168,76,.25);border-radius:10px;padding:24px;position:relative;overflow:hidden}
+.live-host-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(201,168,76,.05)}
+.live-timer{font-family:'Playfair Display',serif;font-size:3.2rem;font-weight:700;color:var(--gold);line-height:1;letter-spacing:-2px}
+.live-timer-lbl{font-size:10px;color:rgba(201,168,76,.5);font-family:var(--mono);margin-top:3px}
+.live-pulse{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:rgba(61,170,114,.15);border:1px solid rgba(61,170,114,.3);font-size:11px;color:var(--green);font-family:var(--mono);margin-bottom:14px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pdot 1.5s infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+.progress{height:5px;background:var(--surface3);border-radius:3px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s ease;background:var(--green)}
+
+/* ANNOUNCEMENTS */
+.ann-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;transition:border-color .2s}
+.ann-item:hover{border-color:var(--border2)}
+.ann-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ann-item-title{font-family:'Playfair Display',serif;font-size:13px;font-weight:600;color:var(--cream)}
+.ann-item-body{font-size:12px;color:var(--muted);line-height:1.55}
+.ann-item-footer{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center}
+.ann-time{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* CONFIRM */
 .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:600}
 .confirm-overlay.open{display:flex}
 .confirm-box{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:28px;width:min(380px,90%);box-shadow:0 20px 50px rgba(0,0,0,.5)}
@@ -176,12 +251,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .confirm-box p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
 .confirm-actions{display:flex;gap:10px;justify-content:flex-end}
 
-/* Responsive hide sidebar on small screens */
-@media(max-width:700px){
+/* TOAST */
+.toast-container{position:fixed;top:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;animation:slideIn .2s ease;max-width:320px}
+.toast.success{border-color:rgba(61,170,114,.4);color:var(--green)}
+.toast.error{border-color:rgba(224,85,85,.4);color:var(--red)}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:3rem;margin-bottom:12px;opacity:.3}
+
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.sec-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);font-family:var(--mono)}
+.sec-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--cream);font-weight:600;margin-top:2px}
+
+@media(max-width:900px){
   .sidebar{display:none}
   .stats-grid{grid-template-columns:1fr 1fr}
-  .two-col,.three-col{grid-template-columns:1fr}
-  .form-grid{grid-template-columns:1fr}
+  .two-col,.form-grid,.form-row,.grid-60-40{grid-template-columns:1fr}
+  .tt-grid{grid-template-columns:60px repeat(5,1fr)}
 }
 </style>
 </head>
@@ -196,42 +284,29 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section-title">Overview</div>
-    <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard">
-      <span class="icon">🏛️</span> Dashboard
-    </div>
+    <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">🏛️</span> Dashboard</div>
 
     <div class="nav-section-title">User Management</div>
-    <div class="nav-item" onclick="showPage('students')" data-page="students">
-      <span class="icon">🎓</span> Students
-      <span class="nav-badge" id="badge-student">0</span>
-    </div>
-    <div class="nav-item" onclick="showPage('faculty')" data-page="faculty">
-      <span class="icon">📚</span> Faculty
-      <span class="nav-badge" id="badge-faculty">0</span>
-    </div>
-    <div class="nav-item" onclick="showPage('cr')" data-page="cr">
-      <span class="icon">🤝</span> Class Reps
-      <span class="nav-badge" id="badge-cr">0</span>
-    </div>
-    <div class="nav-item" onclick="showPage('admin')" data-page="admin">
-      <span class="icon">🔑</span> Admins
-      <span class="nav-badge" id="badge-admin">0</span>
-    </div>
+    <div class="nav-item" onclick="showPage('student')" data-page="student"><span class="icon">🎓</span> Student<span class="nav-badge" id="badge-student">0</span></div>
+    <div class="nav-item" onclick="showPage('faculty')" data-page="faculty"><span class="icon">📚</span> Faculty<span class="nav-badge" id="badge-faculty">0</span></div>
+    <div class="nav-item" onclick="showPage('cr')" data-page="cr"><span class="icon">🤝</span> Class Reps<span class="nav-badge" id="badge-cr">0</span></div>
+    <div class="nav-item" onclick="showPage('admin')" data-page="admin"><span class="icon">🔑</span> Admins<span class="nav-badge" id="badge-admin">0</span></div>
+
+    <div class="nav-section-title">Academic Control</div>
+    <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
+    <div class="nav-item" onclick="showPage('attendance')" data-page="attendance"><span class="icon">✅</span> Attendance Editor<span class="nav-badge-live" id="live-nav-badge" style="display:none">LIVE</span></div>
+    <div class="nav-item" onclick="showPage('announcements')" data-page="announcements"><span class="icon">📢</span> Announcements<span class="nav-badge" id="badge-ann">3</span></div>
 
     <div class="nav-section-title">System</div>
-    <div class="nav-item" onclick="showPage('audit')" data-page="audit">
-      <span class="icon">📋</span> Audit Log
-    </div>
-    <div class="nav-item" onclick="showPage('schema')" data-page="schema">
-      <span class="icon">🗄️</span> DB Schema
-    </div>
+    <div class="nav-item" onclick="showPage('audit')" data-page="audit"><span class="icon">📋</span> Audit Log</div>
+    <div class="nav-item" onclick="showPage('schema')" data-page="schema"><span class="icon">🗄️</span> DB Schema</div>
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user">
-      <div class="sidebar-user-avatar" id="adminInitials">AD</div>
-      <div class="sidebar-user-info">
-        <div class="sidebar-user-name" id="adminName">Administrator</div>
-        <div class="sidebar-user-role">admin</div>
+      <div class="sidebar-user-avatar">AD</div>
+      <div style="flex:1;min-width:0">
+        <div class="sidebar-user-name">USHSS Administrator</div>
+        <div class="sidebar-user-role">admin · admin001</div>
       </div>
     </div>
   </div>
@@ -245,99 +320,55 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="topbar-breadcrumb" id="topbar-crumb">USHSS / Admin / Overview</div>
     </div>
     <div class="topbar-actions">
-      <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)" id="dbStatus">● Local DB</span>
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="live-topbar"></span>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add User</button>
     </div>
   </div>
   <div class="content" id="content"></div>
 </div>
 
-<!-- CREATE / EDIT MODAL -->
+<!-- USER MODAL -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Add New User</h2>
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="closeModal()">✕</button>
-    </div>
+    <div class="modal-header"><h2 id="modal-title">Add New User</h2><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Role <span class="required">*</span></label>
+        <div class="form-group"><label class="form-label">Role <span class="required">*</span></label>
           <select class="form-select" id="f-role" onchange="onRoleChange()">
-            <option value="student">Student</option>
-            <option value="faculty">Faculty</option>
-            <option value="cr">Class Representative</option>
-            <option value="admin">Admin</option>
+            <option value="student">Student</option><option value="faculty">Faculty</option>
+            <option value="cr">Class Representative</option><option value="admin">Admin</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label" id="label-username">Enrollment No. <span class="required">*</span></label>
-          <input class="form-input" id="f-username" placeholder="e.g. 2401001"/>
-        </div>
-        <div class="form-group full">
-          <label class="form-label">Full Name <span class="required">*</span></label>
-          <input class="form-input" id="f-name" placeholder="e.g. Priya Sharma"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input class="form-input" id="f-email" type="email" placeholder="email@ipu.ac.in"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input class="form-input" id="f-phone" placeholder="+91 98xxx xxxxx"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Department</label>
+        <div class="form-group"><label class="form-label" id="label-username">Enrollment No. <span class="required">*</span></label><input class="form-input" id="f-username" placeholder="e.g. 2401001"/></div>
+        <div class="form-group full"><label class="form-label">Full Name <span class="required">*</span></label><input class="form-input" id="f-name" placeholder="e.g. Priya Sharma"/></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f-email" type="email" placeholder="email@ipu.ac.in"/></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="f-phone" placeholder="+91 98xxx xxxxx"/></div>
+        <div class="form-group"><label class="form-label">Department</label>
           <select class="form-select" id="f-dept">
-            <option value="">— Select —</option>
-            <option>Humanities</option>
-            <option>Social Sciences</option>
-            <option>Economics</option>
-            <option>Psychology</option>
-            <option>Political Science</option>
-            <option>Sociology</option>
-            <option>History</option>
-            <option>Philosophy</option>
-            <option>Administration</option>
+            <option value="">— Select —</option><option>Humanities</option><option>Social Sciences</option>
+            <option>Economics</option><option>Psychology</option><option>Political Science</option>
+            <option>Sociology</option><option>History</option><option>Philosophy</option><option>Administration</option>
           </select>
         </div>
-        <div class="form-group" id="row-prog">
-          <label class="form-label">Programme</label>
+        <div class="form-group" id="row-prog"><label class="form-label">Programme</label>
           <select class="form-select" id="f-prog">
             <option value="">— Select —</option>
             <option>B.A. (Hons.) English</option>
+            <option>B.A. (Hons.) Economics</option>
             <option>M.A. English</option>
-            <option>M.A. Economics</option>
-            <option>M.A. Psychology</option>
-            <option>M.A. Sociology</option>
-            <option>M.A. Political Science</option>
-            <option>M.A. History</option>
-            <option>M.A. Philosophy</option>
-            <option>Ph.D.</option>
+            <option>M.A. Economics</option><option>M.A. Psychology</option><option>M.A. Sociology</option>
+            <option>M.A. Political Science</option><option>M.A. History</option><option>M.A. Philosophy</option><option>Ph.D.</option>
           </select>
         </div>
-        <div class="form-group" id="row-batch">
-          <label class="form-label">Batch Year</label>
+        <div class="form-group" id="row-batch"><label class="form-label">Batch Year</label>
           <select class="form-select" id="f-batch">
-            <option value="">— Select —</option>
-            <option>2021</option><option>2022</option><option>2023</option>
-            <option>2024</option><option>2025</option>
+            <option value="">— Select —</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option>
           </select>
         </div>
-        <div class="form-group" id="row-desig">
-          <label class="form-label">Designation</label>
-          <input class="form-input" id="f-desig" placeholder="e.g. Professor, Assistant Professor"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password <span class="required" id="pwd-req">*</span></label>
-          <input class="form-input" id="f-pwd" type="password" placeholder="Min 8 chars"/>
-        </div>
-        <div class="form-group" id="row-active">
-          <label class="form-label">Status</label>
-          <select class="form-select" id="f-active">
-            <option value="1">Active</option>
-            <option value="0">Inactive</option>
-          </select>
+        <div class="form-group" id="row-desig"><label class="form-label">Designation</label><input class="form-input" id="f-desig" placeholder="e.g. Professor"/></div>
+        <div class="form-group"><label class="form-label">Password <span class="required" id="pwd-req">*</span></label><input class="form-input" id="f-pwd" type="password" placeholder="Min 8 chars"/></div>
+        <div class="form-group" id="row-active"><label class="form-label">Status</label>
+          <select class="form-select" id="f-active"><option value="1">Active</option><option value="0">Inactive</option></select>
         </div>
       </div>
     </div>
@@ -348,595 +379,1386 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 </div>
 
-<!-- CONFIRM DELETE -->
-<div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-box">
-    <h3>Delete User?</h3>
-    <p id="confirm-msg">This action cannot be undone. The user's login credentials will be permanently removed.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-danger" id="confirm-btn" onclick="confirmDelete()">Delete</button>
+<!-- TIMETABLE SLOT EDIT MODAL -->
+<div class="modal-overlay" id="tt-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h2 id="tt-modal-title">Edit Class Slot</h2><button class="btn btn-ghost btn-sm" onclick="closeTTModal()">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-family:var(--mono);background:var(--surface2);padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border)" id="tt-slot-info"></div>
+      <div class="form-group"><label class="form-label">Subject / Paper</label>
+        <select class="form-select" id="tt-subject">
+          <option value="">— Free / No Class —</option>
+          <optgroup label="English">
+            <option>Postcolonial Literature</option><option>Literary Theory</option><option>Linguistics</option>
+            <option>Modern Fiction</option><option>Old English &amp; Medieval Lit.</option><option>Poetry &amp; Poetics</option>
+            <option>Drama &amp; Theatre</option><option>Comparative Literature</option>
+          </optgroup>
+          <optgroup label="Economics">
+            <option>Development Economics</option><option>Microeconomics</option><option>Macroeconomics</option>
+            <option>Econometrics</option><option>Indian Economy &amp; Policy</option><option>International Trade</option>
+          </optgroup>
+          <optgroup label="Other Subjects">
+            <option>Psychology — CBT</option><option>Political Philosophy</option>
+            <option>Research Methods</option><option>Environmental Humanities</option>
+            <option>Constitutional Law</option><option>Sociology of Knowledge</option>
+          </optgroup>
+          <optgroup label="Special">
+            <option value="BREAK">☕ Break / Lunch</option>
+            <option value="LAB">🔬 Practical / Lab</option>
+            <option value="SEMINAR">🎤 Seminar / Presentation</option>
+            <option value="TUTORIAL">📝 Tutorial</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Room / Venue</label><input class="form-input" id="tt-room" placeholder="e.g. Seminar Hall A"/></div>
+        <div class="form-group"><label class="form-label">Assigned Faculty</label>
+          <select class="form-select" id="tt-faculty">
+            <option value="">— Assign —</option>
+            <option>Dr. Shuchi Sharma</option><option>Dr. Anup Singh Beniwal</option><option>Dr. Chetna Tiwari</option>
+            <option>Dr. Vivek Sachdeva</option><option>Dr. Manpreet Kaur Kang</option><option>Dr. Naresh Kumar Vats</option>
+            <option>Dr. Shubhanku Kochar</option><option>Dr. Prarthna Agarwal Goel</option><option>Dr. Sami Ahmad Khan</option>
+            <option>Saurabh Maji</option><option>Dr. Sonika Redhu</option><option>Dr. Pooja Rathore</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Notes (optional)</label><input class="form-input" id="tt-notes" placeholder="e.g. Guest lecturer this week"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="clearTTCell()">✕ Clear Slot</button>
+      <button class="btn btn-ghost" onclick="closeTTModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTTCell()">💾 Save Slot</button>
     </div>
   </div>
 </div>
 
-<!-- TOAST CONTAINER -->
+<!-- NEW TIMETABLE MODAL (Programme + Section) -->
+<div class="modal-overlay" id="tt-new-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header"><h2>➕ New Timetable</h2><button class="btn btn-ghost btn-sm" onclick="closeModal2('tt-new-modal')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Create a new timetable slot for a specific programme and section. You can add multiple sections per programme (e.g. Section A, Section B).</p>
+      <div class="form-group">
+        <label class="form-label">Programme <span class="required">*</span></label>
+        <select class="form-select" id="tt-new-prog">
+          <option value="">— Select Programme —</option>
+          <option value="B.A. (Hons.) English">B.A. (Hons.) English</option>
+          <option value="B.A. (Hons.) Economics">B.A. (Hons.) Economics</option>
+          <option value="M.A. English">M.A. English</option>
+          <option value="M.A. Economics">M.A. Economics</option>
+          <option value="M.A. Psychology">M.A. Psychology</option>
+          <option value="M.A. Sociology">M.A. Sociology</option>
+          <option value="M.A. Political Science">M.A. Political Science</option>
+          <option value="M.A. History">M.A. History</option>
+          <option value="M.A. Philosophy">M.A. Philosophy</option>
+          <option value="Ph.D.">Ph.D. Research</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Section / Group</label>
+          <select class="form-select" id="tt-new-sec-preset" onchange="onSectionPreset()">
+            <option value="">— Choose Preset —</option>
+            <option value="Section A">Section A</option>
+            <option value="Section B">Section B</option>
+            <option value="Section C">Section C</option>
+            <option value="Semester I">Semester I</option>
+            <option value="Semester II">Semester II</option>
+            <option value="Semester III">Semester III</option>
+            <option value="Semester IV">Semester IV</option>
+            <option value="All Sections">All Sections</option>
+            <option value="custom">✏ Custom…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Or type custom name</label>
+          <input class="form-input" id="tt-new-sec-custom" placeholder="e.g. Morning Batch"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Batch / Year</label>
+        <select class="form-select" id="tt-new-batch">
+          <option value="">— Optional —</option>
+          <option>2021–25</option><option>2022–26</option><option>2023–27</option><option>2024–28</option>
+          <option>2023–25</option><option>2024–26</option><option>2025–27</option>
+        </select>
+      </div>
+      <div id="tt-new-exists-warn" style="display:none;padding:9px 12px;background:var(--amber-bg);border:1px solid rgba(212,160,23,.35);border-radius:var(--radius);font-size:12px;color:var(--amber);margin-top:4px">⚠ A timetable already exists for this combination. Creating it will open the existing one.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal2('tt-new-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createNewTimetable()">✓ Create Timetable</button>
+    </div>
+  </div>
+</div>
+
+<!-- ATTENDANCE EDIT MODAL -->
+<div class="modal-overlay" id="att-edit-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h2>Edit Attendance Record</h2><button class="btn btn-ghost btn-sm" onclick="closeModal2('att-edit-modal')">✕</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px" id="att-edit-info"></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="att-edit-status">
+          <option value="present">✓ Present</option>
+          <option value="absent">✗ Absent</option>
+          <option value="late">⏰ Late</option>
+          <option value="excused">📋 Excused</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Reason / Note</label><textarea class="form-textarea" id="att-edit-note" placeholder="Optional note for this change…" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal2('att-edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAttEdit()">Save Change</button>
+    </div>
+  </div>
+</div>
+
+<!-- ANNOUNCEMENT MODAL -->
+<div class="modal-overlay" id="ann-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h2>New Announcement</h2><button class="btn btn-ghost btn-sm" onclick="closeModal2('ann-modal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Title <span class="required">*</span></label><input class="form-input" id="ann-title" placeholder="e.g. Exam Schedule Update"/></div>
+      <div class="form-group"><label class="form-label">Message <span class="required">*</span></label><textarea class="form-textarea" id="ann-body" rows="4" placeholder="Write your announcement…"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Target Audience</label>
+          <select class="form-select" id="ann-target">
+            <option value="all">🌐 Everyone</option><option value="student">🎓 Students Only</option>
+            <option value="faculty">📚 Faculty Only</option><option value="cr">🤝 Class Reps Only</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Priority</label>
+          <select class="form-select" id="ann-priority">
+            <option value="normal">📢 Normal</option><option value="important">⚠️ Important</option><option value="urgent">🚨 Urgent</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Pin Until (optional)</label><input class="form-input" id="ann-pin" type="date"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal2('ann-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="postAnn()">📢 Broadcast Announcement</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE ATTENDANCE MODAL -->
+<div class="modal-overlay" id="live-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h2>🔴 Host Live Attendance</h2><button class="btn btn-ghost btn-sm" onclick="closeModal2('live-modal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Class / Programme</label>
+          <select class="form-select" id="live-prog">
+            <option>B.A. (Hons.) English — Year I</option>
+            <option>B.A. (Hons.) English — Year II</option>
+            <option>B.A. (Hons.) Economics — Year I</option>
+            <option>B.A. (Hons.) Economics — Year II</option>
+            <option>M.A. English — Sem III</option><option>M.A. Economics — Sem II</option>
+            <option>M.A. Psychology — Sem I</option><option>M.A. Sociology — Sem III</option><option>Ph.D. Research Seminar</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Subject</label>
+          <select class="form-select" id="live-subj">
+            <option>Postcolonial Literature</option><option>Literary Theory</option><option>Linguistics</option>
+            <option>Modern Fiction</option><option>Development Economics</option><option>Research Methods</option>
+            <option>Old English &amp; Medieval Lit.</option><option>Microeconomics</option><option>Macroeconomics</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Assigned Faculty</label>
+          <select class="form-select" id="live-fac">
+            <option>Dr. Shuchi Sharma</option><option>Dr. Anup Singh Beniwal</option><option>Dr. Chetna Tiwari</option><option>Dr. Vivek Sachdeva</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Timer Duration</label>
+          <select class="form-select" id="live-timer">
+            <option value="300">5 minutes</option><option value="600">10 minutes</option>
+            <option value="900" selected>15 minutes</option><option value="1800">30 minutes</option><option value="0">No Timer</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Topic / Lecture</label><input class="form-input" id="live-topic" placeholder="e.g. Postcolonial Theory — Week 7"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal2('live-modal')">Cancel</button>
+      <button class="btn btn-success btn-lg" onclick="startLiveSession()">▶ Start Session</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Delete User?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script>
-/* ════════════════════════════════════════════════════
-   IN-BROWSER SQLite SIMULATION (localStorage-backed)
-   In production this panel calls /api/admin/* endpoints.
-   Toggle USE_API = true and set API_BASE when deployed.
-════════════════════════════════════════════════════ */
-const USE_API  = false;
-const API_BASE = "http://localhost:3001";
-const API_TOKEN = localStorage.getItem("ushss_token") || "";
-
-/* ── DB helpers ── */
-const DB_KEY = "ushss_db_v2";
+/* ══════════════════════════════════════════
+   DATABASE
+══════════════════════════════════════════ */
+const DB_KEY = "ushss_db_v4";
 
 function loadDB() {
   const raw = localStorage.getItem(DB_KEY);
   if (raw) return JSON.parse(raw);
   return initDB();
 }
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function hash(s) { let h=0; for(const c of s) h=(Math.imul(31,h)+c.charCodeAt(0))|0; return "hashed_"+Math.abs(h); }
 
-function saveDB(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+/* Timetable key helper */
+function ttKey(prog, section) {
+  return `${prog}|||${section}`;
 }
-
-function hash(str) {
-  // Simple deterministic "hash" for demo — in real backend bcrypt is used
-  let h = 0;
-  for (const c of str) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0;
-  return "hashed_" + Math.abs(h);
+function ttParsKey(k) {
+  const [prog, section] = k.split("|||");
+  return { prog, section };
 }
-
-let nextId = 1;
-function uid() { return nextId++; }
 
 function initDB() {
   const now = () => new Date().toISOString().replace("T"," ").substring(0,19);
   const db = {
     users: [],
     audit: [],
-    _nextId: 100
+    // NEW STRUCTURE: timetables[ttKey(prog, section)][day_timeIdx] = { subject, room, faculty, notes }
+    timetables: {},
+    // timetableMeta: list of { prog, section, batch, accentIdx, createdAt }
+    timetableMeta: [],
+    attendance: [],
+    announcements: [],
+    liveSessions: [],
+    _nextId: 100,
+    _attId: 1,
+    _annId: 1,
   };
+
   const users = [
-    { role:"admin",  username:"admin001",  password:"Admin@1234",  full_name:"USHSS Administrator",   email:"admin.ushss@ipu.ac.in",   phone:"", department:"Administration", programme:"",               batch:"",     designation:"Administrator",    is_active:1 },
-    { role:"student",username:"2301001",   password:"Student@123", full_name:"John Sharma",           email:"john.sharma@ipu.ac.in",   phone:"+91 98100 11001", department:"Humanities",     programme:"M.A. English",       batch:"2023", designation:"",                 is_active:1 },
-    { role:"student",username:"2301002",   password:"Student@123", full_name:"Priya Verma",           email:"priya.verma@ipu.ac.in",   phone:"+91 98100 11002", department:"Humanities",     programme:"M.A. Psychology",    batch:"2023", designation:"",                 is_active:1 },
-    { role:"student",username:"2401001",   password:"Student@123", full_name:"Rahul Gupta",           email:"rahul.gupta@ipu.ac.in",   phone:"+91 98100 11003", department:"Social Sciences", programme:"M.A. Economics",    batch:"2024", designation:"",                 is_active:1 },
-    { role:"student",username:"2401002",   password:"Student@123", full_name:"Sneha Kapoor",          email:"sneha.k@ipu.ac.in",       phone:"+91 98100 11004", department:"Social Sciences", programme:"M.A. Sociology",    batch:"2024", designation:"",                 is_active:1 },
-    { role:"student",username:"2301003",   password:"Student@123", full_name:"Arjun Mishra",          email:"arjun.m@ipu.ac.in",       phone:"+91 98100 11005", department:"Humanities",     programme:"M.A. Philosophy",    batch:"2023", designation:"",                 is_active:0 },
-    { role:"faculty",username:"fac001",    password:"Faculty@123", full_name:"Dr. Anup Singh Beniwal",email:"anupbeniwal@ipu.ac.in",   phone:"011-2530-2167",   department:"USHSS",          programme:"",                   batch:"",     designation:"Professor",        is_active:1 },
-    { role:"faculty",username:"fac002",    password:"Faculty@123", full_name:"Dr. Shuchi Sharma",     email:"shuchi.sharma@ipu.ac.in", phone:"011-2530-2168",   department:"USHSS",          programme:"",                   batch:"",     designation:"Dean / Professor", is_active:1 },
-    { role:"faculty",username:"fac003",    password:"Faculty@123", full_name:"Dr. Chetna Tiwari",     email:"chetna.ushss@ipu.ac.in",  phone:"011-2530-2169",   department:"USHSS",          programme:"",                   batch:"",     designation:"Associate Professor", is_active:1 },
-    { role:"faculty",username:"fac004",    password:"Faculty@123", full_name:"Dr. Vivek Sachdeva",    email:"viveksachdeva@ipu.ac.in", phone:"011-2530-2170",   department:"USHSS",          programme:"",                   batch:"",     designation:"Professor",        is_active:1 },
-    { role:"cr",     username:"cr2301001", password:"Cr@12345",    full_name:"Amit CR Leader",        email:"cr.english@ipu.ac.in",    phone:"+91 98100 22001", department:"Humanities",     programme:"M.A. English",       batch:"2023", designation:"Class Representative", is_active:1 },
-    { role:"cr",     username:"cr2401001", password:"Cr@12345",    full_name:"Neha CR Singh",         email:"cr.eco@ipu.ac.in",        phone:"+91 98100 22002", department:"Social Sciences", programme:"M.A. Economics",    batch:"2024", designation:"Class Representative", is_active:1 },
+    {role:"admin",username:"admin001",password:"Admin@1234",full_name:"USHSS Administrator",email:"admin.ushss@ipu.ac.in",phone:"",department:"Administration",programme:"",batch:"",designation:"Administrator",is_active:1},
+    {role:"student",username:"2301001",password:"Student@123",full_name:"Arjun Sharma",email:"arjun.sharma@ipu.ac.in",phone:"+91 98100 11001",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
+    {role:"student",username:"2301002",password:"Student@123",full_name:"Priya Verma",email:"priya.verma@ipu.ac.in",phone:"+91 98100 11002",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
+    {role:"student",username:"2401001",password:"Student@123",full_name:"Rahul Gupta",email:"rahul.gupta@ipu.ac.in",phone:"+91 98100 11003",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"",is_active:1},
+    {role:"student",username:"2401002",password:"Student@123",full_name:"Sneha Kapoor",email:"sneha.k@ipu.ac.in",phone:"+91 98100 11004",department:"Social Sciences",programme:"M.A. Sociology",batch:"2024",designation:"",is_active:1},
+    {role:"student",username:"2301003",password:"Student@123",full_name:"Arjun Mishra",email:"arjun.m@ipu.ac.in",phone:"+91 98100 11005",department:"Humanities",programme:"M.A. Philosophy",batch:"2023",designation:"",is_active:0},
+    // B.A. students
+    {role:"student",username:"2401101",password:"Student@123",full_name:"Kabir Mehta",email:"kabir.m@ipu.ac.in",phone:"+91 98100 12001",department:"Humanities",programme:"B.A. (Hons.) English",batch:"2024",designation:"",is_active:1},
+    {role:"student",username:"2401102",password:"Student@123",full_name:"Ananya Singh",email:"ananya.s@ipu.ac.in",phone:"+91 98100 12002",department:"Humanities",programme:"B.A. (Hons.) English",batch:"2024",designation:"",is_active:1},
+    {role:"student",username:"2401201",password:"Student@123",full_name:"Riya Agarwal",email:"riya.a@ipu.ac.in",phone:"+91 98100 12003",department:"Social Sciences",programme:"B.A. (Hons.) Economics",batch:"2024",designation:"",is_active:1},
+    {role:"faculty",username:"fac001",password:"Faculty@123",full_name:"Dr. Anup Singh Beniwal",email:"anupbeniwal@ipu.ac.in",phone:"011-2530-2167",department:"USHSS",programme:"",batch:"",designation:"Professor",is_active:1},
+    {role:"faculty",username:"fac002",password:"Faculty@123",full_name:"Dr. Shuchi Sharma",email:"shuchi.sharma@ipu.ac.in",phone:"011-2530-2168",department:"USHSS",programme:"",batch:"",designation:"Dean / Professor",is_active:1},
+    {role:"faculty",username:"fac003",password:"Faculty@123",full_name:"Dr. Chetna Tiwari",email:"chetna.ushss@ipu.ac.in",phone:"011-2530-2169",department:"USHSS",programme:"",batch:"",designation:"Associate Professor",is_active:1},
+    {role:"faculty",username:"fac004",password:"Faculty@123",full_name:"Dr. Vivek Sachdeva",email:"viveksachdeva@ipu.ac.in",phone:"011-2530-2170",department:"USHSS",programme:"",batch:"",designation:"Professor",is_active:1},
+    {role:"cr",username:"cr2301001",password:"Cr@12345",full_name:"Amit Kumar (CR)",email:"cr.english@ipu.ac.in",phone:"+91 98100 22001",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"Class Representative",is_active:1},
+    {role:"cr",username:"cr2401001",password:"Cr@12345",full_name:"Neha Singh (CR)",email:"cr.eco@ipu.ac.in",phone:"+91 98100 22002",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"Class Representative",is_active:1},
   ];
-  let id = 1;
-  for (const u of users) {
-    db.users.push({ id: id++, ...u, password_hash: hash(u.password), created_at: now(), last_login: null });
+  let id=1;
+  for(const u of users) db.users.push({id:id++,...u,password_hash:hash(u.password),created_at:now(),last_login:null});
+  db._nextId=id;
+
+  /* ── Seed timetables ──────────────────────────────────────────── */
+
+  // M.A. English — Semester III
+  const maEngKey = ttKey("M.A. English", "Semester III");
+  db.timetables[maEngKey] = {
+    "mon_0":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
+    "mon_1":{subject:"Literary Theory",room:"Room 204",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "mon_4":{subject:"Comparative Literature",room:"Room 202",faculty:"Dr. Shuchi Sharma",notes:""},
+    "tue_0":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
+    "tue_2":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
+    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "wed_0":{subject:"Literary Theory",room:"Room 204",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "wed_1":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
+    "thu_1":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
+    "thu_2":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "fri_0":{subject:"Modern Fiction",room:"Room 203",faculty:"Dr. Shuchi Sharma",notes:""},
+    "fri_2":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
+  };
+  db.timetableMeta.push({prog:"M.A. English",section:"Semester III",batch:"2023–25",accentIdx:0,createdAt:now()});
+
+  // M.A. Economics — Semester II
+  const maEcoKey = ttKey("M.A. Economics", "Semester II");
+  db.timetables[maEcoKey] = {
+    "mon_2":{subject:"Development Economics",room:"Room 301",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "mon_4":{subject:"Macroeconomics",room:"Room 302",faculty:"Dr. Naresh Kumar Vats",notes:""},
+    "tue_1":{subject:"Microeconomics",room:"Room 302",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "wed_3":{subject:"Econometrics",room:"Room 305",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "thu_0":{subject:"Indian Economy & Policy",room:"Room 301",faculty:"Dr. Naresh Kumar Vats",notes:""},
+    "fri_4":{subject:"Development Economics",room:"Room 301",faculty:"Dr. Vivek Sachdeva",notes:""},
+  };
+  db.timetableMeta.push({prog:"M.A. Economics",section:"Semester II",batch:"2024–26",accentIdx:1,createdAt:now()});
+
+  // B.A. (Hons.) English — Section A
+  const baEngAKey = ttKey("B.A. (Hons.) English", "Section A");
+  db.timetables[baEngAKey] = {
+    "mon_0":{subject:"Old English & Medieval Lit.",room:"Room 101",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "mon_2":{subject:"Poetry & Poetics",room:"Room 102",faculty:"Dr. Shuchi Sharma",notes:""},
+    "tue_0":{subject:"Drama & Theatre",room:"Sem Hall B",faculty:"Dr. Chetna Tiwari",notes:""},
+    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "wed_1":{subject:"Linguistics",room:"Room 101",faculty:"Dr. Chetna Tiwari",notes:""},
+    "wed_3":{subject:"Old English & Medieval Lit.",room:"Room 102",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "thu_0":{subject:"Poetry & Poetics",room:"Room 102",faculty:"Dr. Shuchi Sharma",notes:""},
+    "thu_4":{subject:"TUTORIAL",room:"Room 101",faculty:"Dr. Shuchi Sharma",notes:"Weekly tutorial"},
+    "fri_1":{subject:"Drama & Theatre",room:"Sem Hall B",faculty:"Dr. Chetna Tiwari",notes:""},
+    "fri_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+  };
+  db.timetableMeta.push({prog:"B.A. (Hons.) English",section:"Section A",batch:"2024–28",accentIdx:4,createdAt:now()});
+
+  // B.A. (Hons.) English — Section B
+  const baEngBKey = ttKey("B.A. (Hons.) English", "Section B");
+  db.timetables[baEngBKey] = {
+    "mon_1":{subject:"Old English & Medieval Lit.",room:"Room 103",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "mon_3":{subject:"Poetry & Poetics",room:"Room 104",faculty:"Dr. Shuchi Sharma",notes:""},
+    "tue_2":{subject:"Drama & Theatre",room:"Sem Hall A",faculty:"Dr. Chetna Tiwari",notes:""},
+    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "wed_0":{subject:"Linguistics",room:"Room 103",faculty:"Dr. Chetna Tiwari",notes:""},
+    "thu_2":{subject:"Old English & Medieval Lit.",room:"Room 104",faculty:"Dr. Anup Singh Beniwal",notes:""},
+    "fri_0":{subject:"Poetry & Poetics",room:"Room 104",faculty:"Dr. Shuchi Sharma",notes:""},
+    "fri_4":{subject:"TUTORIAL",room:"Room 103",faculty:"Dr. Chetna Tiwari",notes:""},
+  };
+  db.timetableMeta.push({prog:"B.A. (Hons.) English",section:"Section B",batch:"2024–28",accentIdx:4,createdAt:now()});
+
+  // B.A. (Hons.) Economics — Semester I
+  const baEcoKey = ttKey("B.A. (Hons.) Economics", "Semester I");
+  db.timetables[baEcoKey] = {
+    "mon_0":{subject:"Microeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "mon_3":{subject:"Indian Economy & Policy",room:"Room 202",faculty:"Dr. Naresh Kumar Vats",notes:""},
+    "tue_1":{subject:"Macroeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
+    "wed_2":{subject:"International Trade",room:"Room 203",faculty:"Dr. Naresh Kumar Vats",notes:""},
+    "thu_0":{subject:"Microeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "thu_3":{subject:"TUTORIAL",room:"Room 202",faculty:"Dr. Vivek Sachdeva",notes:""},
+    "fri_2":{subject:"Macroeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
+  };
+  db.timetableMeta.push({prog:"B.A. (Hons.) Economics",section:"Semester I",batch:"2024–28",accentIdx:5,createdAt:now()});
+
+  // Ph.D. Research Seminar
+  const phdKey = ttKey("Ph.D.", "Research Seminar");
+  db.timetables[phdKey] = {
+    "wed_4":{subject:"Research Methods",room:"Room 101",faculty:"Dr. Chetna Tiwari",notes:""},
+    "fri_3":{subject:"SEMINAR",room:"Conference Room",faculty:"Dr. Shuchi Sharma",notes:"Biweekly presentation"},
+  };
+  db.timetableMeta.push({prog:"Ph.D.",section:"Research Seminar",batch:"",accentIdx:6,createdAt:now()});
+
+  // Sample attendance
+  const attStudents = ["2301001","2301002","2401001","2401101","2401201"];
+  const sessions = [
+    {date:"2025-04-14",subject:"Postcolonial Literature",faculty:"Dr. Shuchi Sharma",programme:"M.A. English"},
+    {date:"2025-04-12",subject:"Linguistics",faculty:"Dr. Chetna Tiwari",programme:"M.A. English"},
+    {date:"2025-04-10",subject:"Literary Theory",faculty:"Dr. Anup Singh Beniwal",programme:"M.A. English"},
+    {date:"2025-04-08",subject:"Development Economics",faculty:"Dr. Vivek Sachdeva",programme:"M.A. Economics"},
+    {date:"2025-04-11",subject:"Old English & Medieval Lit.",faculty:"Dr. Anup Singh Beniwal",programme:"B.A. (Hons.) English"},
+  ];
+  let attId=1;
+  for(const sess of sessions){
+    for(const roll of attStudents){
+      db.attendance.push({id:attId++,roll,date:sess.date,subject:sess.subject,faculty:sess.faculty,programme:sess.programme,status:Math.random()>.3?"present":"absent",note:"",edited_by:null,edited_at:null});
+    }
   }
-  db._nextId = id;
-  db.audit.push({ id:1, user_id:1, action:"INIT", detail:"Database initialised", ts: now() });
+  db._attId=attId;
+
+  db.announcements = [
+    {id:1,title:"M.A. Admissions 2025–26 Now Open",body:"Applications for M.A. programmes are now open via IPU CET. Last date: May 15, 2025.",target:"all",priority:"important",ts:"2025-04-14 10:00",pinUntil:"2025-05-15"},
+    {id:2,title:"Mid-Semester Results Published",body:"Mid-semester examination results are now available on the university portal.",target:"student",priority:"normal",ts:"2025-04-08 14:00",pinUntil:null},
+    {id:3,title:"Faculty Meeting — Department Review",body:"All faculty members are requested to attend the departmental review meeting on April 20th at 2:00 PM.",target:"faculty",priority:"urgent",ts:"2025-04-10 09:00",pinUntil:null},
+  ];
+  db._annId=4;
+  db.audit.push({id:1,user_id:1,action:"DB_INIT",detail:"Database initialised with v4 schema",ts:now()});
   saveDB(db);
   return db;
 }
 
-/* ── CRUD ── */
-function dbGetUsers(filters = {}) {
-  const db = loadDB();
-  let users = [...db.users];
-  if (filters.role) users = users.filter(u => u.role === filters.role);
-  if (filters.search) {
-    const q = filters.search.toLowerCase();
-    users = users.filter(u => u.full_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || (u.email||"").toLowerCase().includes(q));
-  }
-  return users.sort((a,b) => b.id - a.id);
+/* ══════════════════════════════════════════
+   CRUD HELPERS
+══════════════════════════════════════════ */
+function dbGetUsers(f={}) {
+  const db=loadDB(); let u=[...db.users];
+  if(f.role) u=u.filter(x=>x.role===f.role);
+  if(f.search){const q=f.search.toLowerCase();u=u.filter(x=>x.full_name.toLowerCase().includes(q)||x.username.toLowerCase().includes(q)||(x.email||"").toLowerCase().includes(q));}
+  return u.sort((a,b)=>b.id-a.id);
 }
-
 function dbGetStats() {
-  const db = loadDB();
-  const counts = {};
-  for (const u of db.users) counts[u.role] = (counts[u.role]||0) + 1;
-  const active = db.users.filter(u => u.is_active).length;
-  const recentLogins = db.users.filter(u=>u.last_login).sort((a,b)=>b.last_login.localeCompare(a.last_login)).slice(0,8);
-  return { counts, active, total: db.users.length, recentLogins, log: [...db.audit].reverse().slice(0,30) };
+  const db=loadDB(); const counts={};
+  for(const u of db.users) counts[u.role]=(counts[u.role]||0)+1;
+  return {counts,active:db.users.filter(u=>u.is_active).length,total:db.users.length,log:[...db.audit].reverse().slice(0,30)};
 }
-
 function dbCreateUser(data) {
-  const db = loadDB();
-  if (db.users.find(u => u.username === data.username)) throw new Error("Username already exists");
-  const user = {
-    id: db._nextId++,
-    role: data.role,
-    username: data.username,
-    password_hash: hash(data.password),
-    full_name: data.full_name,
-    email: data.email || "",
-    phone: data.phone || "",
-    department: data.department || "",
-    programme: data.programme || "",
-    batch: data.batch || "",
-    designation: data.designation || "",
-    is_active: 1,
-    created_at: new Date().toISOString().replace("T"," ").substring(0,19),
-    last_login: null
-  };
+  const db=loadDB();
+  if(db.users.find(u=>u.username===data.username)) throw new Error("Username already exists");
+  const now=new Date().toISOString().replace("T"," ").substring(0,19);
+  const user={id:db._nextId++,role:data.role,username:data.username,password_hash:hash(data.password),full_name:data.full_name,email:data.email||"",phone:data.phone||"",department:data.department||"",programme:data.programme||"",batch:data.batch||"",designation:data.designation||"",is_active:1,created_at:now,last_login:null};
   db.users.push(user);
-  db.audit.push({ id: db._nextId++, user_id: 1, action:"CREATE_USER", detail:`Created ${data.role} ${data.username}`, ts: user.created_at });
-  saveDB(db);
-  return user;
+  db.audit.push({id:db._nextId++,user_id:1,action:"CREATE_USER",detail:`Created ${data.role} ${data.username}`,ts:now});
+  saveDB(db); return user;
 }
-
-function dbUpdateUser(id, data) {
-  const db = loadDB();
-  const idx = db.users.findIndex(u => u.id === id);
-  if (idx === -1) throw new Error("User not found");
-  const user = db.users[idx];
-  Object.assign(user, {
-    full_name:   data.full_name   ?? user.full_name,
-    email:       data.email       ?? user.email,
-    phone:       data.phone       ?? user.phone,
-    department:  data.department  ?? user.department,
-    programme:   data.programme   ?? user.programme,
-    batch:       data.batch       ?? user.batch,
-    designation: data.designation ?? user.designation,
-    is_active:   data.is_active   !== undefined ? Number(data.is_active) : user.is_active,
-  });
-  if (data.password) user.password_hash = hash(data.password);
-  const ts = new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({ id: db._nextId++, user_id: 1, action:"UPDATE_USER", detail:`Updated ${user.username}`, ts });
-  saveDB(db);
-  return user;
+function dbUpdateUser(id,data) {
+  const db=loadDB(); const idx=db.users.findIndex(u=>u.id===id);
+  if(idx===-1) throw new Error("User not found");
+  const u=db.users[idx];
+  Object.assign(u,{full_name:data.full_name??u.full_name,email:data.email??u.email,phone:data.phone??u.phone,department:data.department??u.department,programme:data.programme??u.programme,batch:data.batch??u.batch,designation:data.designation??u.designation,is_active:data.is_active!==undefined?Number(data.is_active):u.is_active});
+  if(data.password) u.password_hash=hash(data.password);
+  const ts=new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({id:db._nextId++,user_id:1,action:"UPDATE_USER",detail:`Updated ${u.username}`,ts});
+  saveDB(db); return u;
 }
-
 function dbDeleteUser(id) {
-  const db = loadDB();
-  const idx = db.users.findIndex(u => u.id === id);
-  if (idx === -1) throw new Error("User not found");
-  const user = db.users[idx];
-  db.users.splice(idx, 1);
-  const ts = new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({ id: db._nextId++, user_id: 1, action:"DELETE_USER", detail:`Deleted ${user.role} ${user.username}`, ts });
+  const db=loadDB(); const idx=db.users.findIndex(u=>u.id===id);
+  if(idx===-1) throw new Error("Not found");
+  const u=db.users[idx]; db.users.splice(idx,1);
+  const ts=new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({id:db._nextId++,user_id:1,action:"DELETE_USER",detail:`Deleted ${u.role} ${u.username}`,ts});
   saveDB(db);
 }
-
-function dbGetAudit() {
-  const db = loadDB();
-  return [...db.audit].reverse();
+function logAudit(action,detail) {
+  const db=loadDB(); const ts=new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({id:db._nextId++,user_id:1,action,detail,ts}); saveDB(db);
 }
 
-/* ═══ PAGES ═══ */
-let currentPage = "dashboard";
-let editingId = null;
-let deleteId = null;
-
-const titles = {
-  dashboard: ["Dashboard", "USHSS / Admin / Overview"],
-  students:  ["Students", "USHSS / Admin / Users / Students"],
-  faculty:   ["Faculty", "USHSS / Admin / Users / Faculty"],
-  cr:        ["Class Representatives", "USHSS / Admin / Users / CR"],
-  admin:     ["Administrators", "USHSS / Admin / Users / Admin"],
-  audit:     ["Audit Log", "USHSS / Admin / System / Audit"],
-  schema:    ["Database Schema", "USHSS / Admin / System / Schema"],
+/* ══════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════ */
+let currentPage="dashboard", editingId=null, deleteId=null, deleteCallback=null;
+const pageTitles={
+  dashboard:["Dashboard","USHSS / Admin / Overview"],
+  students:["Students","USHSS / Admin / Users / Students"],
+  faculty:["Faculty","USHSS / Admin / Users / Faculty"],
+  cr:["Class Representatives","USHSS / Admin / Users / CR"],
+  admin:["Administrators","USHSS / Admin / Users / Admin"],
+  timetable:["Timetable Manager","USHSS / Admin / Academic / Timetable"],
+  attendance:["Attendance Editor","USHSS / Admin / Academic / Attendance"],
+  announcements:["Announcements","USHSS / Admin / Academic / Announcements"],
+  audit:["Audit Log","USHSS / Admin / System / Audit"],
+  schema:["Database Schema","USHSS / Admin / System / Schema"],
 };
 
 function showPage(page) {
-  currentPage = page;
-  document.querySelectorAll(".nav-item").forEach(el => {
-    el.classList.toggle("active", el.dataset.page === page);
-  });
-  const [title, crumb] = titles[page] || [page, ""];
-  document.getElementById("topbar-title").textContent = title;
-  document.getElementById("topbar-crumb").textContent = crumb;
+  currentPage=page;
+  document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
+  const[title,crumb]=pageTitles[page]||[page,""];
+  document.getElementById("topbar-title").textContent=title;
+  document.getElementById("topbar-crumb").textContent=crumb;
   renderPage(page);
 }
 
 function renderPage(page) {
-  const c = document.getElementById("content");
   updateBadges();
-  if (page === "dashboard")  c.innerHTML = renderDashboard();
-  else if (page === "audit") c.innerHTML = renderAudit();
-  else if (page === "schema") c.innerHTML = renderSchema();
-  else c.innerHTML = renderUserTable(page);
+  const c=document.getElementById("content");
+  if(page==="dashboard") c.innerHTML=renderDashboard();
+  else if(page==="timetable") c.innerHTML=renderTimetable();
+  else if(page==="attendance") c.innerHTML=renderAttendance();
+  else if(page==="announcements") c.innerHTML=renderAnnouncements();
+  else if(page==="audit") c.innerHTML=renderAudit();
+  else if(page==="schema") c.innerHTML=renderSchema();
+  else c.innerHTML=renderUserTable(page);
 }
 
-/* ── DASHBOARD ── */
+/* ══════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════ */
 function renderDashboard() {
-  const s = dbGetStats();
-  const roleColor = { student: "#4A7FC0", faculty: "#8B6FC0", cr: "#3DAA72", admin: "#C9A84C" };
-  const roleIcon  = { student: "🎓", faculty: "📚", cr: "🤝", admin: "🔑" };
-
-  const statCards = ["student","faculty","cr","admin"].map(r => `
+  const s=dbGetStats();
+  const rc={student:"#4A7FC0",faculty:"#8B6FC0",cr:"#3DAA72",admin:"#C9A84C"};
+  const ri={student:"🎓",faculty:"📚",cr:"🤝",admin:"🔑"};
+  const cards=["student","faculty","cr","admin"].map(r=>`
     <div class="stat-card" onclick="showPage('${r}')" style="cursor:pointer">
-      <div class="stat-icon" style="background:${roleColor[r]}22">${roleIcon[r]}</div>
+      <div class="stat-icon" style="background:${rc[r]}22">${ri[r]}</div>
       <div>
         <div class="stat-num">${s.counts[r]||0}</div>
-        <div class="stat-label">${r === "cr" ? "Class Reps" : r.charAt(0).toUpperCase()+r.slice(1)+"s"}</div>
+        <div class="stat-label">${r==="cr"?"Class Reps":r.charAt(0).toUpperCase()+r.slice(1)+"s"}</div>
         <div class="stat-trend" style="color:var(--green)">● active: ${dbGetUsers({role:r}).filter(u=>u.is_active).length}</div>
       </div>
-    </div>
-  `).join("");
-
-  const recentLogins = (s.recentLogins.length > 0) ? s.recentLogins.map(u => `
+    </div>`).join("");
+  const db=loadDB();
+  const ttCount=(db.timetableMeta||[]).length;
+  const liveCount=(db.liveSessions||[]).filter(s=>s.active).length;
+  const log=s.log.slice(0,10).map(l=>`
     <div class="log-entry">
-      <div class="log-dot" style="background:${roleColor[u.role]||"#555"}"></div>
-      <div style="flex:1">
-        <div class="log-text"><strong>${u.full_name}</strong> <span class="badge badge-${u.role}" style="font-size:9px">${u.role}</span></div>
-        <div class="log-time">${u.last_login||"Never"}</div>
-      </div>
-    </div>
-  `).join("") : `<div class="empty-state"><div class="empty-icon">🔐</div><div class="empty-text">No logins yet</div></div>`;
-
-  const recentAudit = s.log.slice(0,12).map(l => `
-    <div class="log-entry">
-      <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":"var(--blue)"}"></div>
-      <div style="flex:1">
-        <div class="log-text"><strong>${l.action}</strong> — ${l.detail||""}</div>
-        <div class="log-time">${l.ts}</div>
-      </div>
-    </div>
-  `).join("");
-
+      <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":l.action.includes("TIMETABLE")?"var(--teal)":l.action.includes("ATTEND")?"var(--amber)":"var(--blue)"}"></div>
+      <div style="flex:1"><div class="log-text"><strong>${l.action}</strong> — ${l.detail||""}</div><div class="log-time">${l.ts}</div></div>
+    </div>`).join("");
   return `
-    <div class="stats-grid">${statCards}<div class="stat-card" style="grid-column:span 2">
-        <div class="stat-icon" style="background:rgba(255,255,255,.05)">👥</div>
-        <div>
-          <div class="stat-num">${s.total}</div>
-          <div class="stat-label">Total Users</div>
-          <div class="stat-trend" style="color:var(--green)">● ${s.active} active &nbsp;<span style="color:var(--red)">● ${s.total - s.active} inactive</span></div>
+    <div class="stats-grid">${cards}
+      <div class="stat-card" style="cursor:pointer" onclick="showPage('timetable')">
+        <div class="stat-icon" style="background:rgba(32,168,155,.15)">🗓️</div>
+        <div><div class="stat-num">${ttCount}</div><div class="stat-label">Timetables</div><div class="stat-trend" style="color:var(--teal)">↗ Manage All</div></div>
+      </div>
+      <div class="stat-card" style="cursor:pointer" onclick="showPage('attendance')">
+        <div class="stat-icon" style="background:rgba(212,160,23,.15)">✅</div>
+        <div><div class="stat-num">${liveCount>0?`<span style="color:var(--green)">${liveCount}</span>`:db.attendance?.length||0}</div>
+        <div class="stat-label">${liveCount>0?"Live Sessions":"Att. Records"}</div>
+        <div class="stat-trend" style="color:${liveCount>0?"var(--green)":"var(--muted)"}">● ${liveCount>0?"Session Active":"Edit Records"}</div></div>
+      </div>
+    </div>
+    <div class="two-col" style="margin-bottom:20px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div><div class="card-title">Attendance Control</div><div class="card-sub">Host or manage attendance sessions</div></div>
         </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-success btn-lg" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host Live Session</button>
+          <button class="btn btn-teal" onclick="showPage('attendance')">✏ Edit Records</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div><div class="card-title">Announcements</div><div class="card-sub">${(db.announcements||[]).length} total</div></div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('ann-modal').classList.add('open')">+ New</button>
+        </div>
+        ${(db.announcements||[]).slice(0,3).map(a=>`
+          <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:600;color:var(--text)">${a.title}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px">${a.ts} · ${a.target} · <span style="color:${a.priority==='urgent'?'var(--red)':a.priority==='important'?'var(--amber)':'var(--muted)'}">${a.priority}</span></div>
+          </div>`).join("")}
       </div>
     </div>
     <div class="two-col">
       <div class="card">
-        <div class="card-title">Recent Logins</div>
-        <div class="card-sub" style="margin-bottom:14px">Last sessions by user</div>
-        <div style="max-height:280px;overflow-y:auto">${recentLogins}</div>
+        <div class="card-title" style="margin-bottom:14px">Recent Activity</div>
+        <div style="max-height:260px;overflow-y:auto">${log}</div>
       </div>
       <div class="card">
-        <div class="card-title">Activity Log</div>
-        <div class="card-sub" style="margin-bottom:14px">Admin actions</div>
-        <div style="max-height:280px;overflow-y:auto">${recentAudit}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Default Credentials</div>
-      <div class="card-sub" style="margin-bottom:16px">Change these immediately in production</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Role</th><th>Username</th><th>Default Password</th><th>Notes</th></tr></thead>
+        <div class="card-title" style="margin-bottom:16px">Default Credentials</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Role</th><th>Username</th><th>Password</th></tr></thead>
           <tbody>
-            <tr><td><span class="badge badge-admin">admin</span></td><td class="mono">admin001</td><td class="mono">Admin@1234</td><td style="color:var(--red);font-size:12px">⚠ Change immediately</td></tr>
-            <tr><td><span class="badge badge-student">student</span></td><td class="mono">2301001 / 2301002 / 2401001 / 2401002</td><td class="mono">Student@123</td><td style="color:var(--muted);font-size:12px">Batch-based reset recommended</td></tr>
-            <tr><td><span class="badge badge-faculty">faculty</span></td><td class="mono">fac001 – fac004</td><td class="mono">Faculty@123</td><td style="color:var(--muted);font-size:12px">Email reset preferred</td></tr>
-            <tr><td><span class="badge badge-cr">cr</span></td><td class="mono">cr2301001 / cr2401001</td><td class="mono">Cr@12345</td><td style="color:var(--muted);font-size:12px">CR-specific credentials</td></tr>
+            <tr><td><span class="badge badge-admin">admin</span></td><td class="mono">admin001</td><td class="mono" style="color:var(--red)">Admin@1234 ⚠</td></tr>
+            <tr><td><span class="badge badge-student">student</span></td><td class="mono">2301001…</td><td class="mono">Student@123</td></tr>
+            <tr><td><span class="badge badge-faculty">faculty</span></td><td class="mono">fac001…</td><td class="mono">Faculty@123</td></tr>
+            <tr><td><span class="badge badge-cr">cr</span></td><td class="mono">cr2301001</td><td class="mono">Cr@12345</td></tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
-/* ── USER TABLE ── */
-let searchQuery = "";
-let statusFilter = "";
+/* ══════════════════════════════════════════
+   TIMETABLE — MULTI-PROGRAMME SYSTEM
+══════════════════════════════════════════ */
+const TT_DAYS=[{key:"mon",label:"Monday"},{key:"tue",label:"Tuesday"},{key:"wed",label:"Wednesday"},{key:"thu",label:"Thursday"},{key:"fri",label:"Friday"}];
+const TT_TIMES=["9–10 AM","10–11 AM","11–12 PM","12–1 PM","1–2 PM","2–3 PM","3–4 PM","4–5 PM"];
 
+// State for timetable view
+let ttCurrentProg = "";   // empty = show all
+let ttCurrentSection = "";
+let ttEditing = {day:null,timeIdx:null};
+
+// Accent colours per programme
+const TT_ACCENT_COLORS = [
+  "#8B2A2A","#2B5BA8","#2D7A4A","#7A5B2D","#5A2B7A","#20A89B","#C9A84C"
+];
+
+function ttGetMeta() {
+  const db = loadDB();
+  return db.timetableMeta || [];
+}
+function ttGetProgs() {
+  const meta = ttGetMeta();
+  return [...new Set(meta.map(m => m.prog))];
+}
+function ttGetSections(prog) {
+  return ttGetMeta().filter(m => m.prog === prog).map(m => m.section);
+}
+
+function renderTimetable() {
+  const db = loadDB();
+  const meta = db.timetableMeta || [];
+  const progs = [...new Set(meta.map(m => m.prog))];
+
+  // Default to first programme if none selected
+  if (!ttCurrentProg && progs.length > 0) ttCurrentProg = progs[0];
+  if (ttCurrentProg && !ttCurrentSection) {
+    const secs = ttGetSections(ttCurrentProg);
+    if (secs.length > 0) ttCurrentSection = secs[0];
+  }
+
+  // Programme tab bar
+  const progTabs = progs.map(p => {
+    const m = meta.find(x => x.prog === p);
+    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
+    const isActive = p === ttCurrentProg;
+    const secCount = ttGetSections(p).length;
+    return `<div class="tt-prog-tab ${isActive?"active":""}" onclick="ttSelectProg('${escAttr(p)}')"
+      style="${isActive?`border-bottom-color:${accent};`:""}"
+      title="${p}">
+      <div class="tt-tab-name" style="${isActive?`color:${accent}`:""}">${p}</div>
+      <div class="tt-tab-sub">${secCount} section${secCount!==1?"s":""}</div>
+    </div>`;
+  }).join("");
+
+  // "+" add new timetable tab
+  const addTab = `<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable for a new programme or section">
+    <div class="tt-tab-add-icon">+</div>
+  </div>`;
+
+  // Section pill bar for current programme
+  let sectionBar = "";
+  if (ttCurrentProg) {
+    const sections = ttGetSections(ttCurrentProg);
+    const sectionPills = sections.map(s => {
+      const isAct = s === ttCurrentSection;
+      return `<div class="tt-section-tab ${isAct?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</div>`;
+    }).join("");
+    const m = meta.find(x => x.prog === ttCurrentProg);
+    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
+    sectionBar = `
+      <div class="tt-section-bar">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-right:2px">SECTIONS:</span>
+        ${sectionPills}
+        <div class="tt-section-add" onclick="openNewTimetableModal('${escAttr(ttCurrentProg)}')" title="Add section">
+          <span>+</span> Add Section
+        </div>
+        ${ttCurrentSection?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Section</button>`:""}
+      </div>`;
+  }
+
+  // Grid
+  let gridHTML = "";
+  if (ttCurrentProg && ttCurrentSection) {
+    const key = ttKey(ttCurrentProg, ttCurrentSection);
+    const slots = db.timetables[key] || {};
+    const m = meta.find(x => x.prog === ttCurrentProg && x.section === ttCurrentSection);
+    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
+    const accentClass = `tt-acc-${m?.accentIdx ?? 0}`;
+
+    const heads = TT_DAYS.map(d => `<div class="tt-head">${d.label}</div>`).join("");
+    let rows = "";
+    for (let t = 0; t < TT_TIMES.length; t++) {
+      rows += `<div class="tt-time">${TT_TIMES[t]}</div>`;
+      for (const d of TT_DAYS) {
+        const cellKey = `${d.key}_${t}`;
+        const cell = slots[cellKey];
+        if (!cell || !cell.subject) {
+          rows += `<div class="tt-cell" onclick="openTTEdit('${d.key}',${t})">
+            <div class="tt-cell-empty">+</div>
+          </div>`;
+        } else if (cell.subject === "BREAK") {
+          rows += `<div class="tt-cell break" onclick="openTTEdit('${d.key}',${t})">
+            <div style="text-align:center;font-size:11px;color:var(--amber);font-weight:600;margin-top:8px">☕ Break / Lunch</div>
+            <div class="tt-edit-btn">✎</div>
+          </div>`;
+        } else {
+          const isSpecial = ["LAB","SEMINAR","TUTORIAL"].includes(cell.subject);
+          const specialIcon = {LAB:"🔬",SEMINAR:"🎤",TUTORIAL:"📝"}[cell.subject]||"";
+          const displaySub = isSpecial ? `${specialIcon} ${cell.subject}` : cell.subject;
+          rows += `<div class="tt-cell has-class ${accentClass}" onclick="openTTEdit('${d.key}',${t})">
+            <div class="tt-cell-subject">${displaySub}</div>
+            ${cell.room?`<div class="tt-cell-room">📍 ${cell.room}</div>`:""}
+            ${cell.faculty?`<div class="tt-cell-teacher">👤 ${cell.faculty.replace("Dr. ","Dr.")}</div>`:""}
+            ${cell.notes?`<div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px;font-style:italic">${cell.notes}</div>`:""}
+            <div class="tt-edit-btn">✎</div>
+          </div>`;
+        }
+      }
+    }
+
+    // Count classes for this timetable
+    const classCount = Object.values(slots).filter(v=>v.subject&&v.subject!=="BREAK").length;
+    const batchInfo = m?.batch ? `Batch: ${m.batch}` : "";
+
+    gridHTML = `
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:10px;height:10px;border-radius:2px;background:${accent};flex-shrink:0"></div>
+          <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--cream)">${ttCurrentProg}</span>
+          <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">/ ${ttCurrentSection}</span>
+          ${batchInfo?`<span class="badge badge-amber" style="font-size:10px">${batchInfo}</span>`:""}
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${classCount} class${classCount!==1?"es":""}/week</span>
+          <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
+          <button class="btn btn-primary btn-sm" onclick="toast('Timetable published to all portals','success');logAudit('TIMETABLE_PUBLISH','${escAttr(ttCurrentProg)} / ${escAttr(ttCurrentSection)}')">📡 Publish</button>
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
+        <div class="tt-grid" style="min-width:700px">
+          <div class="tt-head" style="background:transparent;border-color:transparent"></div>
+          ${heads}${rows}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:12px;font-family:var(--mono)">💡 Click any cell to add or edit a class · Left border colour indicates programme</div>
+      </div>`;
+  } else if (progs.length === 0) {
+    gridHTML = `
+      <div class="tt-empty-state">
+        <div class="tt-empty-icon">🗓️</div>
+        <div class="tt-empty-title">No timetables yet</div>
+        <div class="tt-empty-sub">Click the + button above to create your first timetable</div>
+        <button class="btn btn-primary btn-lg" onclick="openNewTimetableModal()">➕ Create First Timetable</button>
+      </div>`;
+  } else {
+    gridHTML = `
+      <div class="tt-empty-state">
+        <div class="tt-empty-icon">📋</div>
+        <div class="tt-empty-title">Select a section</div>
+        <div class="tt-empty-sub">Choose or create a section above to view its timetable</div>
+      </div>`;
+  }
+
+  return `
+    <div class="sec-head">
+      <div><div class="sec-label">Academic Schedule</div><div class="sec-title">Timetable Manager</div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${meta.length} timetable${meta.length!==1?"s":""} across ${progs.length} programme${progs.length!==1?"s":""}</span>
+      </div>
+    </div>
+
+    <!-- Programme tab bar -->
+    <div class="tt-tab-bar" id="tt-tab-bar">
+      ${progTabs}
+      ${addTab}
+    </div>
+
+    <!-- Section pill bar -->
+    ${sectionBar}
+
+    <!-- Grid -->
+    ${gridHTML}`;
+}
+
+function ttSelectProg(prog) {
+  ttCurrentProg = prog;
+  const secs = ttGetSections(prog);
+  ttCurrentSection = secs.length > 0 ? secs[0] : "";
+  renderPage("timetable");
+}
+function ttSelectSection(sec) {
+  ttCurrentSection = sec;
+  renderPage("timetable");
+}
+
+/* ── New Timetable Modal ──────────────────── */
+function openNewTimetableModal(presetProg) {
+  if (presetProg) document.getElementById("tt-new-prog").value = presetProg;
+  document.getElementById("tt-new-sec-preset").value = "";
+  document.getElementById("tt-new-sec-custom").value = "";
+  document.getElementById("tt-new-exists-warn").style.display = "none";
+  document.getElementById("tt-new-modal").classList.add("open");
+}
+function onSectionPreset() {
+  const val = document.getElementById("tt-new-sec-preset").value;
+  if (val && val !== "custom") {
+    document.getElementById("tt-new-sec-custom").value = val;
+  } else if (val === "custom") {
+    document.getElementById("tt-new-sec-custom").value = "";
+    document.getElementById("tt-new-sec-custom").focus();
+  }
+  checkTTExists();
+}
+function checkTTExists() {
+  const prog = document.getElementById("tt-new-prog").value;
+  const sec  = document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value;
+  if (!prog || !sec || sec === "custom") { document.getElementById("tt-new-exists-warn").style.display="none"; return; }
+  const db = loadDB();
+  const exists = db.timetableMeta?.some(m => m.prog === prog && m.section === sec);
+  document.getElementById("tt-new-exists-warn").style.display = exists ? "block" : "none";
+}
+function createNewTimetable() {
+  const prog  = document.getElementById("tt-new-prog").value;
+  const sec   = (document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value).trim();
+  const batch = document.getElementById("tt-new-batch").value;
+  if (!prog) { toast("Please select a programme","error"); return; }
+  if (!sec || sec === "custom") { toast("Please enter a section name","error"); return; }
+
+  const db = loadDB();
+  if (!db.timetableMeta) db.timetableMeta = [];
+  if (!db.timetables) db.timetables = {};
+
+  const existing = db.timetableMeta.findIndex(m => m.prog === prog && m.section === sec);
+  const k = ttKey(prog, sec);
+
+  if (existing === -1) {
+    // Assign next available accent colour
+    const usedAccents = db.timetableMeta.map(m=>m.accentIdx);
+    let accent = 0;
+    for (let i = 0; i < TT_ACCENT_COLORS.length; i++) {
+      if (!usedAccents.includes(i)) { accent = i; break; }
+    }
+    const now = new Date().toISOString().replace("T"," ").substring(0,19);
+    db.timetableMeta.push({prog, section:sec, batch, accentIdx:accent, createdAt:now});
+    db.timetables[k] = {};
+    logAudit("TIMETABLE_CREATE", `${prog} / ${sec}`);
+    saveDB(db);
+    toast(`Timetable created: ${prog} / ${sec}`, "success");
+  } else {
+    toast("Switching to existing timetable", "info");
+  }
+
+  ttCurrentProg = prog;
+  ttCurrentSection = sec;
+  closeModal2("tt-new-modal");
+  renderPage("timetable");
+}
+
+function deleteTimetable(prog, sec) {
+  deleteCallback = () => {
+    const db = loadDB();
+    const k = ttKey(prog, sec);
+    db.timetableMeta = (db.timetableMeta||[]).filter(m => !(m.prog===prog && m.section===sec));
+    delete db.timetables[k];
+    logAudit("TIMETABLE_DELETE", `${prog} / ${sec}`);
+    saveDB(db);
+    if (ttCurrentProg === prog && ttCurrentSection === sec) {
+      const secs = ttGetSections(prog);
+      ttCurrentSection = secs.filter(s=>s!==sec)[0] || "";
+      if (!ttCurrentSection) {
+        const progs = ttGetProgs();
+        ttCurrentProg = progs.filter(p=>p!==prog)[0] || "";
+      }
+    }
+    toast(`Timetable deleted: ${prog} / ${sec}`, "success");
+    renderPage("timetable");
+  };
+  document.getElementById("confirm-title").textContent = "Delete Timetable?";
+  document.getElementById("confirm-msg").textContent = `Delete the timetable for "${prog} / ${sec}"? All ${Object.keys((loadDB().timetables||{})[ttKey(prog,sec)]||{}).length} slots will be removed.`;
+  document.getElementById("confirm-ok-btn").textContent = "Delete Timetable";
+  document.getElementById("confirm-overlay").classList.add("open");
+}
+
+/* ── Cell edit ──────────────────────────── */
+function openTTEdit(day, timeIdx) {
+  ttEditing = {day, timeIdx};
+  const db = loadDB();
+  const k = ttKey(ttCurrentProg, ttCurrentSection);
+  const cell = (db.timetables[k]||{})[`${day}_${timeIdx}`] || {};
+  document.getElementById("tt-slot-info").innerHTML =
+    `<span style="color:var(--gold)">${TT_DAYS.find(d=>d.key===day)?.label}</span> · ${TT_TIMES[timeIdx]} · <span style="color:var(--text)">${ttCurrentProg} / ${ttCurrentSection}</span>`;
+  document.getElementById("tt-modal-title").textContent = cell.subject ? "Edit Class Slot" : "Add Class to Slot";
+  document.getElementById("tt-subject").value = cell.subject || "";
+  document.getElementById("tt-room").value    = cell.room    || "";
+  document.getElementById("tt-faculty").value = cell.faculty || "";
+  document.getElementById("tt-notes").value   = cell.notes   || "";
+  document.getElementById("tt-modal").classList.add("open");
+}
+function closeTTModal() { document.getElementById("tt-modal").classList.remove("open"); }
+function saveTTCell() {
+  const {day, timeIdx} = ttEditing;
+  if (!ttCurrentProg || !ttCurrentSection) { toast("No timetable selected","error"); return; }
+  const db = loadDB();
+  const k  = ttKey(ttCurrentProg, ttCurrentSection);
+  if (!db.timetables[k]) db.timetables[k] = {};
+  const sub = document.getElementById("tt-subject").value;
+  db.timetables[k][`${day}_${timeIdx}`] = {
+    subject: sub,
+    room:    document.getElementById("tt-room").value,
+    faculty: document.getElementById("tt-faculty").value,
+    notes:   document.getElementById("tt-notes").value,
+  };
+  saveDB(db);
+  logAudit("TIMETABLE_EDIT", `${ttCurrentProg}/${ttCurrentSection} · ${TT_DAYS.find(d=>d.key===day)?.label} ${TT_TIMES[timeIdx]}: ${sub||"Cleared"}`);
+  closeTTModal(); renderPage("timetable");
+  toast("Slot saved", "success");
+}
+function clearTTCell() {
+  const {day, timeIdx} = ttEditing;
+  const db = loadDB();
+  const k  = ttKey(ttCurrentProg, ttCurrentSection);
+  if (db.timetables[k]) delete db.timetables[k][`${day}_${timeIdx}`];
+  saveDB(db);
+  logAudit("TIMETABLE_EDIT", `Cleared ${ttCurrentProg}/${ttCurrentSection} · ${TT_DAYS.find(d=>d.key===day)?.label} ${TT_TIMES[timeIdx]}`);
+  closeTTModal(); renderPage("timetable");
+  toast("Slot cleared", "success");
+}
+function exportTimetable() {
+  if (!ttCurrentProg || !ttCurrentSection) { toast("Select a timetable first","error"); return; }
+  const db = loadDB();
+  const k  = ttKey(ttCurrentProg, ttCurrentSection);
+  const slots = db.timetables[k] || {};
+  let csv = `Programme: ${ttCurrentProg} | Section: ${ttCurrentSection}\nDay,Time,Subject,Room,Faculty,Notes\n`;
+  for (const d of TT_DAYS) {
+    for (let t = 0; t < TT_TIMES.length; t++) {
+      const cell = slots[`${d.key}_${t}`];
+      if (cell?.subject) csv += `${d.label},${TT_TIMES[t]},"${cell.subject}","${cell.room||""}","${cell.faculty||""}","${cell.notes||""}"\n`;
+    }
+  }
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = `Timetable_${ttCurrentProg.replace(/\W+/g,"_")}_${ttCurrentSection.replace(/\W+/g,"_")}.csv`;
+  a.click();
+  toast("Timetable exported as CSV", "success");
+}
+
+function escAttr(s) { return (s||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;"); }
+
+/* ══════════════════════════════════════════
+   ATTENDANCE EDITOR
+══════════════════════════════════════════ */
+let attFilters={date:"",subject:"",roll:"",status:""};
+let attEditingId=null;
+
+function renderAttendance() {
+  const db=loadDB();
+  const liveSessions=(db.liveSessions||[]).filter(s=>s.active);
+  const subjects=[...new Set(db.attendance.map(a=>a.subject))];
+  const dates=[...new Set(db.attendance.map(a=>a.date))].sort().reverse();
+  let records=db.attendance.filter(a=>{
+    if(attFilters.date && a.date!==attFilters.date) return false;
+    if(attFilters.subject && a.subject!==attFilters.subject) return false;
+    if(attFilters.roll && !a.roll.includes(attFilters.roll) && !dbGetUsers().find(u=>u.username===a.roll)?.full_name.toLowerCase().includes(attFilters.roll.toLowerCase())) return false;
+    if(attFilters.status && a.status!==attFilters.status) return false;
+    return true;
+  });
+  const colors=["#8B2020","#2B5BA8","#2D7A4A","#7A5B2D","#5A2B7A"];
+  const pct=records.length?Math.round(records.filter(r=>r.status==="present").length/records.length*100):0;
+  const rows=records.length?records.map((r,i)=>{
+    const user=dbGetUsers().find(u=>u.username===r.roll)||{full_name:r.roll};
+    const sc={present:"badge-active",absent:"badge-inactive",late:"badge-amber",excused:"badge-blue"}[r.status]||"badge-blue";
+    return `<tr>
+      <td class="mono" style="color:var(--muted);font-size:11px">${r.date}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="background:${colors[i%5]}22;color:${colors[i%5]};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${user.full_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+          <div><div style="font-weight:600;color:var(--text);font-size:12px">${user.full_name}</div><div class="mono" style="font-size:10px;color:var(--muted)">${r.roll}</div></div>
+        </div>
+      </td>
+      <td style="font-size:12px">${r.subject}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.faculty||"—"}</td>
+      <td><span class="badge ${sc}">${r.status.toUpperCase()}</span>${r.note?`<span style="font-size:10px;color:var(--muted);margin-left:6px">📝</span>`:""}</td>
+      <td>${r.edited_by?`<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">Edited by ${r.edited_by}</span>`:`<span style="color:var(--border2)">—</span>`}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openAttEdit(${r.id})">✎ Edit</button></td>
+    </tr>`;
+  }).join(""):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div>No records match filters</div></div></td></tr>`;
+  return `
+    <div class="sec-head">
+      <div><div class="sec-label">Academic Records</div><div class="sec-title">Attendance Editor</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host New Session</button>
+        <button class="btn btn-primary btn-sm" onclick="exportAtt()">⬇ Export CSV</button>
+      </div>
+    </div>
+    ${liveSessions.length?`<div style="margin-bottom:18px">${liveSessions.map(s=>`
+      <div class="live-host-card" style="margin-bottom:12px">
+        <div class="live-pulse"><div class="live-dot"></div> LIVE SESSION ACTIVE</div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
+          <div><div class="live-timer" id="lt-${s.id}">--:--</div><div class="live-timer-lbl">Time Remaining</div></div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--cream);margin-bottom:4px">${s.programme} · ${s.subject}</div>
+            <div style="font-size:12px;color:rgba(245,241,232,.6)">${s.faculty} · Topic: ${s.topic||"General Class"}</div>
+            <div style="font-size:11px;color:var(--gold-l);margin-top:6px;font-family:var(--mono)">Started: ${s.startedAt}</div>
+          </div>
+          <button class="btn btn-amber btn-sm" onclick="stopSession('${s.id}')">⏹ Stop Session</button>
+        </div>
+      </div>`).join("")}</div>`:""}
+    <div class="att-filter-bar">
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);align-self:center;margin-right:4px">FILTER:</div>
+      <select class="filter-select" onchange="attFilters.date=this.value;renderPage('attendance')">
+        <option value="">All Dates</option>
+        ${dates.map(d=>`<option value="${d}" ${attFilters.date===d?"selected":""}>${d}</option>`).join("")}
+      </select>
+      <select class="filter-select" onchange="attFilters.subject=this.value;renderPage('attendance')">
+        <option value="">All Subjects</option>
+        ${subjects.map(s=>`<option value="${s}" ${attFilters.subject===s?"selected":""}>${s}</option>`).join("")}
+      </select>
+      <select class="filter-select" onchange="attFilters.status=this.value;renderPage('attendance')">
+        <option value="">All Status</option>
+        <option value="present" ${attFilters.status==="present"?"selected":""}>Present</option>
+        <option value="absent" ${attFilters.status==="absent"?"selected":""}>Absent</option>
+        <option value="late" ${attFilters.status==="late"?"selected":""}>Late</option>
+        <option value="excused" ${attFilters.status==="excused"?"selected":""}>Excused</option>
+      </select>
+      <input class="form-input" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px" placeholder="Search roll / name…" value="${attFilters.roll}" oninput="attFilters.roll=this.value;renderPage('attendance')"/>
+      <button class="btn btn-ghost btn-sm" onclick="attFilters={date:'',subject:'',roll:'',status:''};renderPage('attendance')">✕ Clear</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)">${records.length} records · <span style="color:${pct>=75?'var(--green)':'var(--red)'}">${pct}% present</span></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Faculty</th><th>Status</th><th>Modified</th><th>Action</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+
+function openAttEdit(id) {
+  attEditingId=id;
+  const db=loadDB();
+  const rec=db.attendance.find(a=>a.id===id);
+  if(!rec) return;
+  const user=dbGetUsers().find(u=>u.username===rec.roll)||{full_name:rec.roll};
+  document.getElementById("att-edit-info").innerHTML=`<strong>${user.full_name}</strong> (${rec.roll})<br/>${rec.date} · ${rec.subject}`;
+  document.getElementById("att-edit-status").value=rec.status;
+  document.getElementById("att-edit-note").value=rec.note||"";
+  document.getElementById("att-edit-modal").classList.add("open");
+}
+function saveAttEdit() {
+  const db=loadDB();
+  const idx=db.attendance.findIndex(a=>a.id===attEditingId);
+  if(idx===-1) return;
+  const old=db.attendance[idx].status;
+  db.attendance[idx].status=document.getElementById("att-edit-status").value;
+  db.attendance[idx].note=document.getElementById("att-edit-note").value;
+  db.attendance[idx].edited_by="Admin";
+  db.attendance[idx].edited_at=new Date().toISOString().replace("T"," ").substring(0,19);
+  const r=db.attendance[idx];
+  saveDB(db);
+  logAudit("ATTENDANCE_EDIT",`${r.roll} on ${r.date} for ${r.subject}: ${old} → ${r.status}`);
+  closeModal2("att-edit-modal"); renderPage("attendance");
+  toast("Attendance record updated","success");
+}
+function exportAtt() {
+  const db=loadDB();
+  let csv="Roll,Name,Date,Subject,Faculty,Status,Note\n";
+  for(const r of db.attendance){
+    const user=dbGetUsers().find(u=>u.username===r.roll)||{full_name:r.roll};
+    csv+=`${r.roll},"${user.full_name}",${r.date},"${r.subject}","${r.faculty||""}",${r.status},"${r.note||""}"\n`;
+  }
+  const a=document.createElement("a"); a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+  a.download="USHSS_Attendance.csv"; a.click(); toast("Attendance exported","success");
+}
+
+/* ══════════════════════════════════════════
+   LIVE SESSIONS
+══════════════════════════════════════════ */
+let timerIntervals={};
+function startLiveSession() {
+  const prog=document.getElementById("live-prog").value;
+  const subj=document.getElementById("live-subj").value;
+  const fac=document.getElementById("live-fac").value;
+  const dur=parseInt(document.getElementById("live-timer").value);
+  const topic=document.getElementById("live-topic").value||"General Class";
+  const db=loadDB();
+  const id="sess_"+Date.now();
+  const now=new Date().toISOString().replace("T"," ").substring(0,19);
+  if(!db.liveSessions) db.liveSessions=[];
+  db.liveSessions.push({id,programme:prog,subject:subj,faculty:fac,topic,duration:dur,timeLeft:dur,startedAt:now,active:true});
+  saveDB(db);
+  logAudit("ATTENDANCE_SESSION_START",`${prog} · ${subj} · ${fac}`);
+  closeModal2("live-modal");
+  document.getElementById("live-nav-badge").style.display="inline-flex";
+  document.getElementById("live-topbar").textContent="🔴 Live";
+  showPage("attendance");
+  toast(`Live session started for ${prog}`,"success");
+  startTimerInterval(id,dur);
+}
+function startTimerInterval(id,dur) {
+  if(dur===0) return;
+  timerIntervals[id]=setInterval(()=>{
+    const db=loadDB();
+    const s=db.liveSessions?.find(x=>x.id===id);
+    if(!s||!s.active){clearInterval(timerIntervals[id]);return;}
+    s.timeLeft=Math.max(0,s.timeLeft-1);
+    saveDB(db);
+    const el=document.getElementById(`lt-${id}`);
+    if(el){const m=String(Math.floor(s.timeLeft/60)).padStart(2,"0"),sec=String(s.timeLeft%60).padStart(2,"0");el.textContent=`${m}:${sec}`;}
+    if(s.timeLeft===0){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);toast("Session timer ended","success");renderPage("attendance");}
+  },1000);
+}
+function stopSession(id) {
+  const db=loadDB();
+  const s=db.liveSessions?.find(x=>x.id===id);
+  if(s){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);}
+  logAudit("ATTENDANCE_SESSION_STOP",`Stopped session ${id}`);
+  const anyLive=db.liveSessions?.some(x=>x.active);
+  if(!anyLive){document.getElementById("live-nav-badge").style.display="none";document.getElementById("live-topbar").textContent="";}
+  renderPage("attendance"); toast("Session stopped","success");
+}
+
+/* ══════════════════════════════════════════
+   ANNOUNCEMENTS
+══════════════════════════════════════════ */
+const priIcon={normal:"📢",important:"⚠️",urgent:"🚨"};
+const priBadge={normal:"badge-blue",important:"badge-amber",urgent:"badge-inactive"};
+const tgtBadge={all:"badge-teal",student:"badge-student",faculty:"badge-faculty",cr:"badge-cr"};
+function renderAnnouncements() {
+  const db=loadDB();
+  const anns=db.announcements||[];
+  return `
+    <div class="sec-head">
+      <div><div class="sec-label">Communication</div><div class="sec-title">Announcements</div></div>
+      <button class="btn btn-primary" onclick="document.getElementById('ann-modal').classList.add('open')">+ New Announcement</button>
+    </div>
+    ${anns.length?anns.map(a=>`
+      <div class="ann-item">
+        <div class="ann-item-top">
+          <div class="ann-item-title">${priIcon[a.priority]||"📢"} ${a.title}</div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <span class="badge ${priBadge[a.priority]||"badge-blue"}">${a.priority.toUpperCase()}</span>
+            <span class="badge ${tgtBadge[a.target]||"badge-teal"}">${a.target==="all"?"EVERYONE":a.target.toUpperCase()}</span>
+          </div>
+        </div>
+        <div class="ann-item-body">${a.body}</div>
+        <div class="ann-item-footer">
+          <span class="ann-time">🕒 ${a.ts}</span>
+          ${a.pinUntil?`<span class="badge badge-amber" style="font-size:9px">📌 Pinned until ${a.pinUntil}</span>`:""}
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="editAnn(${a.id})">✎ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAnn(${a.id})">🗑</button>
+          </div>
+        </div>
+      </div>`).join(""):
+      `<div class="empty-state"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`}`;
+}
+function postAnn() {
+  const title=document.getElementById("ann-title").value.trim();
+  const body=document.getElementById("ann-body").value.trim();
+  if(!title||!body){toast("Title and message required","error");return;}
+  const db=loadDB();
+  if(!db.announcements) db.announcements=[];
+  db.announcements.unshift({id:db._annId++,title,body,target:document.getElementById("ann-target").value,priority:document.getElementById("ann-priority").value,ts:new Date().toISOString().replace("T"," ").substring(0,19),pinUntil:document.getElementById("ann-pin").value||null});
+  saveDB(db);
+  logAudit("ANNOUNCEMENT_POST",`"${title}" → ${document.getElementById("ann-target").value}`);
+  document.getElementById("badge-ann").textContent=db.announcements.length;
+  closeModal2("ann-modal"); renderPage("announcements");
+  document.getElementById("ann-title").value=""; document.getElementById("ann-body").value="";
+  toast("Announcement broadcast to all portals","success");
+}
+function deleteAnn(id) {
+  const db=loadDB(); db.announcements=db.announcements.filter(a=>a.id!==id);
+  saveDB(db); logAudit("ANNOUNCEMENT_DELETE",`Deleted announcement id=${id}`);
+  document.getElementById("badge-ann").textContent=db.announcements.length;
+  renderPage("announcements"); toast("Deleted","success");
+}
+function editAnn(id) {
+  const db=loadDB(); const a=db.announcements.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById("ann-title").value=a.title;
+  document.getElementById("ann-body").value=a.body;
+  document.getElementById("ann-target").value=a.target;
+  document.getElementById("ann-priority").value=a.priority;
+  document.getElementById("ann-pin").value=a.pinUntil||"";
+  deleteAnn(id);
+  document.getElementById("ann-modal").classList.add("open");
+}
+
+/* ══════════════════════════════════════════
+   USER TABLE
+══════════════════════════════════════════ */
+let searchQuery="",statusFilter="";
 function renderUserTable(role) {
-  const users = dbGetUsers({ role, search: searchQuery, status: statusFilter });
-  const filtered = statusFilter === "" ? users : users.filter(u => String(u.is_active) === statusFilter);
-  const hasStudentFields = role === "student" || role === "cr";
-  const hasFacultyFields = role === "faculty";
-
-  const rows = filtered.length ? filtered.map(u => `
+  const users=dbGetUsers({role,search:searchQuery});
+  const filtered=statusFilter===""?users:users.filter(u=>String(u.is_active)===statusFilter);
+  const hasStudentFields=role==="student"||role==="cr";
+  const hasFacultyFields=role==="faculty";
+  const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
+  const rows=filtered.length?filtered.map(u=>`
     <tr>
       <td class="mono" style="color:var(--muted)">#${u.id}</td>
       <td><div style="font-weight:600;color:var(--text)">${u.full_name}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.username}</div></td>
-      <td>${u.email ? `<span style="font-size:12px">${u.email}</span>` : `<span style="color:var(--muted)">—</span>`}</td>
-      ${hasStudentFields ? `<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div></td>` : ""}
-      ${hasFacultyFields ? `<td style="font-size:12px">${u.designation||"—"}</td>` : ""}
-      ${role==="admin" ? `<td style="font-size:12px">${u.designation||"—"}</td>` : ""}
+      <td>${u.email?`<span style="font-size:12px">${u.email}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
+      ${hasStudentFields?`<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div></td>`:""}
+      ${hasFacultyFields?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
+      ${role==="admin"?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
       <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
-      <td><span class="badge ${u.is_active ? "badge-active":"badge-inactive"}">${u.is_active?"Active":"Inactive"}</span></td>
+      <td><span class="badge ${u.is_active?"badge-active":"badge-inactive"}">${u.is_active?"Active":"Inactive"}</span></td>
       <td class="mono" style="font-size:11px;color:var(--muted)">${u.last_login||"Never"}</td>
-      <td>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑</button>
-        </div>
-      </td>
-    </tr>
-  `).join("") : `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
-
-  const roleLabel = { student:"Student", faculty:"Faculty", cr:"Class Representative", admin:"Administrator" };
-
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑</button>
+      </div></td>
+    </tr>`).join(""):`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
   return `
     <div class="search-bar">
-      <div class="search-input-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Search by name, username or email…" value="${searchQuery}"
-          oninput="searchQuery=this.value; renderPage('${role}')"/>
+      <div class="search-input-wrap"><span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search by name, username or email…" value="${searchQuery}" oninput="searchQuery=this.value;renderPage('${role}')"/>
       </div>
-      <select class="filter-select" onchange="statusFilter=this.value; renderPage('${role}')">
+      <select class="filter-select" onchange="statusFilter=this.value;renderPage('${role}')">
         <option value="" ${statusFilter===""?"selected":""}>All Status</option>
         <option value="1" ${statusFilter==="1"?"selected":""}>Active</option>
         <option value="0" ${statusFilter==="0"?"selected":""}>Inactive</option>
       </select>
       <button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role]}</button>
-      <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} record${filtered.length!==1?"s":""}</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th><th>Name / Username</th><th>Email</th>
-            ${hasStudentFields ? "<th>Programme / Batch</th>" : ""}
-            ${hasFacultyFields ? "<th>Designation</th>" : ""}
-            ${role==="admin" ? "<th>Designation</th>" : ""}
-            <th>Dept.</th><th>Status</th><th>Last Login</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Name / Username</th><th>Email</th>
+        ${hasStudentFields?"<th>Programme / Batch</th>":""}
+        ${hasFacultyFields?"<th>Designation</th>":""}
+        ${role==="admin"?"<th>Designation</th>":""}
+        <th>Dept.</th><th>Status</th><th>Last Login</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
 }
 
-/* ── AUDIT ── */
+/* ══════════════════════════════════════════
+   AUDIT
+══════════════════════════════════════════ */
 function renderAudit() {
-  const entries = dbGetAudit();
-  const actionColor = a => a.includes("DELETE") ? "var(--red)" : a.includes("CREATE") ? "var(--green)" : a.includes("LOGIN") ? "var(--blue)" : "var(--muted)";
-  const rows = entries.map(l => `
-    <tr>
-      <td class="mono" style="color:var(--muted)">#${l.id}</td>
-      <td><span style="color:${actionColor(l.action)};font-family:var(--font-mono);font-size:12px;font-weight:600">${l.action}</span></td>
-      <td style="font-size:12px">${l.detail||"—"}</td>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${l.ts}</td>
-    </tr>
-  `).join("") || `<tr><td colspan="4"><div class="empty-state"><div>No audit events</div></div></td></tr>`;
-
+  const db=loadDB(); const entries=[...db.audit].reverse();
+  const ac=a=>a.includes("DELETE")?"var(--red)":a.includes("CREATE")?"var(--green)":a.includes("TIMETABLE")?"var(--teal)":a.includes("ATTEND")?"var(--amber)":a.includes("ANN")?"var(--purple)":"var(--blue)";
+  const rows=entries.map(l=>`<tr>
+    <td class="mono" style="color:var(--muted)">#${l.id}</td>
+    <td><span style="color:${ac(l.action)};font-family:var(--mono);font-size:12px;font-weight:600">${l.action}</span></td>
+    <td style="font-size:12px">${l.detail||"—"}</td>
+    <td class="mono" style="font-size:11px;color:var(--muted)">${l.ts}</td>
+  </tr>`).join("")||`<tr><td colspan="4"><div class="empty-state"><div>No audit events</div></div></td></tr>`;
   return `
-    <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-size:13px;color:var(--muted)">${entries.length} total events recorded</div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="if(confirm('Clear audit log?')){const db=loadDB();db.audit=[];saveDB(db);renderPage('audit')}">🗑 Clear Log</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:13px;color:var(--muted)">${entries.length} events recorded</span>
+      <button class="btn btn-ghost btn-sm" onclick="if(confirm('Clear audit log?')){const db=loadDB();db.audit=[];saveDB(db);renderPage('audit')}">🗑 Clear</button>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>ID</th><th>Action</th><th>Detail</th><th>Timestamp</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Action</th><th>Detail</th><th>Timestamp</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
 }
 
-/* ── SCHEMA ── */
+/* ══════════════════════════════════════════
+   SCHEMA
+══════════════════════════════════════════ */
 function renderSchema() {
+  const tables=[
+    ["users","id · role · username · password_hash · full_name · email · phone · department · programme · batch · designation · is_active · created_at · last_login"],
+    ["timetables","key(prog|||section) → { day_timeIdx → { subject · room · faculty · notes } }"],
+    ["timetableMeta","prog · section · batch · accentIdx · createdAt"],
+    ["attendance","id · roll · date · subject · faculty · programme · status · note · edited_by · edited_at"],
+    ["announcements","id · title · body · target · priority · ts · pinUntil"],
+    ["liveSessions","id · programme · subject · faculty · topic · duration · timeLeft · startedAt · active"],
+    ["audit","id · user_id → users.id · action · detail · ts"],
+  ];
   return `
-    <div class="two-col">
-      <div class="card">
-        <div class="card-title">Table: users</div>
-        <div class="card-sub" style="margin-bottom:16px">Primary user credential & profile store</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
-            <tbody>
-              ${[
-                ["id","INTEGER","PRIMARY KEY AUTOINCREMENT"],
-                ["role","TEXT","NOT NULL, CHECK IN (student|faculty|cr|admin)"],
-                ["username","TEXT","NOT NULL UNIQUE"],
-                ["password_hash","TEXT","NOT NULL (bcrypt)"],
-                ["full_name","TEXT","NOT NULL"],
-                ["email","TEXT",""],
-                ["phone","TEXT",""],
-                ["department","TEXT",""],
-                ["programme","TEXT","(students/CR only)"],
-                ["batch","TEXT","(students/CR only)"],
-                ["designation","TEXT","(faculty/admin)"],
-                ["is_active","INTEGER","DEFAULT 1"],
-                ["created_at","TEXT","DEFAULT datetime('now')"],
-                ["last_login","TEXT","Nullable"],
-              ].map(([col,type,con])=>`<tr><td class="mono" style="color:var(--gold-l)">${col}</td><td class="mono" style="color:var(--blue)">${type}</td><td style="font-size:11px;color:var(--muted)">${con}</td></tr>`).join("")}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="sec-head"><div><div class="sec-label">System</div><div class="sec-title">Database Schema</div></div></div>
+    <div class="three-col">
+      ${tables.map(([name,cols])=>`
         <div class="card">
-          <div class="card-title">Table: audit_log</div>
-          <div class="card-sub" style="margin-bottom:16px">Admin action tracking</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Column</th><th>Type</th></tr></thead>
-              <tbody>
-                ${[["id","INTEGER PK"],["user_id","INTEGER → users.id"],["action","TEXT"],["detail","TEXT"],["ip","TEXT"],["ts","TEXT datetime"]].map(([c,t])=>`<tr><td class="mono" style="color:var(--gold-l)">${c}</td><td class="mono" style="color:var(--blue);font-size:11px">${t}</td></tr>`).join("")}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Backend Setup</div>
-          <div class="card-sub" style="margin-bottom:14px">Production deployment commands</div>
-          <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;color:var(--gold-l);overflow-x:auto;line-height:1.8"><span style="color:var(--muted)"># Install dependencies</span>
-npm install
-
-<span style="color:var(--muted)"># Set environment variables</span>
-export JWT_SECRET=your_secret_here
-export PORT=3001
-
-<span style="color:var(--muted)"># Start server</span>
-node server.js
-
-<span style="color:var(--muted)"># Database file created at</span>
-./ushss.db  <span style="color:var(--muted)">(SQLite WAL mode)</span></pre>
-        </div>
-        <div class="card">
-          <div class="card-title">API Endpoints</div>
-          <div class="card-sub" style="margin-bottom:14px">REST API reference</div>
-          <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:11px;overflow-x:auto;line-height:1.9"><span style="color:var(--green)">POST</span>   /api/login
-<span style="color:var(--blue)">GET</span>    /api/me
-<span style="color:var(--blue)">GET</span>    /api/admin/users
-<span style="color:var(--green)">POST</span>   /api/admin/users
-<span style="color:var(--gold)">PUT</span>    /api/admin/users/:id
-<span style="color:var(--red)">DELETE</span> /api/admin/users/:id
-<span style="color:var(--blue)">GET</span>    /api/admin/stats
-<span style="color:var(--blue)">GET</span>    /api/admin/audit</pre>
-        </div>
-      </div>
+          <div class="card-title" style="margin-bottom:8px">Table: <span style="color:var(--gold-l);font-family:var(--mono)">${name}</span></div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.9;font-family:var(--mono)">${cols.split(' · ').map(c=>`<div>▸ ${c}</div>`).join("")}</div>
+        </div>`).join("")}
     </div>
-  `;
+    <div class="card" style="margin-top:16px">
+      <div class="card-title" style="margin-bottom:12px">Python Backend Endpoints (Timetable)</div>
+      <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:11px;overflow-x:auto;line-height:1.9">
+<span style="color:var(--blue)">GET</span>    /api/timetable?programme=B.A.+Hons+English&section=Section+A
+<span style="color:var(--blue)">GET</span>    /api/timetable/meta               → List all programme/section combos
+<span style="color:var(--gold)">PUT</span>    /api/admin/timetable               → Update slot { prog, section, day, timeIdx, … }
+<span style="color:var(--green)">POST</span>   /api/admin/timetable/create        → Create new timetable { prog, section, batch }
+<span style="color:var(--red)">DELETE</span> /api/admin/timetable/:prog/:section → Delete entire timetable
+<span style="color:var(--green)">POST</span>   /api/admin/timetable/publish        → Push to student/faculty portals</pre>
+    </div>`;
 }
 
-/* ═══ MODAL LOGIC ═══ */
-function openCreateModal(role = "student") {
-  editingId = null;
-  document.getElementById("modal-title").textContent = "Add New User";
-  document.getElementById("modal-save-btn").textContent = "Create User";
-  document.getElementById("pwd-req").style.display = "inline";
-  document.getElementById("f-role").value = role;
-  document.getElementById("f-username").value = "";
-  document.getElementById("f-name").value = "";
-  document.getElementById("f-email").value = "";
-  document.getElementById("f-phone").value = "";
-  document.getElementById("f-dept").value = "";
-  document.getElementById("f-prog").value = "";
-  document.getElementById("f-batch").value = "";
-  document.getElementById("f-desig").value = "";
-  document.getElementById("f-pwd").value = "";
-  document.getElementById("f-active").value = "1";
-  document.getElementById("row-active").style.display = "none";
+/* ══════════════════════════════════════════
+   MODAL LOGIC — USER
+══════════════════════════════════════════ */
+function openCreateModal(role="student") {
+  editingId=null;
+  document.getElementById("modal-title").textContent="Add New User";
+  document.getElementById("modal-save-btn").textContent="Create User";
+  document.getElementById("pwd-req").style.display="inline";
+  document.getElementById("f-role").value=role;
+  ["f-username","f-name","f-email","f-phone","f-desig","f-pwd"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-dept").value="";
+  document.getElementById("f-prog").value="";
+  document.getElementById("f-batch").value="";
+  document.getElementById("f-active").value="1";
+  document.getElementById("row-active").style.display="none";
   onRoleChange();
   document.getElementById("modal").classList.add("open");
 }
-
 function openEditModal(id) {
-  const db = loadDB();
-  const user = db.users.find(u => u.id === id);
-  if (!user) return;
-  editingId = id;
-  document.getElementById("modal-title").textContent = "Edit User";
-  document.getElementById("modal-save-btn").textContent = "Save Changes";
-  document.getElementById("pwd-req").style.display = "none";
-  document.getElementById("f-role").value = user.role;
-  document.getElementById("f-role").disabled = true;
-  document.getElementById("f-username").value = user.username;
-  document.getElementById("f-username").disabled = true;
-  document.getElementById("f-name").value = user.full_name;
-  document.getElementById("f-email").value = user.email||"";
-  document.getElementById("f-phone").value = user.phone||"";
-  document.getElementById("f-dept").value = user.department||"";
-  document.getElementById("f-prog").value = user.programme||"";
-  document.getElementById("f-batch").value = user.batch||"";
-  document.getElementById("f-desig").value = user.designation||"";
-  document.getElementById("f-pwd").value = "";
-  document.getElementById("f-active").value = String(user.is_active);
-  document.getElementById("row-active").style.display = "flex";
-  onRoleChange();
-  document.getElementById("modal").classList.add("open");
+  const db=loadDB(); const user=db.users.find(u=>u.id===id); if(!user) return;
+  editingId=id;
+  document.getElementById("modal-title").textContent="Edit User";
+  document.getElementById("modal-save-btn").textContent="Save Changes";
+  document.getElementById("pwd-req").style.display="none";
+  document.getElementById("f-role").value=user.role; document.getElementById("f-role").disabled=true;
+  document.getElementById("f-username").value=user.username; document.getElementById("f-username").disabled=true;
+  document.getElementById("f-name").value=user.full_name;
+  document.getElementById("f-email").value=user.email||"";
+  document.getElementById("f-phone").value=user.phone||"";
+  document.getElementById("f-dept").value=user.department||"";
+  document.getElementById("f-prog").value=user.programme||"";
+  document.getElementById("f-batch").value=user.batch||"";
+  document.getElementById("f-desig").value=user.designation||"";
+  document.getElementById("f-pwd").value="";
+  document.getElementById("f-active").value=String(user.is_active);
+  document.getElementById("row-active").style.display="flex";
+  onRoleChange(); document.getElementById("modal").classList.add("open");
 }
-
 function closeModal() {
   document.getElementById("modal").classList.remove("open");
-  document.getElementById("f-role").disabled = false;
-  document.getElementById("f-username").disabled = false;
-  editingId = null;
+  document.getElementById("f-role").disabled=false;
+  document.getElementById("f-username").disabled=false;
+  editingId=null;
 }
-
+function closeModal2(id) { document.getElementById(id).classList.remove("open"); }
 function onRoleChange() {
-  const role = document.getElementById("f-role").value;
-  const labels = { student:"Enrollment No.", faculty:"Faculty ID", cr:"CR Roll No.", admin:"Admin ID" };
-  document.getElementById("label-username").innerHTML = `${labels[role]||"Username"} <span class="required">*</span>`;
-  const showStudentFields = role === "student" || role === "cr";
-  const showDesig = role === "faculty" || role === "admin" || role === "cr";
-  document.getElementById("row-prog").style.display  = showStudentFields ? "flex" : "none";
-  document.getElementById("row-batch").style.display = showStudentFields ? "flex" : "none";
-  document.getElementById("row-desig").style.display = showDesig ? "flex" : "none";
+  const role=document.getElementById("f-role").value;
+  const labels={student:"Enrollment No.",faculty:"Faculty ID",cr:"CR Roll No.",admin:"Admin ID"};
+  document.getElementById("label-username").innerHTML=`${labels[role]||"Username"} <span class="required">*</span>`;
+  const showStu=role==="student"||role==="cr";
+  const showDesig=role==="faculty"||role==="admin"||role==="cr";
+  document.getElementById("row-prog").style.display=showStu?"flex":"none";
+  document.getElementById("row-batch").style.display=showStu?"flex":"none";
+  document.getElementById("row-desig").style.display=showDesig?"flex":"none";
 }
-
 function saveUser() {
-  const role     = document.getElementById("f-role").value;
-  const username = document.getElementById("f-username").value.trim();
-  const name     = document.getElementById("f-name").value.trim();
-  const email    = document.getElementById("f-email").value.trim();
-  const phone    = document.getElementById("f-phone").value.trim();
-  const dept     = document.getElementById("f-dept").value;
-  const prog     = document.getElementById("f-prog").value;
-  const batch    = document.getElementById("f-batch").value;
-  const desig    = document.getElementById("f-desig").value.trim();
-  const pwd      = document.getElementById("f-pwd").value;
-  const isActive = document.getElementById("f-active").value;
-
-  if (!name) return toast("Full name is required", "error");
-  if (!editingId) {
-    if (!username) return toast("Username is required", "error");
-    if (!pwd) return toast("Password is required for new users", "error");
-  }
-
-  try {
-    if (editingId) {
-      dbUpdateUser(editingId, { full_name:name, email, phone, department:dept, programme:prog, batch, designation:desig, is_active:isActive, password: pwd||undefined });
-      toast("User updated successfully", "success");
-    } else {
-      dbCreateUser({ role, username, password:pwd, full_name:name, email, phone, department:dept, programme:prog, batch, designation:desig });
-      toast("User created successfully", "success");
-    }
-    closeModal();
-    renderPage(currentPage);
-  } catch (e) {
-    toast(e.message, "error");
-  }
+  const role=document.getElementById("f-role").value;
+  const username=document.getElementById("f-username").value.trim();
+  const name=document.getElementById("f-name").value.trim();
+  const pwd=document.getElementById("f-pwd").value;
+  if(!name){toast("Full name is required","error");return;}
+  if(!editingId&&(!username||!pwd)){toast("Username and password required","error");return;}
+  try{
+    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
+    if(editingId) dbUpdateUser(editingId,data);
+    else dbCreateUser({role,username,...data,password:pwd});
+    toast(editingId?"User updated":"User created","success");
+    closeModal(); renderPage(currentPage);
+  }catch(e){toast(e.message,"error");}
 }
 
-/* ── DELETE ── */
-function openDeleteConfirm(id, name) {
-  deleteId = id;
-  document.getElementById("confirm-msg").textContent = `Delete "${name}"? This cannot be undone.`;
+/* DELETE / CONFIRM */
+function openDeleteConfirm(id,name) {
+  deleteId=id;
+  deleteCallback=null;
+  document.getElementById("confirm-title").textContent="Delete User?";
+  document.getElementById("confirm-msg").textContent=`Delete "${name}"? This cannot be undone.`;
+  document.getElementById("confirm-ok-btn").textContent="Delete";
   document.getElementById("confirm-overlay").classList.add("open");
 }
-function closeConfirm() {
-  deleteId = null;
-  document.getElementById("confirm-overlay").classList.remove("open");
-}
+function closeConfirm() { deleteId=null; deleteCallback=null; document.getElementById("confirm-overlay").classList.remove("open"); }
 function confirmDelete() {
-  if (!deleteId) return;
-  dbDeleteUser(deleteId);
-  toast("User deleted", "success");
-  closeConfirm();
-  renderPage(currentPage);
+  if(deleteCallback) { deleteCallback(); closeConfirm(); return; }
+  if(!deleteId) return;
+  dbDeleteUser(deleteId); toast("User deleted","success");
+  closeConfirm(); renderPage(currentPage);
 }
 
-/* ── TOAST ── */
-function toast(msg, type = "success") {
-  const el = document.createElement("div");
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span>${type==="success"?"✓":"✕"}</span> ${msg}`;
+/* TOAST */
+function toast(msg,type="success") {
+  const el=document.createElement("div"); el.className=`toast ${type}`;
+  const icons={success:"✓",error:"✕",info:"ℹ"};
+  el.innerHTML=`<span>${icons[type]||"•"}</span> ${msg}`;
   document.getElementById("toast-container").appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(()=>el.remove(),3500);
 }
 
-/* ── BADGES ── */
+/* BADGES */
 function updateBadges() {
-  ["student","faculty","cr","admin"].forEach(role => {
-    const n = dbGetUsers({role}).length;
-    const el = document.getElementById(`badge-${role}`);
-    if (el) el.textContent = n;
+  ["student","faculty","cr","admin"].forEach(role=>{
+    const n=dbGetUsers({role}).length;
+    const el=document.getElementById(`badge-${role}`);
+    if(el) el.textContent=n;
   });
+  const db=loadDB();
+  const annEl=document.getElementById("badge-ann");
+  if(annEl) annEl.textContent=(db.announcements||[]).length;
+  const liveEl=document.getElementById("live-nav-badge");
+  const anyLive=(db.liveSessions||[]).some(s=>s.active);
+  if(liveEl) liveEl.style.display=anyLive?"inline-flex":"none";
 }
 
-/* ── KEYBOARD CLOSE ── */
-window.addEventListener("keydown", e => {
-  if (e.key === "Escape") { closeModal(); closeConfirm(); }
+/* KEYBOARD */
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    closeModal(); closeConfirm(); closeTTModal();
+    ["att-edit-modal","ann-modal","live-modal","tt-new-modal"].forEach(closeModal2);
+  }
 });
 
-/* ── INIT ── */
+/* INIT */
 showPage("dashboard");
-document.getElementById("adminName").textContent = "USHSS Admin";
+const _db=loadDB();
+(_db.liveSessions||[]).filter(s=>s.active).forEach(s=>{
+  if(s.duration>0) startTimerInterval(s.id, s.timeLeft);
+});
 </script>
 </body>
 </html>
