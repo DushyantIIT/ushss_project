@@ -825,4 +825,49 @@ document.getElementById('asgn-due').value=new Date(Date.now()+7*86400000).toISOS
 initDashboard();
 </script>
 </body>
+<!-- USHSS Real API Integration: loads real CR profile and classmates -->
+<script>
+(async function loadCRProfile() {
+  const token = localStorage.getItem('ushss_token');
+  if (!token) return;
+  const headers = { 'Authorization': 'Bearer ' + token };
+
+  try {
+    // Load CR profile
+    const res = await fetch('/api/cr/profile', { headers });
+    if (!res.ok) return;
+    const u = await res.json();
+
+    const nameEl   = document.getElementById('cr-name');
+    const roleEl   = document.querySelector('.sb-prole');
+    const avatarEl = document.querySelector('.sb-avatar');
+
+    if (nameEl)   nameEl.textContent   = u.full_name || u.username;
+    if (roleEl)   roleEl.textContent   = ['CR', u.programme, u.batch].filter(Boolean).join(' · ');
+    if (avatarEl) avatarEl.textContent = (u.full_name || u.username)
+                    .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+    // Load real classmates from DB and update the classmates table if it exists
+    try {
+      const cmRes = await fetch('/api/cr/classmates', { headers });
+      if (cmRes.ok) {
+        const classmates = await cmRes.json();
+        const tbody = document.getElementById('classmates-tbody');
+        if (tbody && classmates.length) {
+          tbody.innerHTML = classmates.map((s, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${s.full_name}</td>
+              <td>${s.enrollment_no || s.username}</td>
+              <td>${s.programme || '—'}</td>
+              <td>${s.batch || '—'}</td>
+              <td><span class="badge ${s.is_active ? 'badge-ok' : 'badge-off'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+            </tr>`).join('');
+        }
+      }
+    } catch(e) {}
+
+  } catch(e) { console.warn('USHSS API: CR profile load failed', e); }
+})();
+</script>
 </html>

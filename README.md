@@ -7,11 +7,11 @@ Stack: FastAPI · SQLAlchemy · SQLite · bcrypt · JWT · Jinja2
 
 ## Project Structure
 
-```
 ushss_project/
 ├── main.py                  ← App entry point (serves frontend + registers routers)
 ├── requirements.txt
 ├── .env.example             ← Copy to .env and edit
+├── render.yaml              ← Render deployment blueprint
 │
 ├── templates/               ← HTML pages served by FastAPI
 │   ├── ushss_website.html       (home page  →  GET /)
@@ -25,7 +25,7 @@ ushss_project/
 │
 ├── app/                     ← Backend logic
 │   ├── models.py            ← SQLAlchemy ORM tables
-│   ├── seed.py              ← Demo data loader
+│   ├── seed.py              ← Demo data loader (runs on startup)
 │   ├── database.py          ← DB engine + get_db()
 │   ├── security.py          ← bcrypt + JWT helpers
 │   ├── deps.py              ← get_current_user dependency
@@ -33,6 +33,7 @@ ushss_project/
 │
 └── routers/
     ├── auth.py              ← POST /api/login  |  GET /api/me
+    ├── admin.py             ← /api/admin/* (CRUD users, stats, audit, messages)
     ├── student.py           ← /api/student/*
     ├── faculty.py           ← /api/faculty/*
     ├── cr.py                ← /api/cr/*
@@ -89,7 +90,33 @@ The database (`ushss.db`) and demo data are created **automatically** on first s
 
 ---
 
-## 3 · Run (Production)
+## 3 · Deploy on Render (free)
+
+1. Push to GitHub, then go to **[render.com](https://render.com) → New → Web Service**
+2. Connect repo: `DushyantIIT/ushss_project`
+3. Set these fields:
+
+| Field | Value |
+|---|---|
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+
+4. Add environment variables:
+
+| Key | Value |
+|---|---|
+| `SECRET_KEY` | Click **Generate** |
+| `DATABASE_URL` | `sqlite:///./ushss.db` |
+| `CORS_ORIGINS` | `*` |
+| `DEBUG` | `false` |
+
+5. Click **Create Web Service** — live in ~2 min. Every `git push` auto-redeploys.
+
+> ⚠️ Free tier sleeps after 15 min idle. Use [UptimeRobot](https://uptimerobot.com) to keep it awake.
+
+---
+
+## 4 · Run (Production / Self-hosted)
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -211,6 +238,20 @@ No code changes needed — SQLAlchemy handles it.
 | `PUT`  | `/api/cr/profile` | Update contact details |
 | `POST` | `/api/cr/change-password` | Change password |
 | `GET`  | `/api/cr/classmates` | View students in same programme & batch |
+
+### Admin (`/api/admin/*`) — requires admin JWT
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/api/admin/users` | List all users (filter by role/search) |
+| `POST` | `/api/admin/users` | Create a user |
+| `GET`  | `/api/admin/users/{id}` | Get single user |
+| `PUT`  | `/api/admin/users/{id}` | Update user |
+| `DELETE` | `/api/admin/users/{id}` | Delete user |
+| `PATCH` | `/api/admin/users/{id}/toggle` | Toggle active status |
+| `GET`  | `/api/admin/stats` | Dashboard stats |
+| `GET`  | `/api/admin/audit` | Audit log |
+| `GET`  | `/api/admin/messages` | Contact messages |
+| `PATCH` | `/api/admin/messages/{id}/read` | Mark message read |
 
 ### Password Reset (`/api/reset/*`)
 | Method | Path | Description |

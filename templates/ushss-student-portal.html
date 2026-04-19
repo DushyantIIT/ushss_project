@@ -793,5 +793,46 @@ function toast(msg,type='ok'){const el=document.createElement('div');el.classNam
 /* INIT */
 initDashboard();
 </script>
+<script>
+/* ── USHSS Real API Integration ──────────────────────────────
+   Loads the logged-in student's real profile from the backend.
+   Falls back to demo display if no token is found.
+─────────────────────────────────────────────────────────── */
+(async function loadRealProfile() {
+  const token = localStorage.getItem('ushss_token');
+  if (!token) return; // no login — keep demo display
+
+  try {
+    const res = await fetch('/api/student/profile', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return;
+    const u = await res.json();
+
+    // Sidebar name & meta
+    const nameEl = document.querySelector('.sb-pname');
+    const metaEl = document.querySelector('.sb-pmeta');
+    const rollEl = document.querySelector('.sb-roll');
+    const avatarEl = document.querySelector('.sb-avatar');
+
+    if (nameEl)   nameEl.textContent = u.full_name || u.username;
+    if (metaEl)   metaEl.textContent = [u.programme, u.batch].filter(Boolean).join(' · ');
+    if (rollEl)   rollEl.textContent = u.enrollment_no || u.username;
+    if (avatarEl) avatarEl.textContent = (u.full_name || u.username)
+                    .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+
+    // Profile page fields (if rendered)
+    const pname = document.getElementById('prof-name');
+    const pemail = document.getElementById('prof-email');
+    const pprog = document.getElementById('prof-prog');
+    const penroll = document.getElementById('prof-enroll');
+    if (pname)   pname.textContent  = u.full_name;
+    if (pemail)  pemail.textContent = u.email;
+    if (pprog)   pprog.textContent  = u.programme || '—';
+    if (penroll) penroll.textContent = u.enrollment_no || '—';
+
+  } catch(e) { console.warn('USHSS API: profile load failed', e); }
+})();
+</script>
 </body>
 </html>

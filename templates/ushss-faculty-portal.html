@@ -908,4 +908,28 @@ document.getElementById('att-date').value = new Date().toISOString().slice(0,10)
 initDashboard();
 </script>
 </body>
+<!-- USHSS Real API Integration: loads real faculty profile into sidebar -->
+<script>
+(async function loadFacultyProfile() {
+  const token = localStorage.getItem('ushss_token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/faculty/profile', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return;
+    const u = await res.json();
+
+    const nameEl   = document.getElementById('sb-name');
+    const initEl   = document.getElementById('sb-init');
+    const subEl    = document.querySelector('.sb-psub');
+
+    if (nameEl) nameEl.textContent = u.full_name || u.username;
+    if (initEl) initEl.textContent = (u.full_name || u.username)
+                  .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    if (subEl)  subEl.textContent  = [u.designation, u.department].filter(Boolean).join(' · ');
+
+  } catch(e) { console.warn('USHSS API: faculty profile load failed', e); }
+})();
+</script>
 </html>
