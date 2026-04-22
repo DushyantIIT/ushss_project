@@ -11,6 +11,8 @@ python-multipart>=0.0.9
 
 # Database (ORM)
 sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+supabase>=2.4.0
 
 # Auth
 bcrypt>=4.1.0
