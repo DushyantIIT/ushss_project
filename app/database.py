@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
+# `NEXT_PUBLIC_SUPABASE_URL` fallback keeps compatibility with existing deployments.
 SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 
 
