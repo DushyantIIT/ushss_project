@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_PROJECT_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 
 
 def _project_ref_from_supabase_url(url: str) -> Optional[str]:
@@ -29,10 +29,10 @@ def _project_ref_from_supabase_url(url: str) -> Optional[str]:
 
 
 def _build_supabase_database_url() -> Optional[str]:
-    project_ref = _project_ref_from_supabase_url(SUPABASE_URL or "")
+    project_ref = _project_ref_from_supabase_url(SUPABASE_PROJECT_URL or "")
     db_password = os.getenv("SUPABASE_DB_PASSWORD")
     if not project_ref or not db_password:
-        if os.getenv("DATABASE_URL") is None and SUPABASE_URL and not db_password:
+        if os.getenv("DATABASE_URL") is None and SUPABASE_PROJECT_URL and not db_password:
             warnings.warn(
                 "SUPABASE_DB_PASSWORD not set; falling back to sqlite unless DATABASE_URL is provided."
             )
