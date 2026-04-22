@@ -5,6 +5,7 @@ SQLAlchemy session setup with Supabase-compatible PostgreSQL configuration.
 """
 
 import os
+import warnings
 from typing import Optional
 from urllib.parse import quote_plus, urlparse
 
@@ -18,8 +19,11 @@ SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL"
 
 
 def _project_ref_from_supabase_url(url: str) -> Optional[str]:
+    if not url:
+        return None
     host = urlparse(url).netloc
-    if not host:
+    if not host or not host.endswith(".supabase.co"):
+        warnings.warn("SUPABASE_URL is set but is not a valid Supabase project URL.")
         return None
     return host.split(".")[0]
 
@@ -28,6 +32,10 @@ def _build_supabase_database_url() -> Optional[str]:
     project_ref = _project_ref_from_supabase_url(SUPABASE_URL or "")
     db_password = os.getenv("SUPABASE_DB_PASSWORD")
     if not project_ref or not db_password:
+        if os.getenv("DATABASE_URL") is None and SUPABASE_URL and not db_password:
+            warnings.warn(
+                "SUPABASE_DB_PASSWORD not set; falling back to sqlite unless DATABASE_URL is provided."
+            )
         return None
     encoded_password = quote_plus(db_password)
     return (

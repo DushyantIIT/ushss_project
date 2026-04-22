@@ -208,7 +208,7 @@ DATABASE_URL=postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.<your-proj
 ```
 
 SQLAlchemy will then use Supabase Postgres as the SQL database.
-`<SUPABASE_DB_PASSWORD>` is a placeholder and must be replaced with your actual Supabase database password.
+`<SUPABASE_DB_PASSWORD>` is a placeholder; replace it with your actual password and do not include the angle brackets in the final value.
 
 ---
 
