@@ -1,28 +1,26 @@
 """
 app/database.py
 ───────────────
-SQLAlchemy engine + session factory + Base for USHSS.
+Supabase client for USHSS.
 """
-
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
-# Use DATABASE_URL env var for production (PostgreSQL), fall back to local SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./ushss.db")
+load_dotenv()
 
-# SQLite-specific connect_args; ignored for other dialects
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+SUPABASE_URL = os.environ.get(https://jskzssdwgzxvpzfurxos.supabase.co)
+SUPABASE_KEY = os.environ.get(sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk)  # Use service role key for backend
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=False)
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def get_db():
-    """FastAPI dependency — yields a DB session, closed on teardown."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    """
+    FastAPI dependency — yields the Supabase client.
+    Drop-in replacement for the old SQLAlchemy get_db().
+    """
+    yield supabase
