@@ -23,13 +23,13 @@ services:
         generateValue: true          # Render auto-generates a random secure value
 
       - key: DATABASE_URL
-        value: postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
+        sync: false
 
       - key: NEXT_PUBLIC_SUPABASE_URL
-        value: https://jskzssdwgzxvpzfurxos.supabase.co
+        sync: false
 
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        value: sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
+        sync: false
 
       - key: CORS_ORIGINS
         value: "*"                   # change to your frontend domain in production

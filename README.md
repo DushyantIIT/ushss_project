@@ -106,9 +106,9 @@ The database (`ushss.db`) and demo data are created **automatically** on first s
 | Key | Value |
 |---|---|
 | `SECRET_KEY` | Click **Generate** |
-| `DATABASE_URL` | `postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres` |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://jskzssdwgzxvpzfurxos.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk` |
+| `DATABASE_URL` | `postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.<your-project-ref>.supabase.co:5432/postgres` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<your-project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `<your-supabase-publishable-key>` |
 | `CORS_ORIGINS` | `*` |
 | `DEBUG` | `false` |
 
@@ -202,12 +202,13 @@ pip install psycopg2-binary
 
 In `.env`:
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://jskzssdwgzxvpzfurxos.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
-DATABASE_URL=postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-supabase-publishable-key>
+DATABASE_URL=postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.<your-project-ref>.supabase.co:5432/postgres
 ```
 
 SQLAlchemy will then use Supabase Postgres as the SQL database.
+`<SUPABASE_DB_PASSWORD>` is a placeholder and must be replaced with your actual Supabase database password.
 
 ---
 

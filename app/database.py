@@ -14,18 +14,11 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-DEFAULT_SUPABASE_URL = "https://jskzssdwgzxvpzfurxos.supabase.co"
-DEFAULT_SUPABASE_PUBLISHABLE_KEY = (
-    "sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk"
-)
-
-SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv(
-    "NEXT_PUBLIC_SUPABASE_URL", DEFAULT_SUPABASE_URL
-)
+SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = (
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     or os.getenv("SUPABASE_KEY")
-    or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", DEFAULT_SUPABASE_PUBLISHABLE_KEY)
+    or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
 )
 
 
