@@ -15,18 +15,10 @@ from sqlalchemy.orm import sessionmaker
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = (
-    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    or os.getenv("SUPABASE_KEY")
-    or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
-)
 
 
 def _project_ref_from_supabase_url(url: str) -> Optional[str]:
-    try:
-        host = urlparse(url).netloc
-    except Exception:
-        return None
+    host = urlparse(url).netloc
     if not host:
         return None
     return host.split(".")[0]
