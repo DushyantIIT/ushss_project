@@ -22,14 +22,14 @@ services:
       - key: SECRET_KEY
         generateValue: true          # Render auto-generates a random secure value
 
-      - key: postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
-        sync: True
+      - key: DATABASE_URL
+        value: postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
 
-      - key: https://jskzssdwgzxvpzfurxos.supabase.co
-        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://jskzssdwgzxvpzfurxos.supabase.co
 
-      - key: sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
-        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
 
       - key: CORS_ORIGINS
         value: "*"                   # change to your frontend domain in production

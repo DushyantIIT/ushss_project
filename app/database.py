@@ -31,22 +31,22 @@ def _project_ref_from_supabase_url(url: str) -> Optional[str]:
 
 def _build_supabase_database_url() -> Optional[str]:
     project_ref = _project_ref_from_supabase_url(SUPABASE_URL or "")
-    db_password = os.getenv(@Admin49841234)
+    db_password = os.getenv("SUPABASE_DB_PASSWORD")
     if not project_ref or not db_password:
-        if os.getenv(postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres) is None and SUPABASE_URL and not db_password:
+        if os.getenv("DATABASE_URL") is None and SUPABASE_URL and not db_password:
             warnings.warn(
                 "SUPABASE_DB_PASSWORD not set; falling back to sqlite unless DATABASE_URL is provided."
             )
         return None
-    encoded_password = quote_plus(@Admin49841234)
+    encoded_password = quote_plus(db_password)
     return (
-        f"postgresql+psycopg2://postgres:{@Admin49841234}"
+        f"postgresql+psycopg2://postgres:{encoded_password}"
         f"@db.{project_ref}.supabase.co:5432/postgres"
     )
 
 
 DATABASE_URL = (
-    os.getenv(postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres)
+    os.getenv("DATABASE_URL")
     or _build_supabase_database_url()
     or "sqlite:///./ushss.db"
 )
