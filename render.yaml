@@ -22,13 +22,13 @@ services:
       - key: SECRET_KEY
         generateValue: true          # Render auto-generates a random secure value
 
-      - key: DATABASE_URL
+      - key: postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
+        sync: True
+
+      - key: https://jskzssdwgzxvpzfurxos.supabase.co
         sync: false
 
-      - key: NEXT_PUBLIC_SUPABASE_URL
-        sync: false
-
-      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+      - key: sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
         sync: false
 
       - key: CORS_ORIGINS
