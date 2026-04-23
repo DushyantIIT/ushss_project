@@ -1,7 +1,7 @@
 # USHSS Portal — FastAPI Backend
 
 **University School of Humanities & Social Sciences, GGSIPU**  
-Stack: FastAPI · SQLAlchemy · SQLite · bcrypt · JWT · Jinja2
+Stack: FastAPI · SQLAlchemy · Supabase PostgreSQL · bcrypt · JWT · Jinja2
 
 ---
 
@@ -106,7 +106,9 @@ The database (`ushss.db`) and demo data are created **automatically** on first s
 | Key | Value |
 |---|---|
 | `SECRET_KEY` | Click **Generate** |
-| `DATABASE_URL` | `sqlite:///./ushss.db` |
+| `DATABASE_URL` | `postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.<your-project-ref>.supabase.co:5432/postgres` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://<your-project-ref>.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `<your-supabase-publishable-key>` |
 | `CORS_ORIGINS` | `*` |
 | `DEBUG` | `false` |
 
@@ -192,7 +194,7 @@ python3 -m app.seed
 
 ---
 
-## 8 · Switch to PostgreSQL (production)
+## 8 · Supabase PostgreSQL setup
 
 ```bash
 pip install psycopg2-binary
@@ -200,10 +202,13 @@ pip install psycopg2-binary
 
 In `.env`:
 ```
-DATABASE_URL=postgresql://ushss_user:strongpassword@localhost:5432/ushss_db
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-supabase-publishable-key>
+DATABASE_URL=postgresql+psycopg2://postgres:<SUPABASE_DB_PASSWORD>@db.<your-project-ref>.supabase.co:5432/postgres
 ```
 
-No code changes needed — SQLAlchemy handles it.
+SQLAlchemy will then use Supabase Postgres as the SQL database.
+`<SUPABASE_DB_PASSWORD>` is a placeholder; replace it with your actual password and do not include the angle brackets in the final value.
 
 ---
 
@@ -266,7 +271,7 @@ No code changes needed — SQLAlchemy handles it.
 - [ ] Generate a strong `SECRET_KEY`:  
   `python3 -c "import secrets; print(secrets.token_hex(32))"`
 - [ ] Set `DEBUG=false` in `.env`
-- [ ] Switch `DATABASE_URL` to PostgreSQL
+- [ ] Switch `DATABASE_URL` to Supabase PostgreSQL
 - [ ] Restrict `CORS_ORIGINS` to your frontend domain
 - [ ] Change **all** default passwords
 - [ ] Run behind Nginx / Caddy with HTTPS

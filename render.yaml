@@ -23,7 +23,13 @@ services:
         generateValue: true          # Render auto-generates a random secure value
 
       - key: DATABASE_URL
-        value: sqlite:///./ushss.db  # swap to a Render PostgreSQL URL for prod
+        sync: false
+
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
 
       - key: CORS_ORIGINS
         value: "*"                   # change to your frontend domain in production
