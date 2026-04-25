@@ -31,7 +31,7 @@ def _project_ref_from_supabase_url(url: str) -> Optional[str]:
 
 def _build_supabase_database_url() -> Optional[str]:
     project_ref = _project_ref_from_supabase_url(SUPABASE_URL or "")
-    db_password = os.getenv("@Admin49841234")
+    db_password = os.getenv("SUPABASE_DB_PASSWORD")
     if not project_ref or not db_password:
         if os.getenv("DATABASE_URL") is None and SUPABASE_URL and not db_password:
             warnings.warn(
@@ -40,7 +40,7 @@ def _build_supabase_database_url() -> Optional[str]:
         return None
     encoded_password = quote_plus(db_password)
     return (
-        f"postgresql+psycopg2://postgres:@Admin49841234"
+        f"postgresql+psycopg2://postgres:{encoded_password}"
         f"@db.{project_ref}.supabase.co:5432/postgres"
     )
 
