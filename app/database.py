@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 # Use DATABASE_URL env var for production (PostgreSQL), fall back to local SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./ushss.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres.jskzssdwgzxvpzfurxos:@Admin49841234@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres")
 
 # SQLite-specific connect_args; ignored for other dialects
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
