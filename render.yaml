@@ -14,22 +14,24 @@ services:
     # ── Start ────────────────────────────────────────────────────────────────
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
 
-    # ── Health check ─────────────────────────────────────────────────────────
+    # ── Health check ──────────────────────────────────────────────��──────────
     healthCheckPath: /health
 
-    # ── Environment variables ─────────────────────────────────────────────────
+    # ── Environment variables ────────────────────────────────────────────────
     envVars:
       - key: SECRET_KEY
         generateValue: true          # Render auto-generates a random secure value
 
+      # Secrets should NOT be committed in render.yaml.
+      # Set these in Render Dashboard → Service → Environment.
       - key: DATABASE_URL
-        value: postgresql://postgres:@Admin49841234@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres
+        sync: false
 
       - key: NEXT_PUBLIC_SUPABASE_URL
-        value: https://jskzssdwgzxvpzfurxos.supabase.co
+        sync: false
 
       - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-        value: sb_publishable_aeasaeZVMlBjyGapl1WApA_iC8OQIPk
+        sync: false
 
       - key: CORS_ORIGINS
         value: "*"                   # change to your frontend domain in production
