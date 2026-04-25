@@ -40,8 +40,8 @@ def _build_supabase_database_url() -> Optional[str]:
         return None
     encoded_password = quote_plus(db_password)
     return (
-        f"postgresql+psycopg2://postgres:{encoded_password}"
-        f"@db.{project_ref}.supabase.co:5432/postgres"
+        f"postgresql+psycopg2://postgres:@Admin49841234"
+        f"@db.jskzssdwgzxvpzfurxos.supabase.co:5432/postgres"
     )
 
 
