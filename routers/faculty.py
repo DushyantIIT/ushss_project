@@ -1,117 +1,186 @@
 """
-app/routers/faculty.py
-──────────────────────
-Self-service endpoints for faculty members.
-
-  GET  /api/faculty/profile          — view own profile
-  PUT  /api/faculty/profile          — update own details
-  POST /api/faculty/change-password  — change own password
-  GET  /api/faculty/students         — view students in own department
+routers/faculty.py
+──────────────────
+FACULTY rights:
+  ✅ View own profile                        GET  /api/faculty/profile
+  ✅ View students in own department         GET  /api/faculty/students
+  ✅ View timetable slots assigned to them   GET  /api/faculty/timetable
+  ✅ Open an attendance session              POST /api/faculty/attendance/open
+  ✅ Close their own attendance session      PATCH /api/faculty/attendance/{sid}/close
+  ✅ View attendance records for a session   GET  /api/faculty/attendance/{sid}/records
+  ⛔ Profile edits / password change — admin only
 """
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
+from datetime import date as DateType, datetime, timezone
+from typing import Optional
 
-from app.database import get_db
-from app.deps import get_current_user
-from app.security import hash_password, verify_password
-from app.models import AuditLog, RoleEnum, User
-from app.schemas import MessageOut, UserOut
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+
+from app.db import sb
+from app.deps import require_faculty
 
 router = APIRouter(prefix="/faculty", tags=["Faculty"])
 
 
-def _require_faculty(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in (RoleEnum.faculty, RoleEnum.admin):
-        raise HTTPException(status_code=403, detail="Faculty only")
-    return current_user
+# ═══════════════════════════════════════════════════════════════
+#  PROFILE  (read-only)
+# ═══════════════════════════════════════════════════════════════
 
-
-class FacultyProfileUpdate(BaseModel):
-    phone: Optional[str]       = None
-    email: Optional[EmailStr]  = None
-    designation: Optional[str] = None
-    model_config = {"str_strip_whitespace": True}
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str = Field(..., min_length=1)
-    new_password: str     = Field(..., min_length=6)
-    confirm_password: str = Field(..., min_length=6)
-
-
-@router.get("/profile", response_model=UserOut, summary="View your faculty profile")
-def get_profile(faculty: User = Depends(_require_faculty)):
+@router.get("/profile", summary="View your profile (read-only)")
+def get_profile(faculty: dict = Depends(require_faculty)):
+    """Returns your own profile. Contact admin to make changes."""
+    # Remove password hash before returning
+    faculty.pop("password_hash", None)
     return faculty
 
 
-@router.put("/profile", response_model=MessageOut, summary="Update your profile")
-def update_profile(
-    body: FacultyProfileUpdate,
-    db: Session = Depends(get_db),
-    faculty: User = Depends(_require_faculty),
-):
-    if body.email and body.email != faculty.email:
-        if db.query(User).filter(User.email == body.email, User.id != faculty.id).first():
-            raise HTTPException(status_code=409, detail="Email already in use")
-        faculty.email = body.email
-    if body.phone is not None:
-        faculty.phone = body.phone
-    if body.designation is not None:
-        faculty.designation = body.designation
+# ═══════════════════════════════════════════════════════════════
+#  VIEW STUDENTS IN DEPARTMENT  (read-only)
+# ═══════════════════════════════════════════════════════════════
 
-    db.add(AuditLog(user_id=faculty.id, action="FACULTY_PROFILE_UPDATE",
-                    detail=f"{faculty.username} updated profile"))
-    db.commit()
-    return MessageOut(message="Profile updated successfully")
-
-
-@router.post("/change-password", response_model=MessageOut, summary="Change your password")
-def change_password(
-    body: ChangePasswordRequest,
-    db: Session = Depends(get_db),
-    faculty: User = Depends(_require_faculty),
-):
-    if not verify_password(body.current_password, faculty.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    if body.new_password != body.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
-    if body.new_password == body.current_password:
-        raise HTTPException(status_code=400, detail="New password must differ from current")
-
-    faculty.password_hash = hash_password(body.new_password)
-    db.add(AuditLog(user_id=faculty.id, action="PASSWORD_CHANGE",
-                    detail=f"Faculty {faculty.username} changed password"))
-    db.commit()
-    return MessageOut(message="Password changed successfully")
-
-
-@router.get(
-    "/students",
-    response_model=List[UserOut],
-    summary="View students in your department",
-)
+@router.get("/students", summary="View students in your department (read-only)")
 def view_department_students(
-    programme: Optional[str] = None,
-    batch: Optional[str]     = None,
-    db: Session              = Depends(get_db),
-    faculty: User            = Depends(_require_faculty),
+    programme: Optional[str] = Query(None),
+    batch:     Optional[str] = Query(None),
+    faculty: dict = Depends(require_faculty),
 ):
-    """
-    Returns students belonging to the same department as the logged-in faculty.
-    Optionally filter by programme or batch year.
-    """
-    q = db.query(User).filter(
-        User.role == RoleEnum.student,
-        User.is_active == True,
-    )
-    if faculty.department:
-        q = q.filter(User.department == faculty.department)
-    if programme:
-        q = q.filter(User.programme.ilike(f"%{programme}%"))
-    if batch:
-        q = q.filter(User.batch == batch)
+    q = sb.table("users").select(
+        "id, username, full_name, email, phone, enrollment_no, department, programme, batch, is_active"
+    ).eq("role", "student").eq("is_active", True)
 
-    return [UserOut.model_validate(u) for u in q.order_by(User.full_name).all()]
+    if faculty.get("department"):
+        q = q.eq("department", faculty["department"])
+    if programme:
+        q = q.ilike("programme", f"%{programme}%")
+    if batch:
+        q = q.eq("batch", batch)
+
+    res = q.order("full_name").execute()
+    return res.data or []
+
+
+# ═══════════════════════════════════════════════════════════════
+#  TIMETABLE  (view slots assigned to this faculty)
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/timetable", summary="View your timetable slots")
+def get_my_timetable(faculty: dict = Depends(require_faculty)):
+    res = sb.table("timetable_slots").select("*") \
+            .eq("faculty_id", faculty["id"]) \
+            .order("day_of_week").order("start_time").execute()
+    return res.data or []
+
+
+# ═══════════════════════════════════════════════════════════════
+#  ATTENDANCE SESSIONS  (faculty opens / closes sessions)
+# ═══════════════════════════════════════════════════════════════
+
+class OpenSessionBody(BaseModel):
+    slot_id: int
+    date:    DateType
+
+
+@router.post("/attendance/open", status_code=201, summary="Open an attendance session")
+def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)):
+    """
+    Faculty opens a session for one of their timetable slots on a given date.
+    Students can mark attendance only while session is open.
+    """
+    # Verify the slot belongs to this faculty (or admin can open any)
+    slot = sb.table("timetable_slots").select("id, subject, faculty_id") \
+             .eq("id", body.slot_id).single().execute()
+    if not slot.data:
+        raise HTTPException(404, "Timetable slot not found")
+
+    if faculty["role"] != "admin" and slot.data["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only open sessions for your own timetable slots")
+
+    # Check if session already exists for this slot+date
+    existing = sb.table("attendance_sessions") \
+                 .select("id, is_open") \
+                 .eq("slot_id", body.slot_id) \
+                 .eq("date", str(body.date)).execute()
+    if existing.data:
+        sess = existing.data[0]
+        if sess["is_open"]:
+            raise HTTPException(409, "An open session already exists for this slot and date")
+        else:
+            # Re-open a closed session
+            res = sb.table("attendance_sessions").update({
+                "is_open": True,
+                "opened_at": datetime.now(timezone.utc).isoformat(),
+                "closed_at": None,
+            }).eq("id", sess["id"]).execute()
+            return {"message": "Session re-opened", "session": res.data[0]}
+
+    # Create new session
+    res = sb.table("attendance_sessions").insert({
+        "slot_id":    body.slot_id,
+        "faculty_id": faculty["id"],
+        "date":       str(body.date),
+        "is_open":    True,
+    }).execute()
+
+    sb.table("audit_log").insert({
+        "user_id": faculty["id"],
+        "action":  "OPEN_ATTENDANCE_SESSION",
+        "detail":  f"Faculty '{faculty['username']}' opened session for slot {body.slot_id} on {body.date}",
+    }).execute()
+
+    return {"message": "Attendance session opened", "session": res.data[0]}
+
+
+@router.patch("/attendance/{sid}/close", summary="Close your attendance session")
+def close_session(sid: int, faculty: dict = Depends(require_faculty)):
+    """Faculty closes the session — students can no longer mark attendance."""
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id, is_open") \
+                .eq("id", sid).single().execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+
+    s = session.data
+    if faculty["role"] != "admin" and s["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only close your own sessions")
+    if not s["is_open"]:
+        raise HTTPException(400, "Session is already closed")
+
+    res = sb.table("attendance_sessions").update({
+        "is_open":   False,
+        "closed_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", sid).execute()
+
+    sb.table("audit_log").insert({
+        "user_id": faculty["id"],
+        "action":  "CLOSE_ATTENDANCE_SESSION",
+        "detail":  f"Faculty '{faculty['username']}' closed session id={sid}",
+    }).execute()
+
+    return {"message": "Session closed", "session": res.data[0]}
+
+
+@router.get("/attendance/{sid}/records", summary="View attendance records for a session")
+def session_records(sid: int, faculty: dict = Depends(require_faculty)):
+    """View who marked attendance for a session."""
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id, date, timetable_slots(subject, programme, batch)") \
+                .eq("id", sid).single().execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+
+    if faculty["role"] != "admin" and session.data["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only view records for your own sessions")
+
+    records = sb.table("attendance_records") \
+                .select("*, users!attendance_records_student_id_fkey(full_name, enrollment_no, programme, batch)") \
+                .eq("session_id", sid) \
+                .order("marked_at").execute()
+
+    return {
+        "session":  session.data,
+        "records":  records.data or [],
+        "total":    len(records.data or []),
+        "present":  sum(1 for r in (records.data or []) if r["status"] == "present"),
+        "absent":   sum(1 for r in (records.data or []) if r["status"] == "absent"),
+    }
