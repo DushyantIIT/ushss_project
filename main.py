@@ -76,24 +76,23 @@ app.include_router(faculty.router,        prefix="/api")
 app.include_router(cr.router,             prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 
-
-@app.get("/", include_in_schema=False)
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def home(request: Request):
     return templates.TemplateResponse(request, "ushss_website.html")
 
-@app.get("/dashboard/admin", include_in_schema=False)
+@app.api_route("/dashboard/admin", methods=["GET", "HEAD"], include_in_schema=False)
 def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html")
 
-@app.get("/dashboard/student", include_in_schema=False)
+@app.api_route("/dashboard/student", methods=["GET", "HEAD"], include_in_schema=False)
 def student_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-student-portal.html")
 
-@app.get("/dashboard/faculty", include_in_schema=False)
+@app.api_route("/dashboard/faculty", methods=["GET", "HEAD"], include_in_schema=False)
 def faculty_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-faculty-portal.html")
 
-@app.get("/dashboard/cr", include_in_schema=False)
+@app.api_route("/dashboard/cr", methods=["GET", "HEAD"], include_in_schema=False)
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
 
