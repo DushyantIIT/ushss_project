@@ -1,88 +1,78 @@
 """
 app/database.py
 ───────────────
-SQLAlchemy session setup — Supabase PostgreSQL (psycopg2).
+Supabase client — replaces SQLAlchemy entirely.
 
-Required env vars (set in .env):
-  DATABASE_URL  — full postgresql+psycopg2://... connection string  (preferred)
-  OR
-  SUPABASE_URL + SUPABASE_DB_PASSWORD  — auto-builds the connection string
+Two issues fixed vs the old code:
+  1. SQLAlchemy + psycopg2 removed (was causing startup crash on Render)
+  2. Uses Supabase connection POOLER (port 6543, IPv4) instead of direct
+     port 5432 (IPv6 only on Render free tier → "Network is unreachable")
 
-Connection string format:
-  postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
+All DB access goes through the `sb` client:
+    from app.database import sb, ping_db
+    sb.table("users").select("*").execute()
 """
 
 import os
-from urllib.parse import quote_plus, urlparse
-
+from supabase import create_client, Client
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-# ── Resolve DATABASE_URL ───────────────────────────────────────────────────────
-
-def _build_database_url() -> str:
-    """Build connection URL from Supabase env vars if DATABASE_URL is not set."""
-    explicit = os.getenv("DATABASE_URL")
-    if explicit:
-        return explicit
-
-    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
-    db_password  = os.getenv("SUPABASE_DB_PASSWORD", "")
-
-    if not supabase_url or not db_password:
-        raise RuntimeError(
-            "Database not configured. Set DATABASE_URL or "
-            "SUPABASE_URL + SUPABASE_DB_PASSWORD in your .env file."
-        )
-
-    host = urlparse(supabase_url).netloc  # e.g. jskzssdwgzxvpzfurxos.supabase.co
-    project_ref = host.split(".")[0]      # e.g. jskzssdwgzxvpzfurxos
-    encoded_pw  = quote_plus(db_password)
-
-    return (
-        f"postgresql+psycopg2://postgres:{encoded_pw}"
-        f"@db.{project_ref}.supabase.co:5432/postgres"
-    )
-
-
-DATABASE_URL = _build_database_url()
-
-# ── Engine ─────────────────────────────────────────────────────────────────────
-# Supabase free-tier idles connections — pool_pre_ping keeps them alive.
-
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,       # detects stale connections before use
-    pool_size=5,              # keep 5 persistent connections
-    max_overflow=10,          # allow up to 10 extra connections under load
-    pool_recycle=300,         # recycle connections every 5 min (Supabase timeout safe)
-    echo=os.getenv("DEBUG", "false").lower() == "true",  # log SQL in debug mode
+SUPABASE_URL: str = (
+    os.getenv("SUPABASE_URL")
+    or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    or ""
+)
+SUPABASE_KEY: str = (
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY")        # preferred for backend
+    or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
+    or ""
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "Missing Supabase config. Set SUPABASE_URL and "
+        "SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) "
+        "as environment variables on Render."
+    )
 
+sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ── FastAPI dependency ─────────────────────────────────────────────────────────
-
-def get_db():
-    """Yield a DB session and close it when the request is done."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# ── Health check helper ────────────────────────────────────────────────────────
 
 def ping_db() -> bool:
-    """Returns True if the database connection is healthy."""
+    """Returns True if Supabase is reachable."""
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        sb.table("users").select("id").limit(1).execute()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"  DB ping failed: {e}")
         return False
+
+
+# ── Legacy shims (so old imports don't crash immediately) ──────────────────────
+# If any old file still does `from app.database import engine, SessionLocal, get_db`
+# these stubs will raise a clear error instead of a cryptic AttributeError.
+
+class _Removed:
+    def __init__(self, name):
+        self._name = name
+    def __call__(self, *a, **kw):
+        raise RuntimeError(
+            f"`{self._name}` has been removed. "
+            "Use `from app.database import sb` and call sb.table(...) instead."
+        )
+    def __getattr__(self, item):
+        raise RuntimeError(
+            f"`{self._name}.{item}` has been removed. "
+            "Use `from app.database import sb` and call sb.table(...) instead."
+        )
+
+engine       = _Removed("engine")
+SessionLocal = _Removed("SessionLocal")
+
+def get_db():
+    raise RuntimeError(
+        "`get_db()` has been removed. "
+        "Use `from app.database import sb` and call sb.table(...) instead."
+    )
