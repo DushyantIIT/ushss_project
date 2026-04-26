@@ -952,9 +952,14 @@ async function submitPortalLogin() {
         role: portalRole
       })
     });
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(res.statusText || "Server error");
+    }
     if (!res.ok || !data.success) {
-      throw new Error(data.error || "Login failed");
+      throw new Error(data.detail || data.error || "Login failed");
     }
     err.style.display = "none";
     closePortalLogin();
