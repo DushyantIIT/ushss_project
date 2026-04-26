@@ -52,14 +52,14 @@ def login(body: LoginRequest):
         .eq("username", body.username)
         .eq("role", body.role)
         .eq("is_active", True)
-        .single()
+        .limit(1)
         .execute()
     )
 
     if not res.data:
         raise HTTPException(401, "Invalid username, role, or password")
 
-    user = res.data
+    user = res.data[0]
 
     if not verify_password(body.password, user["password_hash"]):
         raise HTTPException(401, "Invalid username, role, or password")
