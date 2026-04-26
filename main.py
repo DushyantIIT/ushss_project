@@ -1,14 +1,16 @@
 """
 main.py
 ───────
-FastAPI application — entry point for the USHSS portal.
-(Based on files/main.py — removed app.core.* references, added Jinja2 template serving)
+USHSS Portal — FastAPI entry point.
 
-Run (development):
+All SQLAlchemy references removed.
+Database → Supabase (via supabase-py HTTP client, IPv4 safe on Render free tier).
+
+Run locally:
     uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-Run (production):
-    uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+Render starts it via Procfile:
+    web: uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 
 import os
@@ -20,71 +22,44 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.database import engine, SessionLocal
-from app.models import Base
-from app.seed import seed
+from app.database import ping_db
 from routers import auth, admin, student, faculty, cr, password_reset
 
-
-# ── Lifespan (startup / shutdown) ─────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend starting up…")
-
-    # Create all tables (idempotent) — skip gracefully if DB is unreachable at boot
-    try:
-        Base.metadata.create_all(bind=engine)
-        print("✓  Database tables ready")
-    except Exception as exc:
-        print(f"⚠  Could not create database tables: {exc}")
-        print("   The app will start, but database-backed routes will fail until the DB is reachable.")
-
-    # Auto-seed on first run
-    try:
-        db = SessionLocal()
-        try:
-            seed(db)
-        finally:
-            db.close()
-    except Exception as exc:
-        print(f"⚠  Seeding skipped — database not reachable: {exc}")
-
-    print("✓  Listening at http://0.0.0.0:8000")
-    print("✓  API docs at  http://localhost:8000/docs\n")
-
+    if ping_db():
+        print("✓  Supabase connection OK")
+    else:
+        print("✗  WARNING: Cannot reach Supabase — check env vars on Render")
+    print("✓  No SQLAlchemy — tables managed via Supabase SQL Editor")
+    print("✓  API docs → /docs\n")
     yield
-
     print("\n🏛  USHSS Backend shutting down…")
 
-
-# ── App ───────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="USHSS Portal API",
     description=(
-        "Backend API for the University School of Humanities & Social Sciences "
-        "(GGSIPU) student/faculty/admin portal.\n\n"
-        "**Authentication**: All protected routes require a Bearer JWT token "
-        "obtained from `POST /api/login`."
+        "Backend for USHSS (GGSIPU) portal.\n\n"
+        "**Database**: Supabase (PostgreSQL via supabase-py)\n\n"
+        "**Permissions**:\n"
+        "- `admin` — full rights over all data\n"
+        "- `faculty` — host attendance sessions, view students\n"
+        "- `student` / `cr` — view timetable, mark attendance\n\n"
+        "All protected routes require `Authorization: Bearer <token>` from `POST /api/login`."
     ),
-    version="1.0.0",
+    version="3.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-
-# ── Static files & Templates ──────────────────────────────────────────────────
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-
-# ── Middleware ────────────────────────────────────────────────────────────────
-
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -94,9 +69,6 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-
-# ── API Routers ───────────────────────────────────────────────────────────────
-
 app.include_router(auth.router,           prefix="/api")
 app.include_router(admin.router,          prefix="/api")
 app.include_router(student.router,        prefix="/api")
@@ -105,42 +77,30 @@ app.include_router(cr.router,             prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 
 
-# ── Frontend routes (serve HTML templates) ────────────────────────────────────
-
 @app.get("/", include_in_schema=False)
 def home(request: Request):
     return templates.TemplateResponse(request, "ushss_website.html")
-
 
 @app.get("/dashboard/admin", include_in_schema=False)
 def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html")
 
-
 @app.get("/dashboard/student", include_in_schema=False)
 def student_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-student-portal.html")
-
 
 @app.get("/dashboard/faculty", include_in_schema=False)
 def faculty_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-faculty-portal.html")
 
-
 @app.get("/dashboard/cr", include_in_schema=False)
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
 
-
-# ── Health check ──────────────────────────────────────────────────────────────
-
 @app.get("/health", tags=["System"])
 def health():
-    """Quick health-check endpoint for load balancers / uptime monitors."""
-    return {"status": "ok"}
-
-
-# ── Dev entrypoint ────────────────────────────────────────────────────────────
+    ok = ping_db()
+    return {"status": "ok" if ok else "degraded", "database": "supabase", "connected": ok}
 
 if __name__ == "__main__":
     import uvicorn
@@ -148,6 +108,6 @@ if __name__ == "__main__":
         "main:app",
         host=os.environ.get("HOST", "0.0.0.0"),
         port=int(os.environ.get("PORT", 8000)),
-        reload=os.environ.get("DEBUG", "true").lower() == "true",
+        reload=os.environ.get("DEBUG", "false").lower() == "true",
         log_level="info",
     )
