@@ -1,7 +1,7 @@
 """
 routers/auth.py
-───────────────
-Authentication — login returns a JWT.
+
+Authentication  login returns a JWT.
 
   POST /api/login
 """
