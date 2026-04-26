@@ -32,16 +32,23 @@ from routers import auth, admin, student, faculty, cr, password_reset
 async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend starting up…")
 
-    # Create all tables (idempotent)
-    Base.metadata.create_all(bind=engine)
-    print("✓  Database tables ready")
+    # Create all tables (idempotent) — skip gracefully if DB is unreachable at boot
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("✓  Database tables ready")
+    except Exception as exc:
+        print(f"⚠  Could not create database tables: {exc}")
+        print("   The app will start, but database-backed routes will fail until the DB is reachable.")
 
     # Auto-seed on first run
-    db = SessionLocal()
     try:
-        seed(db)
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            seed(db)
+        finally:
+            db.close()
+    except Exception as exc:
+        print(f"⚠  Seeding skipped — database not reachable: {exc}")
 
     print("✓  Listening at http://0.0.0.0:8000")
     print("✓  API docs at  http://localhost:8000/docs\n")
