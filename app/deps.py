@@ -1,46 +1,64 @@
 """
 app/deps.py
 ───────────
-FastAPI dependency: extracts and validates the current JWT user.
+FastAPI JWT dependencies — role guards using Supabase.
+
+  get_current_user  — any authenticated user
+  require_admin     — admin only  (full DB rights)
+  require_faculty   — faculty or admin  (host attendance sessions)
+  require_student   — student / cr / admin  (view timetable, mark attendance)
 """
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import User
+from app.database import sb
 from app.security import decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
 
-def get_current_user(
-    token: str     = Depends(oauth2_scheme),
-    db:    Session = Depends(get_db),
-) -> User:
-    credentials_exc = HTTPException(
+def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = decode_token(token)
-        user_id: int = payload.get("id")
-        if user_id is None:
-            raise credentials_exc
+        user_id = payload.get("id")
+        if not user_id:
+            raise exc
     except JWTError:
-        raise credentials_exc
+        raise exc
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
-        raise credentials_exc
+    res = (
+        sb.table("users")
+        .select("*")
+        .eq("id", user_id)
+        .eq("is_active", True)
+        .single()
+        .execute()
+    )
+    if not res.data:
+        raise exc
+    return res.data
+
+
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] != "admin":
+        raise HTTPException(403, "Admin access required. Contact your administrator.")
     return user
 
 
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    from app.models import RoleEnum
-    if current_user.role != RoleEnum.admin:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
+def require_faculty(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in ("faculty", "admin"):
+        raise HTTPException(403, "Faculty access required.")
+    return user
+
+
+def require_student(user: dict = Depends(get_current_user)) -> dict:
+    if user["role"] not in ("student", "cr", "admin"):
+        raise HTTPException(403, "Student access required.")
+    return user
