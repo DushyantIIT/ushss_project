@@ -1,26 +1,7 @@
-# USHSS Portal — Python dependencies
-# Supabase version (SQLAlchemy + psycopg2 removed)
-
-# Web framework
-fastapi>=0.111.0
-uvicorn[standard]>=0.29.0
-
-# Templates & static files
-jinja2>=3.1.0
-python-multipart>=0.0.9
-
-# ── Supabase (replaces sqlalchemy + psycopg2) ──────────────
-supabase>=2.4.0
-
-# Auth
-bcrypt>=4.1.0
-python-jose[cryptography]>=3.3.0
-
-# Validation
-pydantic[email]>=2.0.0
-
-# Env config
-python-dotenv>=1.0.0
-
-# Production server
-gunicorn>=21.0.0
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+passlib[bcrypt]
+python-jose
