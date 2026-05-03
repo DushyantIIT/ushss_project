@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -5,6 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SUPABASE_URL = (
+=======
+>>>>>>> 4a8f0d8a863f8f212dbd131f7f9cd73e162ce3fb
     os.getenv("SUPABASE_URL")
     or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
     or ""
