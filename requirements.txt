@@ -6,3 +6,6 @@ python-dotenv
 passlib[bcrypt]
 python-jose
 jinja2
+python-multipart
+email-validator
+supabase
