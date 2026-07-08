@@ -1,17 +1,4 @@
-<<<<<<< HEAD
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-python-dotenv
-passlib[bcrypt]
-python-jose
-jinja2
-python-multipart
-email-validator
-supabase
-=======
-# USHSS Portal — Python dependencies
+# USHSS Portal – Python dependencies
 # Supabase version (SQLAlchemy + psycopg2 removed)
 
 # Web framework
@@ -22,7 +9,7 @@ uvicorn[standard]>=0.29.0
 jinja2>=3.1.0
 python-multipart>=0.0.9
 
-# ── Supabase (replaces sqlalchemy + psycopg2) ──────────────
+# — Supabase (replaces sqlalchemy + psycopg2) —
 supabase>=2.4.0
 
 # Auth
@@ -37,4 +24,3 @@ python-dotenv>=1.0.0
 
 # Production server
 gunicorn>=21.0.0
->>>>>>> parent of bfa660b (Simplify requirements by removing comments and unused packages)
