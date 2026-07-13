@@ -89,6 +89,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);dis
 .badge-faculty{background:var(--purple-bg);color:#B99FE8;border:1px solid rgba(139,111,192,.3)}
 .badge-cr{background:var(--green-bg);color:#7DDAB0;border:1px solid rgba(61,170,114,.3)}
 .badge-admin{background:var(--gold-pale);color:var(--gold-l);border:1px solid rgba(201,168,76,.3)}
+.badge-super-admin{background:rgba(201,168,76,.16);color:var(--gold-l);border:1px solid var(--gold);box-shadow:0 0 10px rgba(201,168,76,.12)}
+.protected-account{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;background:rgba(201,168,76,.08);color:var(--gold-l);border:1px solid rgba(201,168,76,.3);font-family:var(--mono);font-size:10px;white-space:nowrap}
 .badge-active{background:var(--green-bg);color:var(--green);border:1px solid rgba(61,170,114,.25)}
 .badge-inactive{background:var(--red-bg);color:var(--red);border:1px solid rgba(224,85,85,.25)}
 .badge-live{background:rgba(61,170,114,.2);color:var(--green);border:1px solid rgba(61,170,114,.4)}
@@ -645,7 +647,7 @@ function initDB() {
   };
 
   const users = [
-    {role:"admin",username:"admin001",password:"Admin@1234",full_name:"USHSS Administrator",email:"admin.ushss@ipu.ac.in",phone:"",department:"Administration",programme:"",batch:"",designation:"Administrator",is_active:1},
+    {role:"admin",username:"admin001",password:"Admin@1234",full_name:"USHSS Administrator",email:"admin.ushss@ipu.ac.in",phone:"",department:"Administration",programme:"",batch:"",designation:"Super Administrator",is_active:1,is_super_admin:true},
     {role:"student",username:"2301001",password:"Student@123",full_name:"Arjun Sharma",email:"arjun.sharma@ipu.ac.in",phone:"+91 98100 11001",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
     {role:"student",username:"2301002",password:"Student@123",full_name:"Priya Verma",email:"priya.verma@ipu.ac.in",phone:"+91 98100 11002",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
     {role:"student",username:"2401001",password:"Student@123",full_name:"Rahul Gupta",email:"rahul.gupta@ipu.ac.in",phone:"+91 98100 11003",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"",is_active:1},
@@ -663,7 +665,7 @@ function initDB() {
     {role:"cr",username:"cr2401001",password:"Cr@12345",full_name:"Neha Singh (CR)",email:"cr.eco@ipu.ac.in",phone:"+91 98100 22002",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"Class Representative",is_active:1},
   ];
   let id=1;
-  for(const u of users) db.users.push({id:id++,...u,password_hash:hash(u.password),created_at:now(),last_login:null});
+  for(const u of users) db.users.push({id:id++,...u,is_super_admin:u.is_super_admin===true,password_hash:hash(u.password),created_at:now(),last_login:null});
   db._nextId=id;
 
   /* ── Seed timetables ──────────────────────────────────────────── */
@@ -797,28 +799,75 @@ function dbCreateUser(data) {
   const db=loadDB();
   if(db.users.find(u=>u.username===data.username)) throw new Error("Username already exists");
   const now=new Date().toISOString().replace("T"," ").substring(0,19);
-  const user={id:db._nextId++,role:data.role,username:data.username,password_hash:hash(data.password),full_name:data.full_name,email:data.email||"",phone:data.phone||"",department:data.department||"",programme:data.programme||"",batch:data.batch||"",designation:data.designation||"",is_active:1,created_at:now,last_login:null};
+  const user={id:db._nextId++,role:data.role,username:data.username,password_hash:hash(data.password),full_name:data.full_name,email:data.email||"",phone:data.phone||"",department:data.department||"",programme:data.programme||"",batch:data.batch||"",designation:data.designation||"",is_active:1,is_super_admin:false,created_at:now,last_login:null};
   db.users.push(user);
   db.audit.push({id:db._nextId++,user_id:1,action:"CREATE_USER",detail:`Created ${data.role} ${data.username}`,ts:now});
   saveDB(db); return user;
 }
 function dbUpdateUser(id,data) {
-  const db=loadDB(); const idx=db.users.findIndex(u=>u.id===id);
+  const db=loadDB();
+  const idx=db.users.findIndex(u=>u.id===id);
   if(idx===-1) throw new Error("User not found");
-  const u=db.users[idx];
-  Object.assign(u,{full_name:data.full_name??u.full_name,email:data.email??u.email,phone:data.phone??u.phone,department:data.department??u.department,programme:data.programme??u.programme,batch:data.batch??u.batch,designation:data.designation??u.designation,is_active:data.is_active!==undefined?Number(data.is_active):u.is_active});
-  if(data.password) u.password_hash=hash(data.password);
-  const ts=new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({id:db._nextId++,user_id:1,action:"UPDATE_USER",detail:`Updated ${u.username}`,ts});
-  saveDB(db); return u;
-}
-function dbDeleteUser(id) {
-  const db=loadDB(); const idx=db.users.findIndex(u=>u.id===id);
-  if(idx===-1) throw new Error("Not found");
-  const u=db.users[idx]; db.users.splice(idx,1);
-  const ts=new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({id:db._nextId++,user_id:1,action:"DELETE_USER",detail:`Deleted ${u.role} ${u.username}`,ts});
+
+  const user=db.users[idx];
+
+  // The permanent Super Admin must always remain active.
+  // Backend authorization remains the real security layer.
+  const safeData={...data};
+  if(user.is_super_admin===true){
+    safeData.is_active=1;
+  }
+
+  if(safeData.username && safeData.username!==user.username && db.users.some(u=>u.username===safeData.username)){
+    throw new Error("Username already exists");
+  }
+
+  if(safeData.password){
+    safeData.password_hash=hash(safeData.password);
+  }
+
+  delete safeData.password;
+  delete safeData.is_super_admin; // Never promote/demote through the normal edit form.
+
+  db.users[idx]={...user,...safeData,is_super_admin:user.is_super_admin===true};
+
+  const now=new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({
+    id:db._nextId++,
+    user_id:1,
+    action:"UPDATE_USER",
+    detail:`Updated ${db.users[idx].role} ${db.users[idx].username}`,
+    ts:now
+  });
+
   saveDB(db);
+  return db.users[idx];
+}
+
+function dbDeleteUser(id) {
+  const db=loadDB();
+  const idx=db.users.findIndex(u=>u.id===id);
+  if(idx===-1) throw new Error("User not found");
+
+  const user=db.users[idx];
+
+  if(user.is_super_admin===true){
+    throw new Error("The Super Admin cannot be deleted");
+  }
+
+  db.users.splice(idx,1);
+
+  const now=new Date().toISOString().replace("T"," ").substring(0,19);
+  db.audit.push({
+    id:db._nextId++,
+    user_id:1,
+    action:"DELETE_USER",
+    detail:`Deleted ${user.role} ${user.username}`,
+    ts:now
+  });
+
+  saveDB(db);
+  return user;
 }
 function logAudit(action,detail) {
   const db=loadDB(); const ts=new Date().toISOString().replace("T"," ").substring(0,19);
@@ -1536,25 +1585,42 @@ function renderUserTable(role) {
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
-  const rows=filtered.length?filtered.map(u=>`
-    <tr>
+
+  const rows=filtered.length?filtered.map(u=>{
+    const isSuperAdmin=u.is_super_admin===true;
+    const safeName=(u.full_name||"").replace(/'/g,"\'");
+    const superBadge=isSuperAdmin
+      ? `<div style="margin-top:5px"><span class="badge badge-super-admin">👑 Super Admin</span></div>`
+      : "";
+
+    const actions=isSuperAdmin
+      ? `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+         <span class="protected-account">🛡 Protected</span>`
+      : `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+         <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${safeName}')" title="Delete user">🗑</button>`;
+
+    return `<tr>
       <td class="mono" style="color:var(--muted)">#${u.id}</td>
-      <td><div style="font-weight:600;color:var(--text)">${u.full_name}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.username}</div></td>
+      <td>
+        <div style="font-weight:600;color:var(--text)">${u.full_name}</div>
+        <div class="mono" style="font-size:11px;color:var(--muted)">${u.username}</div>
+        ${superBadge}
+      </td>
       <td>${u.email?`<span style="font-size:12px">${u.email}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
       ${hasStudentFields?`<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div></td>`:""}
       ${hasFacultyFields?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
-      ${role==="admin"?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
+      ${role==="admin"?`<td style="font-size:12px">${isSuperAdmin?"Super Administrator":(u.designation||"Administrator")}</td>`:""}
       <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
       <td><span class="badge ${u.is_active?"badge-active":"badge-inactive"}">${u.is_active?"Active":"Inactive"}</span></td>
       <td class="mono" style="font-size:11px;color:var(--muted)">${u.last_login||"Never"}</td>
-      <td><div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${u.full_name.replace(/'/g,"\\'")}')">🗑</button>
-      </div></td>
-    </tr>`).join(""):`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
+      <td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div></td>
+    </tr>`;
+  }).join(""):`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
+
   return `
     <div class="search-bar">
-      <div class="search-input-wrap"><span class="search-icon">🔍</span>
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
         <input type="text" placeholder="Search by name, username or email…" value="${searchQuery}" oninput="searchQuery=this.value;renderPage('${role}')"/>
       </div>
       <select class="filter-select" onchange="statusFilter=this.value;renderPage('${role}')">
@@ -1565,71 +1631,17 @@ function renderUserTable(role) {
       <button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role]}</button>
       <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>ID</th><th>Name / Username</th><th>Email</th>
-        ${hasStudentFields?"<th>Programme / Batch</th>":""}
-        ${hasFacultyFields?"<th>Designation</th>":""}
-        ${role==="admin"?"<th>Designation</th>":""}
-        <th>Dept.</th><th>Status</th><th>Last Login</th><th>Actions</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-}
-
-/* ══════════════════════════════════════════
-   AUDIT
-══════════════════════════════════════════ */
-function renderAudit() {
-  const db=loadDB(); const entries=[...db.audit].reverse();
-  const ac=a=>a.includes("DELETE")?"var(--red)":a.includes("CREATE")?"var(--green)":a.includes("TIMETABLE")?"var(--teal)":a.includes("ATTEND")?"var(--amber)":a.includes("ANN")?"var(--purple)":"var(--blue)";
-  const rows=entries.map(l=>`<tr>
-    <td class="mono" style="color:var(--muted)">#${l.id}</td>
-    <td><span style="color:${ac(l.action)};font-family:var(--mono);font-size:12px;font-weight:600">${l.action}</span></td>
-    <td style="font-size:12px">${l.detail||"—"}</td>
-    <td class="mono" style="font-size:11px;color:var(--muted)">${l.ts}</td>
-  </tr>`).join("")||`<tr><td colspan="4"><div class="empty-state"><div>No audit events</div></div></td></tr>`;
-  return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <span style="font-size:13px;color:var(--muted)">${entries.length} events recorded</span>
-      <button class="btn btn-ghost btn-sm" onclick="if(confirm('Clear audit log?')){const db=loadDB();db.audit=[];saveDB(db);renderPage('audit')}">🗑 Clear</button>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>ID</th><th>Action</th><th>Detail</th><th>Timestamp</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-}
-
-/* ══════════════════════════════════════════
-   SCHEMA
-══════════════════════════════════════════ */
-function renderSchema() {
-  const tables=[
-    ["users","id · role · username · password_hash · full_name · email · phone · department · programme · batch · designation · is_active · created_at · last_login"],
-    ["timetables","key(prog|||section) → { day_timeIdx → { subject · room · faculty · notes } }"],
-    ["timetableMeta","prog · section · batch · accentIdx · createdAt"],
-    ["attendance","id · roll · date · subject · faculty · programme · status · note · edited_by · edited_at"],
-    ["announcements","id · title · body · target · priority · ts · pinUntil"],
-    ["liveSessions","id · programme · subject · faculty · topic · duration · timeLeft · startedAt · active"],
-    ["audit","id · user_id → users.id · action · detail · ts"],
-  ];
-  return `
-    <div class="sec-head"><div><div class="sec-label">System</div><div class="sec-title">Database Schema</div></div></div>
-    <div class="three-col">
-      ${tables.map(([name,cols])=>`
-        <div class="card">
-          <div class="card-title" style="margin-bottom:8px">Table: <span style="color:var(--gold-l);font-family:var(--mono)">${name}</span></div>
-          <div style="font-size:11px;color:var(--muted);line-height:1.9;font-family:var(--mono)">${cols.split(' · ').map(c=>`<div>▸ ${c}</div>`).join("")}</div>
-        </div>`).join("")}
-    </div>
-    <div class="card" style="margin-top:16px">
-      <div class="card-title" style="margin-bottom:12px">Python Backend Endpoints (Timetable)</div>
-      <pre style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:11px;overflow-x:auto;line-height:1.9">
-<span style="color:var(--blue)">GET</span>    /api/timetable?programme=B.A.+Hons+English&section=Section+A
-<span style="color:var(--blue)">GET</span>    /api/timetable/meta               → List all programme/section combos
-<span style="color:var(--gold)">PUT</span>    /api/admin/timetable               → Update slot { prog, section, day, timeIdx, … }
-<span style="color:var(--green)">POST</span>   /api/admin/timetable/create        → Create new timetable { prog, section, batch }
-<span style="color:var(--red)">DELETE</span> /api/admin/timetable/:prog/:section → Delete entire timetable
-<span style="color:var(--green)">POST</span>   /api/admin/timetable/publish        → Push to student/faculty portals</pre>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>Name / Username</th><th>Email</th>
+          ${hasStudentFields?"<th>Programme / Batch</th>":""}
+          ${hasFacultyFields?"<th>Designation</th>":""}
+          ${role==="admin"?"<th>Admin Type</th>":""}
+          <th>Department</th><th>Status</th><th>Last Login</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
 }
 
@@ -1638,6 +1650,7 @@ function renderSchema() {
 ══════════════════════════════════════════ */
 function openCreateModal(role="student") {
   editingId=null;
+  document.getElementById("f-active").disabled=false;
   document.getElementById("modal-title").textContent="Add New User";
   document.getElementById("modal-save-btn").textContent="Create User";
   document.getElementById("pwd-req").style.display="inline";
@@ -1669,10 +1682,12 @@ function openEditModal(id) {
   document.getElementById("f-pwd").value="";
   document.getElementById("f-active").value=String(user.is_active);
   document.getElementById("row-active").style.display="flex";
+  document.getElementById("f-active").disabled=user.is_super_admin===true;
   onRoleChange(); document.getElementById("modal").classList.add("open");
 }
 function closeModal() {
   document.getElementById("modal").classList.remove("open");
+  document.getElementById("f-active").disabled=false;
   document.getElementById("f-role").disabled=false;
   document.getElementById("f-username").disabled=false;
   editingId=null;
@@ -1706,6 +1721,19 @@ function saveUser() {
 
 /* DELETE / CONFIRM */
 function openDeleteConfirm(id,name) {
+  const db=loadDB();
+  const user=db.users.find(u=>u.id===id);
+
+  if(!user){
+    toast("User not found","error");
+    return;
+  }
+
+  if(user.is_super_admin===true){
+    toast("The Super Admin cannot be deleted","error");
+    return;
+  }
+
   deleteId=id;
   deleteCallback=null;
   document.getElementById("confirm-title").textContent="Delete User?";
@@ -1715,10 +1743,23 @@ function openDeleteConfirm(id,name) {
 }
 function closeConfirm() { deleteId=null; deleteCallback=null; document.getElementById("confirm-overlay").classList.remove("open"); }
 function confirmDelete() {
-  if(deleteCallback) { deleteCallback(); closeConfirm(); return; }
+  if(deleteCallback){
+    deleteCallback();
+    closeConfirm();
+    return;
+  }
+
   if(!deleteId) return;
-  dbDeleteUser(deleteId); toast("User deleted","success");
-  closeConfirm(); renderPage(currentPage);
+
+  try{
+    dbDeleteUser(deleteId);
+    toast("User deleted","success");
+    closeConfirm();
+    renderPage(currentPage);
+  }catch(error){
+    toast(error.message,"error");
+    closeConfirm();
+  }
 }
 
 /* TOAST */
