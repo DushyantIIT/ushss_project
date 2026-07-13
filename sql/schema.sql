@@ -26,6 +26,7 @@ create table if not exists users (
   email         text        not null unique,
   password_hash text        not null,
   is_active     boolean     not null default true,
+  is_super_admin boolean not null default false,
   phone         text,
   enrollment_no text,
   department    text,
