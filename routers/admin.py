@@ -158,9 +158,26 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    existing = sb.table("users").select("id").eq("id", uid).single().execute()
+    existing = (sb.table("users").select("id,username,role,is_super_admin").eq("id", uid).single().execute())
     if not existing.data:
-        raise HTTPException(404, "User not found")
+        raise HTTPException(
+            404,
+            "User not found"
+        )
+
+    target = existing.data
+
+    # A regular admin cannot modify the Super Admin.
+    # The Super Admin can still modify their own account.
+    if (
+        target.get("is_super_admin", False)
+        and uid != admin["id"]
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="The Super Admin account cannot "
+                   "be modified by another admin."
+        )
 
     updates = body.model_dump(exclude_none=True)
 
@@ -183,32 +200,143 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
     return res.data[0]
 
 
-@router.delete("/users/{uid}", summary="Delete a user")
-def delete_user(uid: int, admin: dict = Depends(require_admin)):
+@router.delete("/users/{uid}",summary="Delete a user")
+def delete_user(
+    uid: int,
+    admin: dict = Depends(require_admin)
+):
+    # No admin should accidentally delete
+    # the account they are currently using.
     if uid == admin["id"]:
-        raise HTTPException(400, "Cannot delete your own account")
-    existing = sb.table("users").select("id,username,role").eq("id", uid).single().execute()
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot delete your own account."
+        )
+
+    existing = (
+        sb.table("users")
+        .select(
+            "id,username,role,is_super_admin"
+        )
+        .eq("id", uid)
+        .single()
+        .execute()
+    )
+
     if not existing.data:
-        raise HTTPException(404, "User not found")
-    u = existing.data
-    sb.table("users").delete().eq("id", uid).execute()
-    _audit(admin["id"], "DELETE_USER", f"Deleted {u['role']} '{u['username']}'")
-    return {"message": "User deleted successfully"}
+        raise HTTPException(
+            status_code=404,
+            detail="User not found."
+        )
+
+    target = existing.data
+
+    # Nobody can delete the permanent Super Admin.
+    if target.get("is_super_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail="The Super Admin cannot be deleted."
+        )
+
+    sb.table("users") \
+        .delete() \
+        .eq("id", uid) \
+        .execute()
+
+    _audit(
+        admin["id"],
+        "DELETE_USER",
+        (
+            f"Deleted {target['role']} "
+            f"'{target['username']}'"
+        )
+    )
+
+    return {
+        "message": "User deleted successfully"
+    }
 
 
-@router.patch("/users/{uid}/toggle", summary="Toggle active/inactive")
-def toggle_user(uid: int, admin: dict = Depends(require_admin)):
+@router.patch(
+    "/users/{uid}/toggle",
+    summary="Toggle active/inactive"
+)
+def toggle_user(
+    uid: int,
+    admin: dict = Depends(require_admin)
+):
     if uid == admin["id"]:
-        raise HTTPException(400, "Cannot deactivate your own account")
-    res = sb.table("users").select("id,username,is_active").eq("id", uid).single().execute()
-    if not res.data:
-        raise HTTPException(404, "User not found")
-    new_status = not res.data["is_active"]
-    sb.table("users").update({"is_active": new_status}).eq("id", uid).execute()
-    _audit(admin["id"], "TOGGLE_USER",
-           f"{res.data['username']}  {'active' if new_status else 'inactive'}")
-    return {"is_active": new_status}
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "You cannot deactivate "
+                "your own account."
+            )
+        )
 
+    result = (
+        sb.table("users")
+        .select(
+            "id,username,is_active,"
+            "is_super_admin"
+        )
+        .eq("id", uid)
+        .single()
+        .execute()
+    )
+
+    if not result.data:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found."
+        )
+
+    target = result.data
+
+    # The permanent account must always remain active.
+    if target.get("is_super_admin", False):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "The Super Admin cannot "
+                "be deactivated."
+            )
+        )
+
+    new_status = not target["is_active"]
+
+    (
+        sb.table("users")
+        .update({
+            "is_active": new_status
+        })
+        .eq("id", uid)
+        .execute()
+    )
+
+    action = (
+        "ACTIVATE_USER"
+        if new_status
+        else "DEACTIVATE_USER"
+    )
+
+    _audit(
+        admin["id"],
+        action,
+        (
+            f"{action.replace('_', ' ').title()}: "
+            f"'{target['username']}'"
+        )
+    )
+
+    return {
+        "message": (
+            "User activated successfully"
+            if new_status
+            else "User deactivated successfully"
+        ),
+        "is_active": new_status
+    }
 
 # 
 #  PASSWORD RESET  (admin resets any user's password)
@@ -219,16 +347,73 @@ class PasswordResetBody(BaseModel):
     new_password: str = Field(..., min_length=6)
 
 
-@router.post("/reset-password", summary="Reset any user's password")
-def reset_password(body: PasswordResetBody, admin: dict = Depends(require_admin)):
-    res = sb.table("users").select("id,full_name,username").eq("username", body.username).eq("is_active", True).single().execute()
-    if not res.data:
-        raise HTTPException(404, "No active user with that username")
-    u = res.data
-    sb.table("users").update({"password_hash": hash_password(body.new_password)}).eq("id", u["id"]).execute()
-    _audit(admin["id"], "PASSWORD_RESET", f"Admin reset password for '{u['username']}'")
-    return {"message": f"Password for '{u['username']}' has been reset."}
+@router.post(
+    "/reset-password",
+    summary="Reset any user's password"
+)
+def reset_password(
+    body: PasswordResetBody,
+    admin: dict = Depends(require_admin)
+):
+    res = (
+        sb.table("users")
+        .select(
+            "id,full_name,username,is_super_admin"
+        )
+        .eq("username", body.username)
+        .eq("is_active", True)
+        .single()
+        .execute()
+    )
 
+    if not res.data:
+        raise HTTPException(
+            status_code=404,
+            detail="No active user with that username"
+        )
+
+    u = res.data
+
+    # Another admin cannot reset the
+    # Super Admin's password.
+    if (
+        u.get("is_super_admin", False)
+        and u["id"] != admin["id"]
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "The Super Admin's password "
+                "cannot be reset by another admin."
+            )
+        )
+
+    # Runs only when the request is permitted.
+    (
+        sb.table("users")
+        .update({
+            "password_hash":
+                hash_password(body.new_password)
+        })
+        .eq("id", u["id"])
+        .execute()
+    )
+
+    _audit(
+        admin["id"],
+        "PASSWORD_RESET",
+        (
+            "Admin reset password for "
+            f"'{u['username']}'"
+        )
+    )
+
+    return {
+        "message": (
+            f"Password for '{u['username']}' "
+            "has been reset."
+        )
+    }
 
 # 
 #  TIMETABLE  (admin creates / manages the schedule)
