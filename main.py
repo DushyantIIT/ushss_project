@@ -98,9 +98,9 @@ def cr_dashboard(request: Request):
 
 from fastapi.responses import FileResponse
 
-@app.get("/googleasasasomething.html", include_in_schema=False)
+@app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():
-    return FileResponse("googleasasasomething.html")
+    return FileResponse("googleda3d4b79bd268fbe.html")
 
 @app.get("/health", tags=["System"])
 def health():
