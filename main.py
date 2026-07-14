@@ -96,6 +96,12 @@ def faculty_dashboard(request: Request):
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
 
+from fastapi.responses import FileResponse
+
+@app.get("/googleasasasomething.html", include_in_schema=False)
+def google_verification():
+    return FileResponse("googleasasasomething.html")
+
 @app.get("/health", tags=["System"])
 def health():
     ok = ping_db()
