@@ -1034,6 +1034,27 @@ function setPortalRole(btn, role) {
   document.getElementById("portal-id-label").textContent = label;
   document.getElementById("portal-id").placeholder = `Enter your ${label.toLowerCase()}`;
 }
+function setPortalMode(mode) {
+    const loginPanel = document.getElementById("panel-login");
+    const registerPanel = document.getElementById("panel-register");
+
+    const loginBtn = document.getElementById("mode-login-btn");
+    const registerBtn = document.getElementById("mode-reg-btn");
+
+    if (mode === "register") {
+        loginPanel.style.display = "none";
+        registerPanel.style.display = "block";
+
+        loginBtn.classList.remove("active");
+        registerBtn.classList.add("active");
+    } else {
+        loginPanel.style.display = "block";
+        registerPanel.style.display = "none";
+
+        registerBtn.classList.remove("active");
+        loginBtn.classList.add("active");
+    }
+}
 async function submitPortalLogin() {
   const uid = document.getElementById("portal-id").value.trim();
   const pwd = document.getElementById("portal-password").value.trim();
