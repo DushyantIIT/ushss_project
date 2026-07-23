@@ -84,6 +84,10 @@ def home(request: Request):
 def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html")
 
+@app.api_route("/dashboard/admin/pending-requests", methods=["GET", "HEAD"], include_in_schema=False)
+def admin_pending_requests_page(request: Request):
+    return templates.TemplateResponse(request, "admin_pending_requests.html")
+
 @app.api_route("/dashboard/student", methods=["GET", "HEAD"], include_in_schema=False)
 def student_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-student-portal.html")
@@ -95,6 +99,14 @@ def faculty_dashboard(request: Request):
 @app.api_route("/dashboard/cr", methods=["GET", "HEAD"], include_in_schema=False)
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
+
+@app.api_route("/waiting", methods=["GET", "HEAD"], include_in_schema=False)
+def waiting_page(request: Request):
+    return templates.TemplateResponse(request, "waiting.html")
+
+@app.api_route("/rejected", methods=["GET", "HEAD"], include_in_schema=False)
+def rejected_page(request: Request):
+    return templates.TemplateResponse(request, "rejected.html")
 
 from fastapi.responses import FileResponse
 
