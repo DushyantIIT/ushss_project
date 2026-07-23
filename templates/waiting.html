@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Registration Pending — USHSS Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"/>
+<style>
+:root{
+  --maroon:#6B1A1A;
+  --maroon-deep:#4A0E0E;
+  --gold:#C9A84C;
+  --gold-light:#E8C97A;
+  --cream:#FAF7F2;
+  --cream-dark:#F0EBE0;
+  --ink:#1A1209;
+  --ink-muted:#6B5B4E;
+  --white:#FFFFFF;
+  --border:#D4C4A8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.card{width:min(480px,100%);background:var(--white);border:1px solid var(--border);border-radius:6px;padding:2.5rem 2.25rem;text-align:center;box-shadow:0 18px 42px rgba(74,14,14,.08)}
+.icon{width:64px;height:64px;border-radius:50%;background:var(--cream-dark);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:28px;color:var(--gold)}
+h1{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--maroon-deep);margin-bottom:.9rem}
+p{font-size:14px;line-height:1.65;color:var(--ink-muted);margin-bottom:.55rem}
+.status-badge{display:inline-block;margin:1rem 0;padding:6px 16px;border-radius:20px;background:var(--cream-dark);border:1px solid var(--border);font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--maroon)}
+.name{color:var(--ink);font-weight:500}
+.actions{margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center}
+button{font-family:'DM Sans',sans-serif;cursor:pointer;border-radius:4px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;padding:10px 20px;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);transition:all .2s}
+button.primary{background:var(--maroon);border-color:var(--maroon);color:var(--gold-light)}
+button:hover{border-color:var(--gold);color:var(--maroon)}
+button.primary:hover{color:var(--gold-light);opacity:.92}
+.loading{font-size:12px;color:var(--ink-muted);margin-top:.5rem;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">&#9203;</div>
+  <h1>Registration Received</h1>
+  <p>Your account has been created successfully.</p>
+  <p>Your email has been verified once you click the confirmation link we sent you.</p>
+  <p>Your registration request has been sent for approval.</p>
+  <p>You will be able to log in once your account is approved.</p>
+  <div class="status-badge" id="status-badge">Status: Pending</div>
+  <p id="who" style="display:none"></p>
+  <div class="loading" id="loading">Checking status…</div>
+  <div class="actions">
+    <button type="button" onclick="checkStatus()">Refresh Status</button>
+    <button class="primary" type="button" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<script>
+function getToken() {
+  return localStorage.getItem("ushss_pending_token");
+}
+
+async function checkStatus() {
+  const token = getToken();
+  const badge = document.getElementById("status-badge");
+  const who = document.getElementById("who");
+  const loading = document.getElementById("loading");
+  if (!token) return; // nothing to poll — static pending message stands
+
+  try {
+    loading.style.display = "block";
+    const res = await fetch("/api/registration-status", {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Could not check status");
+
+    if (data.full_name) {
+      who.textContent = "Applicant: " + data.full_name + " (" + data.email + ")";
+      who.style.display = "block";
+    }
+
+    if (data.status === "approved") {
+      badge.textContent = "Status: Approved";
+      window.location.href = "/";
+    } else if (data.status === "rejected") {
+      if (data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason", data.rejection_reason);
+      window.location.href = "/rejected";
+    } else {
+      badge.textContent = "Status: Pending";
+    }
+  } catch (e) {
+    // Silently keep showing the static pending message.
+  } finally {
+    loading.style.display = "none";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("ushss_pending_token");
+  window.location.href = "/";
+}
+
+checkStatus();
+</script>
+</body>
+</html>
