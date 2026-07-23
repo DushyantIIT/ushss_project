@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Registration Rejected — USHSS Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"/>
+<style>
+:root{
+  --maroon:#6B1A1A;
+  --maroon-deep:#4A0E0E;
+  --gold:#C9A84C;
+  --gold-light:#E8C97A;
+  --cream:#FAF7F2;
+  --cream-dark:#F0EBE0;
+  --ink:#1A1209;
+  --ink-muted:#6B5B4E;
+  --white:#FFFFFF;
+  --border:#D4C4A8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.card{width:min(480px,100%);background:var(--white);border:1px solid var(--border);border-radius:6px;padding:2.5rem 2.25rem;text-align:center;box-shadow:0 18px 42px rgba(74,14,14,.08)}
+.icon{width:64px;height:64px;border-radius:50%;background:var(--cream-dark);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:28px;color:var(--maroon)}
+h1{font-family:'Playfair Display',serif;font-size:1.7rem;color:var(--maroon-deep);margin-bottom:.9rem}
+p{font-size:14px;line-height:1.65;color:var(--ink-muted);margin-bottom:.55rem}
+.reason-box{margin:1.1rem 0;padding:.9rem 1rem;background:var(--cream-dark);border:1px solid var(--border);border-radius:4px;font-size:13.5px;color:var(--ink);text-align:left;display:none}
+.reason-box .label{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--maroon);display:block;margin-bottom:.3rem}
+.actions{margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center}
+button{font-family:'DM Sans',sans-serif;cursor:pointer;border-radius:4px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;padding:10px 20px;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);transition:all .2s}
+button.primary{background:var(--maroon);border-color:var(--maroon);color:var(--gold-light)}
+button:hover{border-color:var(--gold);color:var(--maroon)}
+button.primary:hover{color:var(--gold-light);opacity:.92}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">&times;</div>
+  <h1>Registration Rejected</h1>
+  <p>Your registration request has been rejected.</p>
+  <div class="reason-box" id="reason-box">
+    <span class="label">Reason</span>
+    <span id="reason-text"></span>
+  </div>
+  <p>If you believe this is a mistake, please contact <a href="mailto:admin.ushss@ipu.ac.in" style="color:var(--maroon)">admin.ushss@ipu.ac.in</a>.</p>
+  <div class="actions">
+    <button class="primary" type="button" onclick="goHome()">Return to Homepage</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const reason = sessionStorage.getItem("ushss_rejection_reason");
+  if (reason) {
+    document.getElementById("reason-text").textContent = reason;
+    document.getElementById("reason-box").style.display = "block";
+  }
+})();
+
+function goHome() {
+  localStorage.removeItem("ushss_pending_token");
+  sessionStorage.removeItem("ushss_rejection_reason");
+  window.location.href = "/";
+}
+</script>
+</body>
+</html>
