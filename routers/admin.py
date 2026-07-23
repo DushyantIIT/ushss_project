@@ -39,17 +39,20 @@ System
   POST /api/admin/reset-password               reset any user's password
 """
 
-from datetime import date as DateType
+from datetime import date as DateType, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
 
 from app.database import sb
-from app.deps import require_admin
+from app.deps import require_admin, require_super_admin
 from app.security import hash_password
+from app.email_utils import send_approval_email, send_rejection_email
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+VALID_ROLES = ("student", "faculty", "cr", "admin")
 
 #  tiny helper 
 def _audit(admin_id: int, action: str, detail: str):
@@ -88,6 +91,7 @@ class UserUpdate(BaseModel):
     batch:         Optional[str]      = None
     is_active:     Optional[bool]     = None
     password:      Optional[str]      = Field(None, min_length=6)
+    role:          Optional[str]      = None   # SuperAdmin only — see update_user()
 
 
 @router.get("/users", summary="List all users")
@@ -123,7 +127,6 @@ def get_user(uid: int, admin: dict = Depends(require_admin)):
 
 @router.post("/users", status_code=201, summary="Create a user")
 def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
-    VALID_ROLES = ("student", "faculty", "cr", "admin")
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
@@ -180,6 +183,15 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         )
 
     updates = body.model_dump(exclude_none=True)
+
+    if "role" in updates:
+        # Only the Super Admin may change a user's role (e.g. promote to Admin).
+        # Never trust this from the frontend beyond routing here — it's
+        # re-checked server-side against the acting admin's DB row.
+        if not admin.get("is_super_admin", False):
+            raise HTTPException(403, "Only the Super Admin can change a user's role.")
+        if updates["role"] not in VALID_ROLES:
+            raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
     if "password" in updates:
         updates["password_hash"] = hash_password(updates.pop("password"))
@@ -337,6 +349,112 @@ def toggle_user(
         ),
         "is_active": new_status
     }
+
+# ═══════════════════════════════════════════════
+#  REGISTRATION APPROVAL  (pending self-registrations)
+# ═══════════════════════════════════════════════
+
+class RejectBody(BaseModel):
+    rejection_reason: str = Field(..., min_length=1)
+
+
+@router.get("/pending-requests", summary="List pending registration requests")
+def list_pending_requests(
+    role: Optional[str] = Query(None),
+    admin: dict = Depends(require_admin),
+):
+    q = (
+        sb.table("users")
+        .select(
+            "id, username, full_name, email, role, enrollment_no, "
+            "department, programme, batch, designation, created_at"
+        )
+        .eq("status", "pending")
+    )
+    if role:
+        q = q.eq("role", role)
+    res = q.order("created_at", desc=True).execute()
+    requests = res.data or []
+
+    # A regular admin may act on student/cr/faculty requests only — admin
+    # requests are still visible (for transparency) but only a Super
+    # Admin can approve/reject them; the frontend uses this flag to
+    # disable those actions, and the endpoints re-check it server-side.
+    for r in requests:
+        r["actionable_by_current_admin"] = (
+            r["role"] != "admin" or admin.get("is_super_admin", False)
+        )
+
+    return {"requests": requests, "total": len(requests)}
+
+
+@router.post("/pending-requests/{uid}/approve", summary="Approve a pending registration")
+def approve_request(uid: int, admin: dict = Depends(require_admin)):
+    existing = (
+        sb.table("users")
+        .select("id, username, role, status, email, full_name")
+        .eq("id", uid)
+        .single()
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(404, "Registration request not found")
+
+    target = existing.data
+    if target["status"] != "pending":
+        raise HTTPException(400, f"This request has already been {target['status']}")
+
+    # Backend-enforced rule: only a Super Admin may approve an Admin
+    # registration. Never trust a role check done on the frontend.
+    if target["role"] == "admin" and not admin.get("is_super_admin", False):
+        raise HTTPException(403, "Only the Super Admin can approve Admin registrations.")
+
+    sb.table("users").update({
+        "status":           "approved",
+        "approved_by":      admin["id"],
+        "approved_at":      datetime.now(timezone.utc).isoformat(),
+        "rejection_reason": None,
+    }).eq("id", uid).execute()
+
+    _audit(admin["id"], "APPROVE_REGISTRATION", f"Approved {target['role']} '{target['username']}'")
+    send_approval_email(target["email"], target["full_name"])
+    return {"message": f"'{target['username']}' has been approved and can now log in."}
+
+
+@router.post("/pending-requests/{uid}/reject", summary="Reject a pending registration")
+def reject_request(uid: int, body: RejectBody, admin: dict = Depends(require_admin)):
+    existing = (
+        sb.table("users")
+        .select("id, username, role, status, email, full_name")
+        .eq("id", uid)
+        .single()
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(404, "Registration request not found")
+
+    target = existing.data
+    if target["status"] != "pending":
+        raise HTTPException(400, f"This request has already been {target['status']}")
+
+    # Same backend-enforced rule as approval.
+    if target["role"] == "admin" and not admin.get("is_super_admin", False):
+        raise HTTPException(403, "Only the Super Admin can reject Admin registrations.")
+
+    sb.table("users").update({
+        "status":           "rejected",
+        "approved_by":      admin["id"],
+        "approved_at":      datetime.now(timezone.utc).isoformat(),
+        "rejection_reason": body.rejection_reason,
+    }).eq("id", uid).execute()
+
+    _audit(
+        admin["id"], "REJECT_REGISTRATION",
+        f"Rejected {target['role']} '{target['username']}': {body.rejection_reason}",
+    )
+    send_rejection_email(target["email"], target["full_name"], body.rejection_reason)
+    return {"message": f"'{target['username']}' has been rejected."}
+
 
 # 
 #  PASSWORD RESET  (admin resets any user's password)
