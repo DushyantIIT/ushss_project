@@ -24,7 +24,7 @@ create table if not exists users (
   role          role_enum   not null,
   full_name     text        not null,
   email         text        not null unique,
-  password_hash text        not null,
+  password_hash text,       -- nullable: Supabase-Auth-backed accounts have no local hash
   is_active     boolean     not null default true,
   is_super_admin boolean not null default false,
   phone         text,
@@ -35,6 +35,13 @@ create table if not exists users (
   designation   text,
   last_login    timestamptz,
   created_at    timestamptz not null default now(),
+  -- Registration / approval workflow
+  status            text        not null default 'approved'
+                      check (status in ('pending', 'approved', 'rejected')),
+  supabase_uid      uuid unique,     -- links to Supabase Auth's auth.users.id
+  approved_by       bigint references users(id) on delete set null,
+  approved_at       timestamptz,
+  rejection_reason  text,
   unique (username, role)
 );
 
@@ -180,6 +187,8 @@ alter table attendance_records  disable row level security;
 -- ============================================================
 create index if not exists idx_users_role        on users(role);
 create index if not exists idx_users_email       on users(email);
+create index if not exists idx_users_status      on users(status);
+create index if not exists idx_users_supabase_uid on users(supabase_uid);
 create index if not exists idx_users_programme   on users(programme, batch);
 create index if not exists idx_timetable_prog    on timetable_slots(programme, batch);
 create index if not exists idx_sessions_slot     on attendance_sessions(slot_id, date);
