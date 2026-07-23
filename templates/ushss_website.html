@@ -1062,10 +1062,25 @@ async function submitPortalLogin() {
     } catch {
       throw new Error(res.statusText || "Server error");
     }
+    // Pending-approval / rejected accounts come back as a structured
+    // 403 { detail: { status, redirect_url, reason } } — route them
+    // to the Waiting / Rejected pages instead of showing a raw error.
+    const detail = data.detail;
+    if (!res.ok && detail && typeof detail === "object" && detail.redirect_url) {
+      if (detail.status === "rejected" && detail.reason) {
+        sessionStorage.setItem("ushss_rejection_reason", detail.reason);
+      }
+      closePortalLogin();
+      window.location.href = detail.redirect_url;
+      return;
+    }
     if (!res.ok || !data.success) {
-      throw new Error(data.detail || data.error || "Login failed");
+      const msg = (typeof detail === "string" && detail) || data.error || "Login failed";
+      throw new Error(msg);
     }
     err.style.display = "none";
+    if (data.token) localStorage.setItem("ushss_token", data.token);
+    if (data.user) localStorage.setItem("ushss_user", JSON.stringify(data.user));
     closePortalLogin();
     window.location.href = data.redirect_url || "/";
   } catch (e) {
@@ -1076,6 +1091,139 @@ async function submitPortalLogin() {
     btn.textContent = "Sign In";
   }
 }
+
+// ── Registration ──────────────────────────────────────────────────────────
+function onRegRoleChange() {
+  const role = document.getElementById("reg-role").value;
+  const isFaculty = role === "faculty";
+  document.getElementById("reg-row-prog").style.display  = isFaculty ? "none" : "";
+  document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-row-desig").style.display = isFaculty ? "" : "none";
+
+  const label = document.getElementById("reg-username-label");
+  const input = document.getElementById("reg-username");
+  if (isFaculty) {
+    label.innerHTML = 'Username <span style="color:#e3c881">*</span>';
+    input.placeholder = "e.g. faculty_jdoe";
+  } else {
+    label.innerHTML = 'Enrollment No. <span style="color:#e3c881">*</span>';
+    input.placeholder = "e.g. 2401001";
+  }
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isStrongPassword(pwd) {
+  // At least 8 characters, one letter and one number.
+  return pwd.length >= 8 && /[A-Za-z]/.test(pwd) && /[0-9]/.test(pwd);
+}
+
+async function submitPortalRegister() {
+  const role      = document.getElementById("reg-role").value;
+  const name      = document.getElementById("reg-name").value.trim();
+  const username  = document.getElementById("reg-username").value.trim();
+  const email     = document.getElementById("reg-email").value.trim();
+  const phone     = document.getElementById("reg-phone").value.trim();
+  const dept      = document.getElementById("reg-dept").value;
+  const prog      = document.getElementById("reg-prog").value;
+  const batch     = document.getElementById("reg-batch").value;
+  const desig     = document.getElementById("reg-desig").value.trim();
+  const pwd       = document.getElementById("reg-pwd").value;
+  const pwd2      = document.getElementById("reg-pwd2").value;
+
+  const err     = document.getElementById("portal-reg-error");
+  const success = document.getElementById("portal-reg-success");
+  const btn     = document.getElementById("reg-submit-btn");
+
+  err.style.display = "none";
+  success.style.display = "none";
+
+  const ENROLLMENT_ROLES = ["student", "cr"];
+
+  if (!name || !username || !email || !pwd || !pwd2) {
+    err.textContent = "Please fill in all required fields.";
+    err.style.display = "block";
+    return;
+  }
+  if (ENROLLMENT_ROLES.includes(role) && !username) {
+    err.textContent = "Enrollment number is required for this role.";
+    err.style.display = "block";
+    return;
+  }
+  if (!isValidEmail(email)) {
+    err.textContent = "Please enter a valid email address.";
+    err.style.display = "block";
+    return;
+  }
+  if (pwd !== pwd2) {
+    err.textContent = "Passwords do not match.";
+    err.style.display = "block";
+    return;
+  }
+  if (!isStrongPassword(pwd)) {
+    err.textContent = "Password must be at least 8 characters and include a letter and a number.";
+    err.style.display = "block";
+    return;
+  }
+
+  try {
+    btn.disabled = true;
+    btn.textContent = "Checking...";
+
+    const availRes = await fetch(`/api/check-username?username=${encodeURIComponent(username)}&role=${encodeURIComponent(role)}`);
+    const availData = await availRes.json();
+    if (availRes.ok && availData.available === false) {
+      throw new Error("This username / enrollment number is already taken for the selected role.");
+    }
+
+    btn.textContent = "Creating Account...";
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: username,
+        password: pwd,
+        role: role,
+        full_name: name,
+        email: email,
+        phone: phone || null,
+        enrollment_no: ENROLLMENT_ROLES.includes(role) ? username : null,
+        department: dept || null,
+        programme: role === "faculty" ? null : (prog || null),
+        batch: role === "faculty" ? null : (batch || null),
+        designation: role === "faculty" ? (desig || null) : null
+      })
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(res.statusText || "Server error");
+    }
+    if (!res.ok || !data.success) {
+      const msg = (typeof data.detail === "string" && data.detail) || data.error || "Registration failed";
+      throw new Error(msg);
+    }
+
+    if (data.token) localStorage.setItem("ushss_pending_token", data.token);
+
+    success.textContent = data.message || "Registration successful! Redirecting…";
+    success.style.display = "block";
+    setTimeout(() => {
+      window.location.href = data.redirect_url || "/waiting";
+    }, 900);
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Create Account";
+  }
+}
+
 document.getElementById("portal-login-overlay").addEventListener("click", e => {
   if (e.target.id === "portal-login-overlay") closePortalLogin();
 });
