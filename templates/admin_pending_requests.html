@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pending Registrations — USHSS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700&family=DM+Sans:wght@300;400;500;700&display=swap"/>
+<style>
+:root{
+  --maroon:#6B1A1A;
+  --maroon-deep:#4A0E0E;
+  --gold:#C9A84C;
+  --gold-light:#E8C97A;
+  --cream:#FAF7F2;
+  --cream-dark:#F0EBE0;
+  --ink:#1A1209;
+  --ink-muted:#6B5B4E;
+  --white:#FFFFFF;
+  --border:#D4C4A8;
+  --green:#2E7D46;
+  --red:#B33A3A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+.topbar{background:var(--maroon-deep);color:var(--cream);padding:1rem 1.75rem;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-family:'Playfair Display',serif;font-size:1.25rem}
+.topbar a{color:var(--gold-light);text-decoration:none;font-size:13px}
+.wrap{max-width:1080px;margin:0 auto;padding:2rem 1.5rem}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem}
+.toolbar h2{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--maroon-deep)}
+select{font-family:'DM Sans',sans-serif;padding:8px 10px;border:1px solid var(--border);border-radius:4px;background:var(--white);font-size:13px}
+.msg{padding:10px 14px;border-radius:4px;font-size:13px;margin-bottom:1rem;display:none}
+.msg.error{background:#fbeaea;color:var(--red);border:1px solid #e6b8b8;display:block}
+.msg.success{background:#e9f5ec;color:var(--green);border:1px solid #b9dcc2;display:block}
+.card{background:var(--white);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--cream-dark);font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-muted)}
+tr:last-child td{border-bottom:none}
+.role-badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;background:var(--cream-dark);color:var(--maroon)}
+.actions{display:flex;gap:.5rem}
+button{font-family:'DM Sans',sans-serif;cursor:pointer;border-radius:4px;font-size:12px;padding:7px 14px;border:1px solid var(--border);background:var(--white);color:var(--ink);transition:all .15s}
+button.approve{background:var(--green);border-color:var(--green);color:#fff}
+button.reject{background:var(--red);border-color:var(--red);color:#fff}
+button:hover{opacity:.88}
+button:disabled{opacity:.5;cursor:not-allowed}
+.empty,.loading-state{padding:2.5rem;text-align:center;color:var(--ink-muted);font-size:14px}
+.locked-note{font-size:11px;color:var(--ink-muted);margin-top:2px}
+
+@media (max-width: 640px){
+  .wrap{padding:1.25rem 1rem}
+  .toolbar{flex-direction:column;align-items:flex-start}
+  th,td{padding:10px 10px}
+}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(14,10,8,.55);display:none;align-items:center;justify-content:center;padding:1rem;z-index:100}
+.modal-overlay.open{display:flex}
+.modal{width:min(420px,100%);background:var(--white);border-radius:6px;padding:1.5rem}
+.modal h3{font-family:'Playfair Display',serif;color:var(--maroon-deep);margin-bottom:.75rem}
+.modal textarea{width:100%;min-height:90px;padding:10px;border:1px solid var(--border);border-radius:4px;font-family:'DM Sans',sans-serif;font-size:13px;resize:vertical}
+.modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>USHSS Admin — Pending Registrations</h1>
+  <a href="/dashboard/admin">&larr; Back to Dashboard</a>
+</div>
+
+<div class="wrap">
+  <div class="toolbar">
+    <h2>Registration Requests</h2>
+    <select id="role-filter" onchange="loadRequests()">
+      <option value="">All roles</option>
+      <option value="student">Student</option>
+      <option value="cr">CR</option>
+      <option value="faculty">Faculty</option>
+      <option value="admin">Admin</option>
+    </select>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <div class="card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Enrollment No.</th>
+            <th>Role</th>
+            <th>Registered</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="loading-state" id="loading-state" style="display:none">Loading requests…</div>
+    <div class="empty" id="empty-state" style="display:none">No pending registration requests.</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reject-overlay">
+  <div class="modal">
+    <h3>Reject Registration</h3>
+    <p style="font-size:13px;color:var(--ink-muted);margin-bottom:.6rem" id="reject-target-label"></p>
+    <textarea id="reject-reason" placeholder="Reason for rejection (shown to the applicant)"></textarea>
+    <div class="modal-actions">
+      <button type="button" onclick="closeRejectModal()">Cancel</button>
+      <button type="button" class="reject" id="reject-confirm-btn" onclick="confirmReject()">Reject</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "/api/admin/pending-requests";
+let rejectTargetId = null;
+
+function getToken() {
+  return localStorage.getItem("ushss_token");
+}
+
+function authHeaders() {
+  return { Authorization: "Bearer " + getToken(), "Content-Type": "application/json" };
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.className = "msg " + type;
+}
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  try { return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); }
+  catch { return iso; }
+}
+
+async function loadRequests() {
+  const loading = document.getElementById("loading-state");
+  const empty = document.getElementById("empty-state");
+  if (!getToken()) {
+    showMsg("You must be logged in as an admin to view this page.", "error");
+    document.getElementById("rows").innerHTML = "";
+    empty.style.display = "none";
+    return;
+  }
+  const role = document.getElementById("role-filter").value;
+  const url = API + (role ? `?role=${encodeURIComponent(role)}` : "");
+
+  loading.style.display = "block";
+  empty.style.display = "none";
+  document.getElementById("rows").innerHTML = "";
+
+  try {
+    const res = await fetch(url, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error((data.detail && (data.detail.message || data.detail)) || "Could not load requests.");
+    }
+    renderRows(data.requests || []);
+  } catch (e) {
+    showMsg(e.message, "error");
+  } finally {
+    loading.style.display = "none";
+  }
+}
+
+function renderRows(requests) {
+  const tbody = document.getElementById("rows");
+  const empty = document.getElementById("empty-state");
+  tbody.innerHTML = "";
+
+  if (!requests.length) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  requests.forEach(r => {
+    const tr = document.createElement("tr");
+    const canAct = r.actionable_by_current_admin !== false;
+    tr.innerHTML = `
+      <td>${escapeHtml(r.full_name || "")}</td>
+      <td>${escapeHtml(r.email || "")}</td>
+      <td>${escapeHtml(r.username || "")}</td>
+      <td>${escapeHtml(r.enrollment_no || "—")}</td>
+      <td><span class="role-badge">${escapeHtml(r.role || "")}</span></td>
+      <td>${fmtDate(r.created_at)}</td>
+      <td>
+        <div class="actions">
+          <button class="approve" ${canAct ? "" : "disabled"} onclick="approve(${r.id}, this)">Approve</button>
+          <button class="reject" ${canAct ? "" : "disabled"} onclick="openRejectModal(${r.id}, '${escapeHtml(r.full_name || r.username || "")}')">Reject</button>
+        </div>
+        ${canAct ? "" : '<div class="locked-note">Only the Super Admin can act on Admin requests</div>'}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+async function approve(id, btn) {
+  if (!confirm("Approve this registration?")) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/${id}/approve`, { method: "POST", headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.detail && (data.detail.message || data.detail)) || "Approval failed.");
+    showMsg(data.message || "Approved.", "success");
+    loadRequests();
+  } catch (e) {
+    showMsg(e.message, "error");
+    btn.disabled = false;
+  }
+}
+
+function openRejectModal(id, label) {
+  rejectTargetId = id;
+  document.getElementById("reject-target-label").textContent = "Rejecting: " + label;
+  document.getElementById("reject-reason").value = "";
+  document.getElementById("reject-overlay").classList.add("open");
+}
+function closeRejectModal() {
+  rejectTargetId = null;
+  document.getElementById("reject-overlay").classList.remove("open");
+}
+
+async function confirmReject() {
+  const reason = document.getElementById("reject-reason").value.trim();
+  if (!reason) {
+    alert("Please enter a rejection reason.");
+    return;
+  }
+  const btn = document.getElementById("reject-confirm-btn");
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/${rejectTargetId}/reject`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ rejection_reason: reason })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.detail && (data.detail.message || data.detail)) || "Rejection failed.");
+    showMsg(data.message || "Rejected.", "success");
+    closeRejectModal();
+    loadRequests();
+  } catch (e) {
+    showMsg(e.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+loadRequests();
+</script>
+</body>
+</html>
