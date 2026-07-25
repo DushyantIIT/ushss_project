@@ -1,29 +1,22 @@
 """
 app/security.py
 ───────────────
-Password hashing (bcrypt) + JWT helpers for USHSS.
+JWT helpers for USHSS.
+
+Passwords are never hashed or verified here — every account's credential
+lives in Supabase Auth (see routers/auth.py and routers/admin.py). This
+module only issues and decodes the backend's own authorization token.
 """
 
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import bcrypt
 from jose import JWTError, jwt
 
 SECRET_KEY   = os.environ.get("SECRET_KEY", "dev-secret-change-in-production-must-be-32-chars")
 ALGORITHM    = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 480))  # 8 h
-
-
-# ── Passwords ─────────────────────────────────────────────────────────────────
-
-def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

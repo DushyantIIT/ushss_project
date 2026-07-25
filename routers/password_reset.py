@@ -34,7 +34,6 @@ from app.deps import require_admin
 from app.security import (
     create_access_token,
     decode_token,
-    hash_password,
 )
 
 
@@ -85,7 +84,7 @@ def request_reset(
     res = (
         sb.table("users")
         .select(
-            "id,username,full_name,is_super_admin"
+            "id,username,full_name,is_super_admin,supabase_uid"
         )
         .eq("username", body.username)
         .eq("is_active", True)
@@ -102,6 +101,12 @@ def request_reset(
         )
 
     target = res.data
+
+    if not target.get("supabase_uid"):
+        raise HTTPException(
+            status_code=500,
+            detail="This account has no linked Auth identity; cannot reset its password.",
+        )
 
     # All admins can reset passwords for ordinary
     # users and other regular admins.
@@ -226,7 +231,7 @@ def confirm_reset(
     res = (
         sb.table("users")
         .select(
-            "id,username,is_super_admin"
+            "id,username,is_super_admin,supabase_uid"
         )
         .eq("id", user_id)
         .eq("is_active", True)
@@ -253,17 +258,22 @@ def confirm_reset(
             ),
         )
 
-    (
-        sb.table("users")
-        .update({
-            "password_hash":
-                hash_password(
-                    body.new_password
-                )
-        })
-        .eq("id", user_id)
-        .execute()
-    )
+    if not target.get("supabase_uid"):
+        raise HTTPException(
+            status_code=500,
+            detail="This account has no linked Auth identity; cannot reset its password.",
+        )
+
+    try:
+        sb.auth.admin.update_user_by_id(
+            target["supabase_uid"],
+            {"password": body.new_password},
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not reset the password. Please try again.",
+        )
 
     (
         sb.table("audit_log")

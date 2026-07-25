@@ -47,7 +47,6 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.database import sb
 from app.deps import require_admin, require_super_admin
-from app.security import hash_password
 from app.email_utils import send_approval_email, send_rejection_email
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -140,12 +139,33 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
     if dup_email.data:
         raise HTTPException(409, "Email already in use")
 
+    # Every account's password lives in Supabase Auth, admin-created ones
+    # included — the profile row never stores a hash. Auto-confirm the
+    # email since an admin is vouching for this account directly.
+    try:
+        auth_res = sb.auth.admin.create_user({
+            "email":         body.email,
+            "password":      body.password,
+            "email_confirm": True,
+            "user_metadata": {"full_name": body.full_name, "role": body.role},
+        })
+    except Exception as e:
+        msg = str(e).lower()
+        if "already registered" in msg or "already exists" in msg or "user already" in msg:
+            raise HTTPException(409, "Email address is already registered")
+        raise HTTPException(502, "Could not create the authentication account. Please try again.")
+
+    supabase_user = getattr(auth_res, "user", None)
+    supabase_uid = getattr(supabase_user, "id", None) if supabase_user else None
+    if not supabase_uid:
+        raise HTTPException(502, "Could not create the authentication account. Please try again.")
+
     row = {
         "username":      body.username,
         "role":          body.role,
         "full_name":     body.full_name,
         "email":         body.email,
-        "password_hash": hash_password(body.password),
+        "password_hash": None,
         "phone":         body.phone,
         "designation":   body.designation,
         "enrollment_no": body.enrollment_no,
@@ -153,15 +173,26 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         "programme":     body.programme,
         "batch":         body.batch,
         "is_active":     body.is_active,
+        "supabase_uid":  supabase_uid,
     }
-    res = sb.table("users").insert(row).execute()
+    try:
+        res = sb.table("users").insert(row).execute()
+        if not res.data:
+            raise RuntimeError("Insert returned no row")
+    except Exception:
+        try:
+            sb.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            pass
+        raise HTTPException(502, "Could not complete user creation. Please try again.")
+
     _audit(admin["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
     return res.data[0]
 
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    existing = (sb.table("users").select("id,username,role,is_super_admin").eq("id", uid).single().execute())
+    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
             404,
@@ -193,8 +224,14 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         if updates["role"] not in VALID_ROLES:
             raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
-    if "password" in updates:
-        updates["password_hash"] = hash_password(updates.pop("password"))
+    new_password = updates.pop("password", None)
+    if new_password:
+        if not target.get("supabase_uid"):
+            raise HTTPException(500, "This account has no linked Auth identity; cannot set a password.")
+        try:
+            sb.auth.admin.update_user_by_id(target["supabase_uid"], {"password": new_password})
+        except Exception:
+            raise HTTPException(502, "Could not update the password. Please try again.")
 
     if "email" in updates:
         dup = sb.table("users").select("id").eq("email", updates["email"]).neq("id", uid).execute()
@@ -204,12 +241,17 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
     if "is_active" in updates and not updates["is_active"] and uid == admin["id"]:
         raise HTTPException(400, "Cannot deactivate your own account")
 
-    if not updates:
+    if not updates and not new_password:
         raise HTTPException(400, "No fields to update")
 
-    res = sb.table("users").update(updates).eq("id", uid).execute()
+    if updates:
+        res = sb.table("users").update(updates).eq("id", uid).execute()
+        row = res.data[0]
+    else:
+        row = sb.table("users").select("*").eq("id", uid).single().execute().data
+
     _audit(admin["id"], "UPDATE_USER", f"Updated user id={uid}")
-    return res.data[0]
+    return row
 
 
 @router.delete("/users/{uid}",summary="Delete a user")
@@ -228,7 +270,7 @@ def delete_user(
     existing = (
         sb.table("users")
         .select(
-            "id,username,role,is_super_admin"
+            "id,username,role,is_super_admin,supabase_uid"
         )
         .eq("id", uid)
         .single()
@@ -254,6 +296,14 @@ def delete_user(
         .delete() \
         .eq("id", uid) \
         .execute()
+
+    # Only delete the Auth account here — at the point of an explicit
+    # admin delete, never during approval/rejection.
+    if target.get("supabase_uid"):
+        try:
+            sb.auth.admin.delete_user(target["supabase_uid"])
+        except Exception:
+            pass
 
     _audit(
         admin["id"],
@@ -476,7 +526,7 @@ def reset_password(
     res = (
         sb.table("users")
         .select(
-            "id,full_name,username,is_super_admin"
+            "id,full_name,username,is_super_admin,supabase_uid"
         )
         .eq("username", body.username)
         .eq("is_active", True)
@@ -506,16 +556,15 @@ def reset_password(
             )
         )
 
-    # Runs only when the request is permitted.
-    (
-        sb.table("users")
-        .update({
-            "password_hash":
-                hash_password(body.new_password)
-        })
-        .eq("id", u["id"])
-        .execute()
-    )
+    if not u.get("supabase_uid"):
+        raise HTTPException(500, "This account has no linked Auth identity; cannot reset its password.")
+
+    # Runs only when the request is permitted. Supabase Auth owns the
+    # password — nothing is written to the profile row.
+    try:
+        sb.auth.admin.update_user_by_id(u["supabase_uid"], {"password": body.new_password})
+    except Exception:
+        raise HTTPException(502, "Could not reset the password. Please try again.")
 
     _audit(
         admin["id"],

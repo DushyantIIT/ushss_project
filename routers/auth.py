@@ -3,25 +3,25 @@ routers/auth.py
 
 Authentication — login returns a JWT.
 
-  POST /api/login                 login (legacy password_hash OR Supabase Auth accounts)
+  POST /api/login                 login (Supabase Auth verifies the password)
   POST /api/register              self-register via Supabase Auth (email verification + approval)
   GET  /api/check-username        live username-availability check for the registration form
   GET  /api/registration-status   poll pending/rejected/approved status after registering
 
 Registration / approval workflow
 ─────────────────────────────────
-Self-registration no longer stores or hashes a password in this app. The
-password is created directly in Supabase Auth (`sb.auth.sign_up`), which also
-sends the account's email verification message — nothing here re-implements
-that. We link the two records with `users.supabase_uid`.
+No password is ever hashed or stored by this app. Every account's credential
+lives in Supabase Auth — created via `sb.auth.sign_up` on self-registration,
+or via `sb.auth.admin.create_user` when an admin creates the account directly
+(see routers/admin.py). We link the two records with `users.supabase_uid`,
+which is mandatory: a profile row with no `supabase_uid` cannot log in.
 
 Every self-registered profile starts with `status = 'pending'`. An admin (or,
 for the `admin` role itself, only a SuperAdmin) must approve the request
-before the account can log in — see routers/admin.py for the approval panel
-(added separately). Existing/legacy accounts (created by an admin, or created
-before this migration) have no `supabase_uid` and keep authenticating exactly
-as before via `password_hash` + bcrypt, and default to `status = 'approved'`,
-so nothing about today's login behaviour changes for them.
+before the account can log in — see routers/admin.py for the approval panel.
+Login always follows the same path for every account: verify the password
+against Supabase Auth, then check `status` / `is_active` on the profile row.
+There is no other branch.
 """
 
 from datetime import datetime, timezone
@@ -33,7 +33,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.database import sb
 from app.deps import oauth2_scheme
-from app.security import verify_password, create_access_token, decode_token
+from app.security import create_access_token, decode_token
 from app.rate_limit import rate_limit
 
 router = APIRouter(tags=["Auth"])
@@ -98,25 +98,24 @@ def login(body: LoginRequest):
     if not user.get("is_active", True):
         raise HTTPException(401, "Invalid username, role, or password")
 
-    supabase_uid = user.get("supabase_uid")
+    if not user.get("supabase_uid"):
+        # Every account must have a Supabase Auth identity to log in. A
+        # profile row with no supabase_uid is a data problem (e.g. a
+        # partially-migrated legacy row), never a valid credential path.
+        raise HTTPException(401, "Invalid username, role, or password")
 
-    if supabase_uid:
-        # New-flow account — Supabase Auth owns the password, verify there.
-        try:
-            auth_res = sb.auth.sign_in_with_password({
-                "email": user["email"],
-                "password": body.password,
-            })
-            if not getattr(auth_res, "session", None):
-                raise HTTPException(401, "Invalid username, role, or password")
-        except HTTPException:
-            raise
-        except Exception:
+    # Supabase Auth is the only place a password is ever checked.
+    try:
+        auth_res = sb.auth.sign_in_with_password({
+            "email": user["email"],
+            "password": body.password,
+        })
+        if not getattr(auth_res, "session", None):
             raise HTTPException(401, "Invalid username, role, or password")
-    else:
-        # Legacy account — unchanged bcrypt check.
-        if not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
-            raise HTTPException(401, "Invalid username, role, or password")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(401, "Invalid username, role, or password")
 
     status_val = user.get("status") or "approved"
 
@@ -248,8 +247,22 @@ def register(body: RegisterRequest):
         "status":          "pending",
         "supabase_uid":    supabase_uid,
     }
-    res = sb.table("users").insert(row).execute()
-    new_user = res.data[0]
+    try:
+        res = sb.table("users").insert(row).execute()
+        if not res.data:
+            raise RuntimeError("Insert returned no row")
+        new_user = res.data[0]
+    except Exception:
+        # The Auth account was created but the profile row wasn't — don't
+        # leave an orphaned Supabase Auth user with no matching profile.
+        try:
+            sb.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            pass
+        raise HTTPException(
+            502,
+            "Could not complete registration. Please try again.",
+        )
 
     sb.table("audit_log").insert({
         "user_id": new_user["id"],
