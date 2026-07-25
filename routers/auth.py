@@ -91,17 +91,20 @@ def login(body: LoginRequest):
     )
 
     if not res.data:
+        print(f"LOGIN DEBUG: no user row found for username={body.username!r} role={body.role!r}")
         raise HTTPException(401, "Invalid username, role, or password")
 
     user = res.data[0]
 
     if not user.get("is_active", True):
+        print(f"LOGIN DEBUG: user {body.username!r} is_active=False")
         raise HTTPException(401, "Invalid username, role, or password")
 
     if not user.get("supabase_uid"):
         # Every account must have a Supabase Auth identity to log in. A
         # profile row with no supabase_uid is a data problem (e.g. a
         # partially-migrated legacy row), never a valid credential path.
+        print(f"LOGIN DEBUG: user {body.username!r} has no supabase_uid — row: {user}")
         raise HTTPException(401, "Invalid username, role, or password")
 
     # Supabase Auth is the only place a password is ever checked.
@@ -115,9 +118,9 @@ def login(body: LoginRequest):
     except HTTPException:
         raise
     except Exception as e:
-            print("SUPABASE SIGNIN ERROR:", repr(e))
-            raise HTTPException(401, f"Invalid username, role, or password (debug: {e})")
-      
+        print("SUPABASE SIGNIN ERROR:", repr(e))
+        raise HTTPException(401, f"Invalid username, role, or password (debug: {e})")
+
     status_val = user.get("status") or "approved"
 
     if status_val == "pending":
