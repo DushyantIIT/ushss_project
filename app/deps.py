@@ -33,14 +33,21 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     except JWTError:
         raise exc
 
-    res = (
-        sb.table("users")
-        .select("*")
-        .eq("id", user_id)
-        .eq("is_active", True)
-        .single()
-        .execute()
-    )
+    try:
+        res = (
+            sb.table("users")
+            .select("*")
+            .eq("id", user_id)
+            .eq("is_active", True)
+            .single()
+            .execute()
+        )
+    except Exception:
+        # .single() raises (rather than returning empty) when no row
+        # matches — e.g. a deleted/deactivated account with a still-valid
+        # token. Treat that the same as "not found".
+        raise exc
+
     if not res.data:
         raise exc
 
