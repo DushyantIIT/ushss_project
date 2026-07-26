@@ -138,15 +138,21 @@ def login(body: LoginRequest):
             "redirect_url": "/rejected",
         })
 
-    sb.table("users").update(
-        {"last_login": datetime.now(timezone.utc).isoformat()}
-    ).eq("id", user["id"]).execute()
+    try:
+        sb.table("users").update(
+            {"last_login": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", user["id"]).execute()
+    except Exception as e:
+        print(f"LOGIN WARNING: failed to update last_login for {user['username']!r}: {e!r}")
 
-    sb.table("audit_log").insert({
-        "user_id": user["id"],
-        "action":  "LOGIN",
-        "detail":  f"{user['role']} '{user['username']}' logged in",
-    }).execute()
+    try:
+        sb.table("audit_log").insert({
+            "user_id": user["id"],
+            "action":  "LOGIN",
+            "detail":  f"{user['role']} '{user['username']}' logged in",
+        }).execute()
+    except Exception as e:
+        print(f"LOGIN WARNING: failed to write audit_log for {user['username']!r}: {e!r}")
 
     token = create_access_token({
         "sub":  user["username"],
@@ -268,11 +274,14 @@ def register(body: RegisterRequest):
             "Could not complete registration. Please try again.",
         )
 
-    sb.table("audit_log").insert({
-        "user_id": new_user["id"],
-        "action":  "SELF_REGISTER",
-        "detail":  f"{body.role} '{body.username}' self-registered — pending approval",
-    }).execute()
+    try:
+        sb.table("audit_log").insert({
+            "user_id": new_user["id"],
+            "action":  "SELF_REGISTER",
+            "detail":  f"{body.role} '{body.username}' self-registered — pending approval",
+        }).execute()
+    except Exception as e:
+        print(f"REGISTER WARNING: failed to write audit_log for {new_user['username']!r}: {e!r}")
 
     # Short-lived token so the Waiting page can poll /registration-status
     # even though the account isn't approved (and can't use /login) yet.
