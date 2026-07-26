@@ -119,7 +119,7 @@ def login(body: LoginRequest):
         raise
     except Exception as e:
         print("SUPABASE SIGNIN ERROR:", repr(e))
-        raise HTTPException(401, "Invalid username, role, or password")
+        raise HTTPException(401, f"Invalid username, role, or password (debug: {e})")
 
     status_val = user.get("status") or "approved"
 
