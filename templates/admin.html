@@ -293,7 +293,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-item" onclick="showPage('faculty')" data-page="faculty"><span class="icon">📚</span> Faculty<span class="nav-badge" id="badge-faculty">0</span></div>
     <div class="nav-item" onclick="showPage('cr')" data-page="cr"><span class="icon">🤝</span> Class Reps<span class="nav-badge" id="badge-cr">0</span></div>
     <div class="nav-item" onclick="showPage('admin')" data-page="admin"><span class="icon">🔑</span> Admins<span class="nav-badge" id="badge-admin">0</span></div>
-    <div class="nav-item" onclick="window.location.href='/dashboard/admin/pending-requests'" data-page="pending-requests"><span class="icon">⏳</span> Pending Registrations</div>
+    <div class="nav-item" onclick="showPage('pending-requests')" data-page="pending-requests"><span class="icon">⏳</span> Pending Registrations<span class="nav-badge" id="badge-pending" style="display:none;background:var(--amber);color:#fff">0</span></div>
 
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
@@ -305,12 +305,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-item" onclick="showPage('schema')" data-page="schema"><span class="icon">🗄️</span> DB Schema</div>
   </nav>
   <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar">AD</div>
+    <div class="sidebar-user" style="margin-bottom:8px">
+      <div class="sidebar-user-avatar" id="sb-admin-avatar">AD</div>
       <div style="flex:1;min-width:0">
-        <div class="sidebar-user-name">USHSS Administrator</div>
-        <div class="sidebar-user-role">admin · admin001</div>
+        <div class="sidebar-user-name" id="sb-admin-name">USHSS Administrator</div>
+        <div class="sidebar-user-role" id="sb-admin-role">admin · admin001</div>
       </div>
+    </div>
+    <div class="nav-item" style="color:var(--red);cursor:pointer;padding:7px 10px" onclick="logoutAdmin()">
+      <span class="icon">🚪</span> Sign Out
     </div>
   </div>
 </aside>
@@ -605,6 +608,27 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 </div>
 
+<!-- REJECT REGISTRATION MODAL -->
+<div class="modal-overlay" id="reject-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h2 style="color:var(--red)">✕ Reject Registration</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal2('reject-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px" id="reject-applicant-info">Applicant: Student</p>
+      <div class="form-group">
+        <label class="form-label">Rejection Reason <span class="required">*</span></label>
+        <textarea class="form-textarea" id="reject-reason-input" placeholder="Provide a reason for rejecting this registration (shown to applicant)..." rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal2('reject-modal')">Cancel</button>
+      <button class="btn btn-danger" id="reject-confirm-btn" onclick="confirmRejectPendingRequest()">Confirm Rejection</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
 
 <script>
@@ -876,15 +900,224 @@ function logAudit(action,detail) {
 }
 
 /* ══════════════════════════════════════════
+   AUTHENTICATION & API HELPERS
+══════════════════════════════════════════ */
+function getAdminToken() {
+  return localStorage.getItem("ushss_token");
+}
+
+function authHeaders() {
+  return {
+    "Authorization": "Bearer " + (getAdminToken() || ""),
+    "Content-Type": "application/json"
+  };
+}
+
+function logoutAdmin() {
+  localStorage.removeItem("ushss_token");
+  localStorage.removeItem("ushss_user");
+  window.location.href = "/";
+}
+
+async function loadAdminProfile() {
+  const token = getAdminToken();
+  if (!token) {
+    window.location.href = "/";
+    return;
+  }
+  try {
+    const rawUser = localStorage.getItem("ushss_user");
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      if (u.role !== "admin") {
+        window.location.href = "/";
+        return;
+      }
+      const nameEl = document.getElementById("sb-admin-name");
+      const roleEl = document.getElementById("sb-admin-role");
+      const avatarEl = document.getElementById("sb-admin-avatar");
+      if (nameEl) nameEl.textContent = u.full_name || u.username;
+      if (roleEl) roleEl.textContent = `${u.role} · ${u.username}` + (u.is_super_admin ? " (Super Admin)" : "");
+      if (avatarEl) avatarEl.textContent = (u.full_name || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    }
+  } catch (e) {
+    console.warn("Error parsing admin profile:", e);
+  }
+}
+
+/* ══════════════════════════════════════════
+   PENDING REGISTRATION REQUESTS SYSTEM
+══════════════════════════════════════════ */
+let pendingRequests = [];
+let pendingRoleFilter = "";
+let rejectApplicantTargetId = null;
+
+async function fetchPendingRequests(role = "") {
+  const token = getAdminToken();
+  if (!token) return [];
+  try {
+    const url = "/api/admin/pending-requests" + (role ? `?role=${encodeURIComponent(role)}` : "");
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) {
+      if (res.status === 401) {
+        logoutAdmin();
+        return [];
+      }
+      return [];
+    }
+    const data = await res.json();
+    pendingRequests = data.requests || [];
+    const pendingBadge = document.getElementById("badge-pending");
+    if (pendingBadge) {
+      pendingBadge.textContent = pendingRequests.length;
+      pendingBadge.style.display = pendingRequests.length ? "inline-block" : "none";
+    }
+    return pendingRequests;
+  } catch (e) {
+    console.warn("Could not load pending requests:", e);
+    return [];
+  }
+}
+
+async function approvePendingRequest(id, name) {
+  if (!confirm(`Approve registration for ${name}? Once approved, they will be able to log in immediately.`)) return;
+  try {
+    const res = await fetch(`/api/admin/pending-requests/${id}/approve`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = (data.detail && (data.detail.message || data.detail)) || "Approval failed";
+      throw new Error(msg);
+    }
+    toast(data.message || `Approved ${name}!`, "success");
+    await fetchPendingRequests(pendingRoleFilter);
+    renderPage(currentPage);
+  } catch (e) {
+    toast(e.message, "error");
+  }
+}
+
+function openRejectRequestModal(id, name) {
+  rejectApplicantTargetId = id;
+  document.getElementById("reject-applicant-info").textContent = `Applicant: ${name}`;
+  document.getElementById("reject-reason-input").value = "";
+  document.getElementById("reject-modal").classList.add("open");
+}
+
+async function confirmRejectPendingRequest() {
+  const reason = document.getElementById("reject-reason-input").value.trim();
+  if (!reason) {
+    alert("Please provide a reason for rejecting this registration.");
+    return;
+  }
+  const btn = document.getElementById("reject-confirm-btn");
+  btn.disabled = true;
+  btn.textContent = "Rejecting...";
+  try {
+    const res = await fetch(`/api/admin/pending-requests/${rejectApplicantTargetId}/reject`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ rejection_reason: reason }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = (data.detail && (data.detail.message || data.detail)) || "Rejection failed";
+      throw new Error(msg);
+    }
+    toast(data.message || "Registration request rejected.", "success");
+    closeModal2("reject-modal");
+    await fetchPendingRequests(pendingRoleFilter);
+    renderPage(currentPage);
+  } catch (e) {
+    toast(e.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Confirm Rejection";
+  }
+}
+
+function renderPendingRequests() {
+  const reqs = pendingRoleFilter ? pendingRequests.filter(r => r.role === pendingRoleFilter) : pendingRequests;
+  
+  const rows = reqs.length ? reqs.map(r => {
+    const canAct = r.actionable_by_current_admin !== false;
+    const safeName = (r.full_name || r.username || "").replace(/'/g, "\\'");
+    const details = [r.programme, r.batch].filter(Boolean).join(" · ") || r.designation || r.department || "—";
+    const dateStr = r.created_at ? new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "—";
+    
+    return `<tr>
+      <td>
+        <div style="font-weight:600;color:var(--text)">${r.full_name || "—"}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.email || "—"}</div>
+      </td>
+      <td class="mono" style="font-size:12px;color:var(--gold-l)">${r.enrollment_no || r.username || "—"}</td>
+      <td><span class="badge badge-${r.role}">${r.role.toUpperCase()}</span></td>
+      <td>
+        <div style="font-size:12px">${details}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${r.department || ""}</div>
+      </td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${dateStr}</td>
+      <td>
+        ${canAct ? `
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${r.id}, '${safeName}')">✓ Accept</button>
+            <button class="btn btn-danger btn-sm" onclick="openRejectRequestModal(${r.id}, '${safeName}')">✕ Reject</button>
+          </div>
+        ` : `
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Super Admin Only</span>
+        `}
+      </td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">✨</div><div>No pending registration requests</div><div style="font-size:11px;color:var(--muted);margin-top:4px">New student and faculty self-registrations will appear here for manual approval.</div></div></td></tr>`;
+
+  return `
+    <div class="search-bar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--cream)">Role:</span>
+        <select class="filter-select" onchange="pendingRoleFilter=this.value;renderPage('pending-requests')">
+          <option value="" ${pendingRoleFilter===""?"selected":""}>All Roles (${pendingRequests.length})</option>
+          <option value="student" ${pendingRoleFilter==="student"?"selected":""}>Students</option>
+          <option value="cr" ${pendingRoleFilter==="cr"?"selected":""}>Class Reps</option>
+          <option value="faculty" ${pendingRoleFilter==="faculty"?"selected":""}>Faculty</option>
+          <option value="admin" ${pendingRoleFilter==="admin"?"selected":""}>Admins</option>
+        </select>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="fetchPendingRequests(pendingRoleFilter).then(()=>renderPage('pending-requests'))">↻ Refresh</button>
+        <span style="font-size:12px;color:var(--muted)">${reqs.length} pending request(s)</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Applicant</th>
+            <th>Enrollment / Username</th>
+            <th>Role</th>
+            <th>Programme / Department</th>
+            <th>Registered Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════
    NAVIGATION
 ══════════════════════════════════════════ */
 let currentPage="dashboard", editingId=null, deleteId=null, deleteCallback=null;
 const pageTitles={
   dashboard:["Dashboard","USHSS / Admin / Overview"],
+  student:["Students","USHSS / Admin / Users / Students"],
   students:["Students","USHSS / Admin / Users / Students"],
   faculty:["Faculty","USHSS / Admin / Users / Faculty"],
   cr:["Class Representatives","USHSS / Admin / Users / CR"],
   admin:["Administrators","USHSS / Admin / Users / Admin"],
+  "pending-requests":["Pending Registrations","USHSS / Admin / User Management / Pending Registrations"],
   timetable:["Timetable Manager","USHSS / Admin / Academic / Timetable"],
   attendance:["Attendance Editor","USHSS / Admin / Academic / Attendance"],
   announcements:["Announcements","USHSS / Admin / Academic / Announcements"],
@@ -905,6 +1138,7 @@ function renderPage(page) {
   updateBadges();
   const c=document.getElementById("content");
   if(page==="dashboard") c.innerHTML=renderDashboard();
+  else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
   else if(page==="timetable") c.innerHTML=renderTimetable();
   else if(page==="attendance") c.innerHTML=renderAttendance();
   else if(page==="announcements") c.innerHTML=renderAnnouncements();
@@ -937,8 +1171,30 @@ function renderDashboard() {
       <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":l.action.includes("TIMETABLE")?"var(--teal)":l.action.includes("ATTEND")?"var(--amber)":"var(--blue)"}"></div>
       <div style="flex:1"><div class="log-text"><strong>${l.action}</strong> — ${l.detail||""}</div><div class="log-time">${l.ts}</div></div>
     </div>`).join("");
+
+  const pendingBanner = pendingRequests.length > 0 ? `
+    <div style="background:linear-gradient(135deg,rgba(201,168,76,.16),rgba(139,42,42,.18));border:1px solid var(--gold);border-radius:var(--radius);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 4px 18px rgba(201,168,76,.08)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(201,168,76,.2);display:flex;align-items:center;justify-content:center;font-size:18px">⏳</div>
+        <div>
+          <div style="font-weight:700;color:var(--gold-l);font-size:14px">Pending Registration Requests (${pendingRequests.length})</div>
+          <div style="font-size:12px;color:var(--text);opacity:.85">There are ${pendingRequests.length} new student/faculty registration(s) waiting for manual acceptance or rejection.</div>
+        </div>
+      </div>
+      <button class="btn btn-gold" onclick="showPage('pending-requests')">Review &amp; Accept Requests →</button>
+    </div>` : "";
+
   return `
+    ${pendingBanner}
     <div class="stats-grid">${cards}
+      <div class="stat-card" style="cursor:pointer;border-color:${pendingRequests.length?'rgba(201,168,76,.4)':'var(--border)'}" onclick="showPage('pending-requests')">
+        <div class="stat-icon" style="background:rgba(201,168,76,.15)">⏳</div>
+        <div>
+          <div class="stat-num" style="color:${pendingRequests.length?'var(--gold-l)':'var(--cream)'}">${pendingRequests.length}</div>
+          <div class="stat-label">Pending Requests</div>
+          <div class="stat-trend" style="color:${pendingRequests.length?'var(--gold-l)':'var(--muted)'}">● ${pendingRequests.length?'Action Required':'All Clear'}</div>
+        </div>
+      </div>
       <div class="stat-card" style="cursor:pointer" onclick="showPage('timetable')">
         <div class="stat-icon" style="background:rgba(32,168,155,.15)">🗓️</div>
         <div><div class="stat-num">${ttCount}</div><div class="stat-label">Timetables</div><div class="stat-trend" style="color:var(--teal)">↗ Manage All</div></div>
@@ -1582,23 +1838,44 @@ function editAnn(id) {
 let searchQuery="",statusFilter="";
 function renderUserTable(role) {
   const users=dbGetUsers({role,search:searchQuery});
-  const filtered=statusFilter===""?users:users.filter(u=>String(u.is_active)===statusFilter);
+  const filtered=statusFilter===""?users:users.filter(u=>{
+    const st = u.status || (u.is_active ? "approved" : "inactive");
+    return st === statusFilter || String(u.is_active) === statusFilter;
+  });
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
 
   const rows=filtered.length?filtered.map(u=>{
     const isSuperAdmin=u.is_super_admin===true;
-    const safeName=(u.full_name||"").replace(/'/g,"\'");
+    const safeName=(u.full_name||"").replace(/'/g,"\\'");
+    const userStatus = u.status || (u.is_active ? "approved" : "inactive");
     const superBadge=isSuperAdmin
       ? `<div style="margin-top:5px"><span class="badge badge-super-admin">👑 Super Admin</span></div>`
       : "";
 
-    const actions=isSuperAdmin
-      ? `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-         <span class="protected-account">🛡 Protected</span>`
-      : `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-         <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${safeName}')" title="Delete user">🗑</button>`;
+    let statusBadge = `<span class="badge badge-active">Active</span>`;
+    if (userStatus === "pending") {
+      statusBadge = `<span class="badge badge-amber">⏳ Pending</span>`;
+    } else if (userStatus === "rejected") {
+      statusBadge = `<span class="badge badge-inactive">✕ Rejected</span>`;
+    } else if (!u.is_active) {
+      statusBadge = `<span class="badge badge-inactive">Inactive</span>`;
+    }
+
+    let actions = "";
+    if (userStatus === "pending") {
+      actions = `
+        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${u.id}, '${safeName}')">✓ Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="openRejectRequestModal(${u.id}, '${safeName}')">✕ Reject</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏</button>`;
+    } else if (isSuperAdmin) {
+      actions = `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+                 <span class="protected-account">🛡 Protected</span>`;
+    } else {
+      actions = `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+                 <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${safeName}')" title="Delete user">🗑</button>`;
+    }
 
     return `<tr>
       <td class="mono" style="color:var(--muted)">#${u.id}</td>
@@ -1612,7 +1889,7 @@ function renderUserTable(role) {
       ${hasFacultyFields?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
       ${role==="admin"?`<td style="font-size:12px">${isSuperAdmin?"Super Administrator":(u.designation||"Administrator")}</td>`:""}
       <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
-      <td><span class="badge ${u.is_active?"badge-active":"badge-inactive"}">${u.is_active?"Active":"Inactive"}</span></td>
+      <td>${statusBadge}</td>
       <td class="mono" style="font-size:11px;color:var(--muted)">${u.last_login||"Never"}</td>
       <td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div></td>
     </tr>`;
@@ -1626,7 +1903,9 @@ function renderUserTable(role) {
       </div>
       <select class="filter-select" onchange="statusFilter=this.value;renderPage('${role}')">
         <option value="" ${statusFilter===""?"selected":""}>All Status</option>
-        <option value="1" ${statusFilter==="1"?"selected":""}>Active</option>
+        <option value="approved" ${statusFilter==="approved"?"selected":""}>Approved / Active</option>
+        <option value="pending" ${statusFilter==="pending"?"selected":""}>Pending Approval</option>
+        <option value="rejected" ${statusFilter==="rejected"?"selected":""}>Rejected</option>
         <option value="0" ${statusFilter==="0"?"selected":""}>Inactive</option>
       </select>
       <button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role]}</button>
@@ -1779,6 +2058,11 @@ function updateBadges() {
     const el=document.getElementById(`badge-${role}`);
     if(el) el.textContent=n;
   });
+  const pendingEl = document.getElementById("badge-pending");
+  if (pendingEl) {
+    pendingEl.textContent = pendingRequests.length;
+    pendingEl.style.display = pendingRequests.length ? "inline-block" : "none";
+  }
   const db=loadDB();
   const annEl=document.getElementById("badge-ann");
   if(annEl) annEl.textContent=(db.announcements||[]).length;
@@ -1791,12 +2075,25 @@ function updateBadges() {
 window.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     closeModal(); closeConfirm(); closeTTModal();
-    ["att-edit-modal","ann-modal","live-modal","tt-new-modal"].forEach(closeModal2);
+    ["att-edit-modal","ann-modal","live-modal","tt-new-modal","reject-modal"].forEach(closeModal2);
   }
 });
 
 /* INIT */
-showPage("dashboard");
+loadAdminProfile();
+fetchPendingRequests().then(() => {
+  showPage("dashboard");
+});
+
+// Periodic background refresh for pending registrations
+setInterval(() => {
+  fetchPendingRequests(pendingRoleFilter).then(() => {
+    if (currentPage === "pending-requests" || currentPage === "dashboard") {
+      renderPage(currentPage);
+    }
+  });
+}, 10000);
+
 const _db=loadDB();
 (_db.liveSessions||[]).filter(s=>s.active).forEach(s=>{
   if(s.duration>0) startTimerInterval(s.id, s.timeLeft);
