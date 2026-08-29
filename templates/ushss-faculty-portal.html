@@ -237,7 +237,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
-    <div class="sb-logout" onclick="toast('Logging out…','ok');setTimeout(()=>location.href='/',1500)">
+    <div class="sb-logout" onclick="logoutFaculty()">
       <span style="font-size:14px">🚪</span> Sign Out
     </div>
   </div>
@@ -907,17 +907,30 @@ function toast(msg, type='ok') {
 document.getElementById('att-date').value = new Date().toISOString().slice(0,10);
 initDashboard();
 </script>
-</body>
+function logoutFaculty() {
+  localStorage.removeItem("ushss_token");
+  localStorage.removeItem("ushss_user");
+  window.location.href = "/";
+}
+</script>
 <!-- USHSS Real API Integration: loads real faculty profile into sidebar -->
 <script>
 (async function loadFacultyProfile() {
   const token = localStorage.getItem('ushss_token');
-  if (!token) return;
+  if (!token) {
+    window.location.href = '/';
+    return;
+  }
   try {
     const res = await fetch('/api/faculty/profile', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        logoutFaculty();
+      }
+      return;
+    }
     const u = await res.json();
 
     const nameEl   = document.getElementById('sb-name');
@@ -932,4 +945,5 @@ initDashboard();
   } catch(e) { console.warn('USHSS API: faculty profile load failed', e); }
 })();
 </script>
+</body>
 </html>
