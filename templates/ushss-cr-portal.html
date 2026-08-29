@@ -198,7 +198,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
-    <div class="sb-logout" onclick="toast('Logging out…','ok')">
+    <div class="sb-logout" onclick="logoutCR()">
       <span style="font-size:14px">🚪</span> Sign Out
     </div>
   </div>
@@ -822,20 +822,31 @@ function toast(msg,type='ok'){const el=document.createElement('div');el.classNam
 
 /* INIT */
 document.getElementById('asgn-due').value=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
-initDashboard();
+function logoutCR() {
+  localStorage.removeItem("ushss_token");
+  localStorage.removeItem("ushss_user");
+  window.location.href = "/";
+}
 </script>
-</body>
 <!-- USHSS Real API Integration: loads real CR profile and classmates -->
 <script>
 (async function loadCRProfile() {
   const token = localStorage.getItem('ushss_token');
-  if (!token) return;
+  if (!token) {
+    window.location.href = '/';
+    return;
+  }
   const headers = { 'Authorization': 'Bearer ' + token };
 
   try {
     // Load CR profile
     const res = await fetch('/api/cr/profile', { headers });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        logoutCR();
+      }
+      return;
+    }
     const u = await res.json();
 
     const nameEl   = document.getElementById('cr-name');
@@ -870,4 +881,5 @@ initDashboard();
   } catch(e) { console.warn('USHSS API: CR profile load failed', e); }
 })();
 </script>
+</body>
 </html>
