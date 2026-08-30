@@ -925,23 +925,43 @@ async function loadAdminProfile() {
     window.location.href = "/";
     return;
   }
+  
+  // First: check locally stored user object (fast, no network request needed)
   try {
     const rawUser = localStorage.getItem("ushss_user");
     if (rawUser) {
       const u = JSON.parse(rawUser);
-      if (u.role !== "admin") {
-        window.location.href = "/";
+      if (u.role && u.role !== "admin") {
+        // Logged in as a non-admin role — send them to their correct dashboard
+        const roleUrls = { student: "/dashboard/student", faculty: "/dashboard/faculty", cr: "/dashboard/cr" };
+        window.location.href = roleUrls[u.role] || "/";
         return;
       }
-      const nameEl = document.getElementById("sb-admin-name");
-      const roleEl = document.getElementById("sb-admin-role");
+      // Populate the sidebar with the stored info immediately (no flicker)
+      const nameEl  = document.getElementById("sb-admin-name");
+      const roleEl  = document.getElementById("sb-admin-role");
       const avatarEl = document.getElementById("sb-admin-avatar");
-      if (nameEl) nameEl.textContent = u.full_name || u.username;
-      if (roleEl) roleEl.textContent = `${u.role} · ${u.username}` + (u.is_super_admin ? " (Super Admin)" : "");
+      if (nameEl)   nameEl.textContent = u.full_name || u.username;
+      if (roleEl)   roleEl.textContent = `${u.role} · ${u.username}` + (u.is_super_admin ? " (Super Admin)" : "");
       if (avatarEl) avatarEl.textContent = (u.full_name || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
     }
   } catch (e) {
-    console.warn("Error parsing admin profile:", e);
+    console.warn("Error parsing stored user:", e);
+  }
+
+  // Background: validate token against server — only log out on 401 (expired/invalid)
+  try {
+    const res = await fetch("/api/admin/users?is_active=true", { headers: authHeaders() });
+    if (res.status === 401) {
+      // Token truly expired or invalid — force re-login
+      logoutAdmin();
+    }
+    // 403 = valid token but insufficient role → already handled above via localStorage
+  } catch (e) {
+    // Network error — keep the user on the page, don't log out
+    console.warn("Profile validation network error:", e);
+  }
+}
   }
 }
 
