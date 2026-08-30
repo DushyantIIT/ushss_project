@@ -14,6 +14,7 @@ noted here rather than silently pretending this is production-grade
 distributed rate limiting.
 """
 
+import os
 import time
 from collections import defaultdict, deque
 
@@ -36,6 +37,8 @@ def rate_limit(bucket: str, max_calls: int, window_seconds: int):
     exceeds `max_calls` within `window_seconds` for this named bucket."""
 
     def _dep(request: Request):
+        if os.environ.get("TESTING", "").lower() == "true":
+            return
         key = f"{bucket}:{_client_ip(request)}"
         now = time.monotonic()
         q = _hits[key]
