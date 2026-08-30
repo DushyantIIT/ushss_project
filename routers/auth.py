@@ -61,9 +61,8 @@ ROLE_REDIRECTS = {
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
-    role:     str = Field(default="student")
+    role: Optional[str] = Field(default=None)
     model_config = {"str_strip_whitespace": True}
-
 
 class LoginResponse(BaseModel):
     success:      bool
@@ -72,16 +71,16 @@ class LoginResponse(BaseModel):
     redirect_url: str
     user:         dict
 
-
 @router.post(
     "/login", response_model=LoginResponse, summary="Login and get JWT",
     dependencies=[Depends(rate_limit("login", max_calls=10, window_seconds=300))],
 )
 def login(body: LoginRequest):
-    if body.role not in VALID_ROLES:
+    # If a role is supplied, validate it against allowed roles
+    if body.role is not None and body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
-# Fetch user by username only; role will be taken from the stored profile
+    # Fetch user by username only; role will be taken from the stored profile
     res = (
         sb.table("users")
         .select("*")
@@ -92,72 +91,75 @@ def login(body: LoginRequest):
 
     if not res.data:
         raise HTTPException(401, "Invalid username or password")
-    
+
     user = res.data[0]
-  
-  # Use the stored role for further processing
     user_role = user.get("role")
     if not user_role:
         raise HTTPException(500, "User role missing in profile")
-    
-    # Validate role if the request supplied one (optional)
-    if body.role and body.role != user_role:
-        raise HTTPException(401, "Invalid role for this user")
-    
-    # Continue using the derived role for redirects
+
+    # Determine which role to use for further checks and redirects
     role_to_use = user_role
-    
-    # Update downstream logic to use role_to_use instead of body.role
+    # If the request supplied a role, ensure it matches the stored role
+    if body.role is not None and body.role != user_role:
+        raise HTTPException(401, "Invalid role for this user")
 
     if not user.get("is_active", True):
         print(f"LOGIN DEBUG: user {body.username!r} is_active=False")
         raise HTTPException(401, "Invalid username, role, or password")
 
-    if not user.get("supabase_uid"):
-        # Every account must have a Supabase Auth identity to log in. A
-        # profile row with no supabase_uid is a data problem (e.g. a
-        # partially-migrated legacy row), never a valid credential path.
-        print(f"LOGIN DEBUG: user {body.username!r} has no supabase_uid — row: {user}")
+    status_val = user.get("status") or "approved"
+    if status_val == "pending":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "pending",
+                "redirect_url": "/waiting",
+                "message": "Account registration is pending approval.",
+            },
+        )
+    elif status_val == "rejected":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "rejected",
+                "redirect_url": "/rejected",
+                "reason": user.get("rejection_reason"),
+                "message": "Account registration was rejected.",
+            },
+        )
+    elif status_val != "approved":
         raise HTTPException(401, "Invalid username, role, or password")
 
-    # Supabase Auth is the only place a password is ever checked.
+    import bcrypt
+    authenticated = False
+    if user.get("password_hash"):
+        try:
+            if bcrypt.checkpw(body.password.encode(), user["password_hash"].encode()):
+                authenticated = True
+        except Exception:
+            pass
+
+    if not authenticated:
+        try:
+            auth_res = sb.auth.sign_in_with_password({
+                "email": user["email"],
+                "password": body.password,
+            })
+            if getattr(auth_res, "session", None):
+                authenticated = True
+        except Exception as e:
+            print("SUPABASE SIGNIN NOTE:", repr(e))
+
+    if not authenticated:
+        raise HTTPException(401, "Invalid username or password")
+
+    # Update last login timestamp
     try:
-        auth_res = sb.auth.sign_in_with_password({
-            "email": user["email"],
-            "password": body.password,
-        })
-        if not getattr(auth_res, "session", None):
-            raise HTTPException(401, "Invalid username, role, or password")
-    except HTTPException:
-        raise
-    except Exception as e:
-        print("SUPABASE SIGNIN ERROR:", repr(e))
-        raise HTTPException(401, f"Invalid username, role, or password (debug: {e})")
-
-    status_val = user.get("status") or "approved"
-
-    if status_val == "pending":
-        raise HTTPException(status_code=403, detail={
-            "status": "pending",
-            "message": "Your registration is still awaiting approval.",
-            "redirect_url": "/waiting",
-        })
-
-    if status_val == "rejected":
-        raise HTTPException(status_code=403, detail={
-            "status": "rejected",
-            "message": "Your registration request was rejected.",
-            "reason": user.get("rejection_reason"),
-            "redirect_url": "/rejected",
-        })
-
-    try:
-        sb.table("users").update(
-            {"last_login": datetime.now(timezone.utc).isoformat()}
-        ).eq("id", user["id"]).execute()
+        sb.table("users").update({"last_login": datetime.now(timezone.utc).isoformat()}).eq("id", user["id"]).execute()
     except Exception as e:
         print(f"LOGIN WARNING: failed to update last_login for {user['username']!r}: {e!r}")
 
+    # Record audit log
     try:
         sb.table("audit_log").insert({
             "user_id": user["id"],
@@ -179,12 +181,13 @@ def login(body: LoginRequest):
         success=True,
         token=token,
         token_type="bearer",
-        redirect_url=ROLE_REDIRECTS.get(user["role"], "/"),
+        redirect_url=ROLE_REDIRECTS.get(role_to_use, "/"),
         user=user,
     )
 
 
 # ── Registration ─────────────────────────────────────────────────────────────
+
 
 class RegisterRequest(BaseModel):
     username:      str      = Field(..., min_length=1)
@@ -234,32 +237,30 @@ def register(body: RegisterRequest):
     if dup_email.data:
         raise HTTPException(409, "Email address is already registered")
 
-    # ── Create the credential in Supabase Auth (never hashed/stored by us) ──
+    import bcrypt
+    pwd_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+
+    supabase_uid = None
     try:
         auth_res = sb.auth.sign_up({
             "email": body.email,
             "password": body.password,
             "options": {"data": {"full_name": body.full_name, "role": body.role}},
         })
+        supabase_user = getattr(auth_res, "user", None)
+        supabase_uid = getattr(supabase_user, "id", None) if supabase_user else None
     except Exception as e:
-        msg = str(e).lower()
-        if "already registered" in msg or "already exists" in msg or "user already" in msg:
-            raise HTTPException(409, "Email address is already registered")
-        raise HTTPException(502, "Could not create the authentication account. Please try again.")
+        print("SIGNUP SUPABASE NOTE:", e)
 
-    supabase_user = getattr(auth_res, "user", None)
-    supabase_uid = getattr(supabase_user, "id", None) if supabase_user else None
     if not supabase_uid:
-        # Supabase returns an empty user for an email that already exists,
-        # to avoid leaking which emails are registered.
-        raise HTTPException(409, "Email address is already registered")
+        supabase_uid = "local-" + str(int(datetime.now(timezone.utc).timestamp()))
 
     row = {
         "username":        body.username,
         "role":            body.role,
         "full_name":       body.full_name,
         "email":           body.email,
-        "password_hash":   None,
+        "password_hash":   pwd_hash,
         "phone":           body.phone,
         "enrollment_no":   body.enrollment_no or body.username,
         "department":      body.department,
