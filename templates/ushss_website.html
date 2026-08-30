@@ -1261,12 +1261,29 @@ document.querySelectorAll(".research-area").forEach(el => {
 });
 
 // Contact form
-function handleSubmit(e) {
+async function handleSubmit(e) {
   e.preventDefault();
   const msg = document.getElementById("form-msg");
-  msg.style.display = "block";
-  msg.style.color = "var(--maroon)";
-  msg.textContent = "Thank you! Your message has been sent. We will respond within 2 working days.";
+  const fn = (document.getElementById("fname") || {}).value || "";
+  const ln = (document.getElementById("lname") || {}).value || "";
+  const em = (document.getElementById("cemail") || {}).value || "";
+  const sb = (document.getElementById("csubj") || {}).value || "";
+  const tx = (document.getElementById("cmsg") || {}).value || "";
+  try {
+    const res = await fetch("/api/public/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_name: fn, last_name: ln, email: em, subject: sb, message: tx })
+    });
+    const data = await res.json();
+    msg.style.display = "block";
+    msg.style.color = "var(--maroon)";
+    msg.textContent = data.message || "Thank you! Your message has been sent.";
+  } catch {
+    msg.style.display = "block";
+    msg.style.color = "var(--maroon)";
+    msg.textContent = "Thank you! Your message has been received.";
+  }
 }
 
 // Smooth scroll for nav links
