@@ -23,7 +23,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.database import ping_db
-from routers import auth, admin, student, faculty, cr, password_reset
+from app.seed import seed
+from routers import auth, admin, student, faculty, cr, password_reset, public
 
 
 @asynccontextmanager
@@ -31,6 +32,10 @@ async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend starting up…")
     if ping_db():
         print("✓  Supabase connection OK")
+        try:
+            seed()
+        except Exception as e:
+            print("SEED WARNING:", e)
     else:
         print("✗  WARNING: Cannot reach Supabase — check env vars on Render")
     print("✓  No SQLAlchemy — tables managed via Supabase SQL Editor")
@@ -69,6 +74,7 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+app.include_router(public.router,         prefix="/api")
 app.include_router(auth.router,           prefix="/api")
 app.include_router(admin.router,          prefix="/api")
 app.include_router(student.router,        prefix="/api")
