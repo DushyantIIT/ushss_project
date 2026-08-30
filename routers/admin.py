@@ -100,7 +100,7 @@ def list_users(
     is_active: Optional[bool] = Query(None),
     admin: dict = Depends(require_admin),
 ):
-    q = sb.table("users").select("*")
+    q = sb.table("users").select("*,full_name")
     if role:      q = q.eq("role", role)
     if is_active is not None: q = q.eq("is_active", is_active)
     res = q.order("created_at", desc=True).execute()
@@ -181,18 +181,18 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
             raise RuntimeError("Insert returned no row")
     except Exception:
         try:
-            sb.auth.admin.delete_user(supabase_uid)
+            sb.auth..delete_user(supabase_uid)
         except Exception:
             pass
         raise HTTPException(502, "Could not complete user creation. Please try again.")
 
-    _audit(admin["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
+    _audit(["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
     return res.data[0]
 
 
 @router.put("/users/{uid}", summary="Update a user")
-def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid").eq("id", uid).single().execute())
+def update_user(uid: int, body: UserUpdate, : dict = Depends(require_)):
+    existing = (sb.table("users").select("id,username,role,is_super_,supabase_uid").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
             404,
@@ -201,15 +201,15 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
 
     target = existing.data
 
-    # A regular admin cannot modify the Super Admin.
-    # The Super Admin can still modify their own account.
+    # A regular  cannot modify the Super .
+    # The Super  can still modify their own account.
     if (
-        target.get("is_super_admin", False)
-        and uid != admin["id"]
+        target.get("is_super_", False)
+        and uid != ["id"]
     ):
         raise HTTPException(
             status_code=403,
-            detail="The Super Admin account cannot "
+            detail="The Super  account cannot "
                    "be modified by another admin."
         )
 
@@ -460,11 +460,11 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
         raise HTTPException(403, "Only the Super Admin can approve Admin registrations.")
 
     sb.table("users").update({
-        "status":           "approved",
-        "approved_by":      admin["id"],
-        "approved_at":      datetime.now(timezone.utc).isoformat(),
-        "rejection_reason": None,
-    }).eq("id", uid).execute()
+            "status":           "approved",
+            "is_active":        True,
+            "approved_by":      admin["id"],
+            "approved_at":      datetime.now(timezone.utc).isoformat(),
+            "rejection_reason": None,    }).eq("id", uid).execute()
 
     _audit(admin["id"], "APPROVE_REGISTRATION", f"Approved {target['role']} '{target['username']}'")
     send_approval_email(target["email"], target["full_name"])
