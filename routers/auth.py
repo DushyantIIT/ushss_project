@@ -97,7 +97,8 @@ def login(body: LoginRequest):
     if not user_role:
         raise HTTPException(500, "User role missing in profile")
 
-    # Determine which role to use for further checks and redirects
+    # Always use the stored database role — ignore the tab the user clicked on.
+    # This means admin001 logs in correctly even if the "Student" tab was active.
     role_to_use = user_role
     # If the request supplied a role, ensure it matches the stored role
     if body.role is not None and body.role != user_role:
@@ -105,7 +106,7 @@ def login(body: LoginRequest):
 
     if not user.get("is_active", True):
         print(f"LOGIN DEBUG: user {body.username!r} is_active=False")
-        raise HTTPException(401, "Invalid username, role, or password")
+        raise HTTPException(401, "Invalid username or password")
 
     status_val = user.get("status") or "approved"
     if status_val == "pending":
@@ -252,8 +253,12 @@ def register(body: RegisterRequest):
     except Exception as e:
         print("SIGNUP SUPABASE NOTE:", e)
 
+    # If Supabase Auth unavailable (e.g. no service-role key on this deployment),
+    # generate a deterministic local UID so the profile row can still be created.
+
     if not supabase_uid:
-        supabase_uid = "local-" + str(int(datetime.now(timezone.utc).timestamp()))
+        import random as _random
+        supabase_uid = "local-" + str(int(datetime.now(timezone.utc).timestamp() * 1000)) + "-" + str(_random.randint(1000, 9999))
 
     row = {
         "username":        body.username,
@@ -276,16 +281,17 @@ def register(body: RegisterRequest):
         if not res.data:
             raise RuntimeError("Insert returned no row")
         new_user = res.data[0]
-    except Exception:
-        # The Auth account was created but the profile row wasn't — don't
-        # leave an orphaned Supabase Auth user with no matching profile.
+    except Exception as e:
+        print(f"REGISTER ERROR: profile insert failed for {body.username!r}: {e!r}")
+        # Clean up the Supabase Auth account so it isn't orphaned
         try:
-            sb.auth.admin.delete_user(supabase_uid)
+            if not supabase_uid.startswith("local-"):
+                sb.auth.admin.delete_user(supabase_uid)
         except Exception:
             pass
         raise HTTPException(
             502,
-            "Could not complete registration. Please try again.",
+            "Could not complete registration — your details could not be saved. Please try again.",
         )
 
     try:
