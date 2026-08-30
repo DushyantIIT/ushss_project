@@ -457,8 +457,9 @@ class SmartAuthProxy:
                 return self.real_auth.sign_up(credentials)
             except Exception:
                 pass
+        import random                
         class DummyUser:
-            id = "local-" + str(int(datetime.now(timezone.utc).timestamp()))
+            id = "local-" + str(int(datetime.now(timezone.utc).timestamp() * 1000)) + "-" + str(random.randint(1000, 9999))
         class DummyAuthRes:
             user = DummyUser()
             session = None
