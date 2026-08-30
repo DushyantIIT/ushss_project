@@ -81,20 +81,33 @@ def login(body: LoginRequest):
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
+# Fetch user by username only; role will be taken from the stored profile
     res = (
         sb.table("users")
         .select("*")
         .eq("username", body.username)
-        .eq("role", body.role)
         .limit(1)
         .execute()
     )
 
     if not res.data:
-        print(f"LOGIN DEBUG: no user row found for username={body.username!r} role={body.role!r}")
-        raise HTTPException(401, "Invalid username, role, or password")
-
+        raise HTTPException(401, "Invalid username or password")
+    
     user = res.data[0]
+  
+  # Use the stored role for further processing
+    user_role = user.get("role")
+    if not user_role:
+        raise HTTPException(500, "User role missing in profile")
+    
+    # Validate role if the request supplied one (optional)
+    if body.role and body.role != user_role:
+        raise HTTPException(401, "Invalid role for this user")
+    
+    # Continue using the derived role for redirects
+    role_to_use = user_role
+    
+    # Update downstream logic to use role_to_use instead of body.role
 
     if not user.get("is_active", True):
         print(f"LOGIN DEBUG: user {body.username!r} is_active=False")
