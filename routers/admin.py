@@ -181,7 +181,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
             raise RuntimeError("Insert returned no row")
     except Exception:
         try:
-            sb.auth..delete_user(supabase_uid)
+            sb.auth.delete_user(supabase_uid)
         except Exception:
             pass
         raise HTTPException(502, "Could not complete user creation. Please try again.")
