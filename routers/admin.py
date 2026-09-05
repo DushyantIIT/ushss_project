@@ -191,8 +191,8 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 
 @router.put("/users/{uid}", summary="Update a user")
-def update_user(uid: int, body: UserUpdate, : dict = Depends(require_)):
-    existing = (sb.table("users").select("id,username,role,is_super_,supabase_uid").eq("id", uid).single().execute())
+def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
+    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
             404,
@@ -201,15 +201,15 @@ def update_user(uid: int, body: UserUpdate, : dict = Depends(require_)):
 
     target = existing.data
 
-    # A regular  cannot modify the Super .
-    # The Super  can still modify their own account.
+    # A regular admin cannot modify the Super Admin.
+    # The Super Admin can still modify their own account.
     if (
-        target.get("is_super_", False)
-        and uid != ["id"]
+        target.get("is_super_admin", False)
+        and uid != admin["id"]
     ):
         raise HTTPException(
             status_code=403,
-            detail="The Super  account cannot "
+            detail="The Super Admin account cannot "
                    "be modified by another admin."
         )
 
