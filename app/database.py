@@ -5,6 +5,7 @@ Smart Supabase Database Client.
 
 Supabase is the authoritative production datastore. SQLite is available only
 when USE_SQLITE_FALLBACK=1 is explicitly enabled for local development.
+"""
 
 import os
 import sqlite3
