@@ -233,7 +233,7 @@ tr:hover td{background:var(--gold-pale)}
       </div>
       <div class="progress"><div class="progress-fill progress-green" style="width:82%"></div></div>
     </div>
-    <div class="sb-logout" onclick="toast('Logging out…','ok')"><span style="font-size:14px">🚪</span> Sign Out</div>
+    <div class="sb-logout" onclick="logoutStudent()"><span style="font-size:14px">🚪</span> Sign Out</div>
   </div>
 </aside>
 
@@ -833,6 +833,14 @@ initDashboard();
 
   } catch(e) { console.warn('USHSS API: profile load failed', e); }
 })();
+function logoutStudent() {
+  // Clear every client-side credential/state used by the portal.
+  localStorage.removeItem("ushss_token");
+  localStorage.removeItem("ushss_user");
+  localStorage.removeItem("ushss_pending_token");
+  sessionStorage.removeItem("ushss_rejection_reason");
+  window.location.replace("/");
+}
 </script>
 </body>
 </html>
