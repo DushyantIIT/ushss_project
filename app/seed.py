@@ -149,48 +149,54 @@ def seed():
         print("  · News seed note:", e)
 
     # 4. Users
-    import bcrypt
+    # Demo accounts are created directly in Supabase Auth. No local password
+    # hashes or synthetic/local Auth IDs are generated.
     created_users = 0
     for u in DEMO_USERS:
         try:
             existing = sb.table("users").select("id, supabase_uid").eq("username", u["username"]).eq("role", u["role"]).execute()
-            if not existing.data:
-                pwd_hash = bcrypt.hashpw(u["password"].encode(), bcrypt.gensalt()).decode()
-                supa_uid = None
-                try:
-                    auth_res = sb.auth.sign_up({
-                        "email": u["email"],
-                        "password": u["password"],
-                        "options": {"data": {"full_name": u["full_name"], "role": u["role"]}},
-                    })
-                    supa_user = getattr(auth_res, "user", None)
-                    supa_uid = getattr(supa_user, "id", None) if supa_user else None
-                except Exception as ae:
-                    print(f"  · Auth sign_up note for {u['username']}: {ae}")
+            if existing.data:
+                continue
 
-                if not supa_uid:
-                    supa_uid = "local-" + u["username"]
+            try:
+                auth_res = sb.auth.admin.create_user({
+                    "email": u["email"],
+                    "password": u["password"],
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "full_name": u["full_name"],
+                        "role": u["role"],
+                    },
+                })
+                supa_user = getattr(auth_res, "user", None)
+                supa_uid = getattr(supa_user, "id", None) if supa_user else None
+            except Exception as ae:
+                print(f"  · Auth create_user note for {u['username']}: {ae}")
+                continue
 
-                user_row = {
-                    "username":       u["username"],
-                    "role":           u["role"],
-                    "full_name":      u["full_name"],
-                    "email":          u["email"],
-                    "password_hash":  pwd_hash,
-                    "phone":          u.get("phone"),
-                    "enrollment_no":  u.get("enrollment_no"),
-                    "department":     u.get("department"),
-                    "programme":      u.get("programme"),
-                    "batch":          u.get("batch"),
-                    "designation":    u.get("designation"),
-                    "is_active":      True,
-                    "is_super_admin": u.get("is_super_admin", False),
-                    "status":         "approved",
-                    "supabase_uid":   supa_uid,
-                }
-                res = sb.table("users").insert(user_row).execute()
-                if res.data:
-                    created_users += 1
+            if not supa_uid:
+                print(f"  · No Auth identity returned for {u['username']}; profile not created")
+                continue
+
+            user_row = {
+                "username":       u["username"],
+                "role":           u["role"],
+                "full_name":      u["full_name"],
+                "email":          u["email"],
+                "phone":          u.get("phone"),
+                "enrollment_no":  u.get("enrollment_no"),
+                "department":     u.get("department"),
+                "programme":      u.get("programme"),
+                "batch":          u.get("batch"),
+                "designation":    u.get("designation"),
+                "is_active":      True,
+                "is_super_admin": u.get("is_super_admin", False),
+                "status":         "approved",
+                "supabase_uid":   supa_uid,
+            }
+            res = sb.table("users").insert(user_row).execute()
+            if res.data:
+                created_users += 1
         except Exception as ue:
             print(f"  · Seed user note for {u['username']}: {ue}")
 
