@@ -852,7 +852,7 @@ function logoutCR() {
     // Load CR profile
     const res = await fetch('/api/cr/profile', { headers });
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
         logoutCR();
       }
       return;
