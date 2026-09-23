@@ -1,15 +1,10 @@
 """
 app/database.py
 ───────────────
-Smart Supabase Database Client with SQLite Fallback.
+Smart Supabase Database Client.
 
-If Supabase PostgreSQL / REST API is reachable and permits operations,
-queries execute directly on Supabase.
-
-If Supabase returns Row-Level Security (RLS) errors (42501), table schema
-mismatches (PGRST205), or connection issues, operations smoothly fall back
-to a local SQLite database (ushss.db) so the app is ALWAYS 100% operational.
-"""
+Supabase is the authoritative production datastore. SQLite is available only
+when USE_SQLITE_FALLBACK=1 is explicitly enabled for local development.
 
 import os
 import sqlite3
@@ -287,33 +282,33 @@ class TableQueryBuilder:
                     if self._is_single:
                         q = q.single()
                     res = q.execute()
-                    if res and res.data:
+                    if res is not None:
                         return res
                 elif self._action == "insert":
                     res = real_table.insert(self._insert_data).execute()
-                    if res and res.data:
+                    if res is not None:
                         return res
                 elif self._action == "update":
                     q = real_table.update(self._update_data)
                     for col, op, val in self._filters:
                         if op == "eq": q = q.eq(col, val)
                     res = q.execute()
-                    if res and res.data:
+                    if res is not None:
                         return res
                 elif self._action == "delete":
                     q = real_table.delete()
                     for col, op, val in self._filters:
                         if op == "eq": q = q.eq(col, val)
                     res = q.execute()
-                    if res and res.data:
+                    if res is not None:
                         return res
             except Exception as e:
-                # Print debug info, fall through to SQLite
-                # print(f"DEBUG: Supabase query exception on '{self.table_name}': {e} -> fallback to SQLite")
-                pass
+                if not USE_SQLITE_FALLBACK:
+                    raise RuntimeError(f"Supabase operation failed for '{self.table_name}': {e}") from e
 
-        # 2. Fallback to local SQLite database
-        return self._execute_sqlite()
+        if USE_SQLITE_FALLBACK:
+            return self._execute_sqlite()
+        raise RuntimeError("Supabase is not configured and SQLite fallback is disabled.")
 
     def _execute_sqlite(self):
         table = self.table_name
@@ -436,49 +431,30 @@ class SmartAuthProxy:
         self.admin = self
 
     def sign_in_with_password(self, credentials: dict):
-        if self.real_auth:
-            try:
-                res = self.real_auth.sign_in_with_password(credentials)
-                if getattr(res, "session", None):
-                    return res
-            except Exception:
-                pass
-        # Fallback dummy session object for valid profile accounts
-        class DummySession:
-            pass
-        class DummyAuthRes:
-            session = DummySession()
-            user = None
-        return DummyAuthRes()
+        if not self.real_auth:
+            raise RuntimeError("Supabase Auth is not configured.")
+        return self.real_auth.sign_in_with_password(credentials)
 
     def sign_up(self, credentials: dict):
-        if self.real_auth:
-            try:
-                return self.real_auth.sign_up(credentials)
-            except Exception:
-                pass
-        import random                
-        class DummyUser:
-            id = "local-" + str(int(datetime.now(timezone.utc).timestamp() * 1000)) + "-" + str(random.randint(1000, 9999))
-        class DummyAuthRes:
-            user = DummyUser()
-            session = None
-        return DummyAuthRes()
+        if not self.real_auth:
+            raise RuntimeError("Supabase Auth is not configured.")
+        return self.real_auth.sign_up(credentials)
 
     def create_user(self, credentials: dict):
-        if self.real_auth and hasattr(self.real_auth, "admin"):
-            try:
-                return self.real_auth.admin.create_user(credentials)
-            except Exception:
-                pass
-        class DummyUser:
-            id = "local-" + str(int(datetime.now(timezone.utc).timestamp()))
-        class DummyAuthRes:
-            user = DummyUser()
-        return DummyAuthRes()
+        if not self.real_auth or not hasattr(self.real_auth, "admin"):
+            raise RuntimeError("Supabase Auth admin API is not configured.")
+        return self.real_auth.admin.create_user(credentials)
+
+    def update_user_by_id(self, uid: str, attributes: dict):
+        if not self.real_auth or not hasattr(self.real_auth, "admin"):
+            raise RuntimeError("Supabase Auth admin API is not configured.")
+        return self.real_auth.admin.update_user_by_id(uid, attributes)
 
     def delete_user(self, uid: str):
-        pass
+        if not self.real_auth or not hasattr(self.real_auth, "admin"):
+            raise RuntimeError("Supabase Auth admin API is not configured.")
+        return self.real_auth.admin.delete_user(uid)
+
 
 
 class SmartClient:
