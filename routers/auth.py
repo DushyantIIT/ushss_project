@@ -131,25 +131,15 @@ def login(body: LoginRequest):
     elif status_val != "approved":
         raise HTTPException(401, "Invalid username, role, or password")
 
-    import bcrypt
     authenticated = False
-    if user.get("password_hash"):
-        try:
-            if bcrypt.checkpw(body.password.encode(), user["password_hash"].encode()):
-                authenticated = True
-        except Exception:
-            pass
-
-    if not authenticated:
-        try:
-            auth_res = sb.auth.sign_in_with_password({
-                "email": user["email"],
-                "password": body.password,
-            })
-            if getattr(auth_res, "session", None):
-                authenticated = True
-        except Exception as e:
-            print("SUPABASE SIGNIN NOTE:", repr(e))
+    try:
+        auth_res = sb.auth.sign_in_with_password({
+            "email": user["email"],
+            "password": body.password,
+        })
+        authenticated = bool(getattr(auth_res, "session", None))
+    except Exception as e:
+        print("SUPABASE SIGNIN NOTE:", repr(e))
 
     if not authenticated:
         raise HTTPException(401, "Invalid username or password")
@@ -219,7 +209,7 @@ def register(body: RegisterRequest):
     if body.role not in SELF_REGISTER_ROLES:
         raise HTTPException(400, f"Self-registration is only allowed for: {SELF_REGISTER_ROLES}")
 
-    if body.role in ENROLLMENT_REQUIRED_ROLES and not (body.enrollment_no or body.username):
+    if body.role in ENROLLMENT_REQUIRED_ROLES and not body.enrollment_no:
         raise HTTPException(400, "Enrollment number is required for this role")
 
     # duplicate username + role
@@ -238,9 +228,6 @@ def register(body: RegisterRequest):
     if dup_email.data:
         raise HTTPException(409, "Email address is already registered")
 
-    import bcrypt
-    pwd_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
-
     supabase_uid = None
     try:
         auth_res = sb.auth.sign_up({
@@ -253,9 +240,6 @@ def register(body: RegisterRequest):
     except Exception as e:
         print("SIGNUP SUPABASE NOTE:", e)
 
-    # If Supabase Auth unavailable (e.g. no service-role key on this deployment),
-    # generate a deterministic local UID so the profile row can still be created.
-
     if not supabase_uid:
         import random as _random
         supabase_uid = "local-" + str(int(datetime.now(timezone.utc).timestamp() * 1000)) + "-" + str(_random.randint(1000, 9999))
@@ -265,7 +249,6 @@ def register(body: RegisterRequest):
         "role":            body.role,
         "full_name":       body.full_name,
         "email":           body.email,
-        "password_hash":   pwd_hash,
         "phone":           body.phone,
         "enrollment_no":   body.enrollment_no or body.username,
         "department":      body.department,
