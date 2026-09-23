@@ -63,6 +63,16 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .modal-actions{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem}
 </style>
 </head>
+<script>
+(function(){
+  // A dashboard is never public: the browser must already have a portal token.
+  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
+  // with no token even when the normal Chrome window is logged in.
+  if (!localStorage.getItem("ushss_token")) {
+    window.location.replace("/");
+  }
+})();
+</script>
 <body>
 <div class="topbar">
   <h1>USHSS Admin — Pending Registrations</h1>
