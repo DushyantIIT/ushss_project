@@ -241,8 +241,10 @@ def register(body: RegisterRequest):
         print("SIGNUP SUPABASE NOTE:", e)
 
     if not supabase_uid:
-        import random as _random
-        supabase_uid = "local-" + str(int(datetime.now(timezone.utc).timestamp() * 1000)) + "-" + str(_random.randint(1000, 9999))
+        raise HTTPException(
+            502,
+            "Supabase Auth is unavailable; registration could not be completed.",
+        )
 
     row = {
         "username":        body.username,
