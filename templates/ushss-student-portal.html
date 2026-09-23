@@ -187,6 +187,16 @@ tr:hover td{background:var(--gold-pale)}
 @media(max-width:900px){.sidebar{display:none}.stats-row{grid-template-columns:1fr 1fr}.grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}}
 </style>
 </head>
+<script>
+(function(){
+  // A dashboard is never public: the browser must already have a portal token.
+  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
+  // with no token even when the normal Chrome window is logged in.
+  if (!localStorage.getItem("ushss_token")) {
+    window.location.replace("/");
+  }
+})();
+</script>
 <body>
 
 <!-- SIDEBAR -->
