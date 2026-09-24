@@ -1917,7 +1917,8 @@ function openCreateModal(role="student") {
   document.getElementById("modal").classList.add("open");
 }
 function openEditModal(id) {
-  const db=loadDB(); const user=db.users.find(u=>u.id===id); if(!user) return;
+  const user=(window.__supabaseUsers||[]).find(u=>Number(u.id)===Number(id));
+  if(!user){ toast("User not found","error"); return; }
   editingId=id;
   document.getElementById("modal-title").textContent="Edit User";
   document.getElementById("modal-save-btn").textContent="Save Changes";
