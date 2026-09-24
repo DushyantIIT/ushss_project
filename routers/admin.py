@@ -212,8 +212,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    _validate_programme_batch(body.programme, body.batch, None)
-    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid").eq("id", uid).single().execute())
+    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid,programme,batch").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
             404,
@@ -235,6 +234,9 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         )
 
     updates = body.model_dump(exclude_none=True)
+    effective_programme = updates.get("programme", target.get("programme"))
+    effective_batch = updates.get("batch", target.get("batch"))
+    _validate_programme_batch(effective_programme, effective_batch, target.get("role"))
 
     if "role" in updates:
         # Only the Super Admin may change a user's role (e.g. promote to Admin).
