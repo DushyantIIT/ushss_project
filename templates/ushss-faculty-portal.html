@@ -226,8 +226,8 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-profile">
       <div class="sb-avatar" id="sb-init">SS</div>
       <div>
-        <div class="sb-pname" id="sb-name">Dr. Shuchi Sharma</div>
-        <div class="sb-prole">Dean · Professor</div>
+        <div class="sb-pname" id="sb-name">Loading…</div>
+        <div class="sb-prole" id="sb-role">Loading…</div>
       </div>
     </div>
   </div>
@@ -597,6 +597,11 @@ async function loadFacultyData(){
   if(!r.ok)throw new Error('Failed to load faculty dashboard from Supabase');
   const data=await r.json();
   facultyProfile=await (await fetch('/api/faculty/profile',{headers})).json();
+  const profileName=facultyProfile.full_name||facultyProfile.username||'Faculty';
+  const initials=profileName.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const nameEl=document.getElementById('sb-name'); if(nameEl)nameEl.textContent=profileName;
+  const roleEl=document.getElementById('sb-role'); if(roleEl)roleEl.textContent=(facultyProfile.designation||facultyProfile.role||'Faculty')+(facultyProfile.department?' · '+facultyProfile.department:'');
+  const initEl=document.getElementById('sb-init'); if(initEl)initEl.textContent=initials;
   DB.students=(data.students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:s.attendance_percentage??0,active:s.is_active}));
   DB.announcements=data.announcements||[];
   DB.sessions=(data.sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:s.present||0,total:s.total||0,duration:'',is_open:s.is_open}));
