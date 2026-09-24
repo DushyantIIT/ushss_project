@@ -724,17 +724,25 @@ function renderSubjectAtt(){
   }).join('');
 }
 function renderMonthlySummary(){
-  const months=[{m:'April 2025',present:8,total:10},{m:'March 2025',present:6,total:8},{m:'February 2025',present:10,total:12}];
-  document.getElementById('monthly-summary').innerHTML=months.map(m=>{
-    const pct=Math.round(m.present/m.total*100);
+  const groups={};
+  (attendanceSummary.records||[]).forEach(r=>{
+    const d=new Date((r.attendance_sessions||{}).date||'');
+    if(Number.isNaN(d.getTime())) return;
+    const key=d.toLocaleString('en-IN',{month:'long',year:'numeric'});
+    const g=groups[key]||(groups[key]={present:0,total:0,time:d.getTime()});
+    g.total++; if(r.status==='present') g.present++;
+  });
+  const months=Object.entries(groups).sort((a,b)=>b[1].time-a[1].time).slice(0,6);
+  document.getElementById('monthly-summary').innerHTML=months.length?months.map(([m,v])=>{
+    const pct=v.total?Math.round(v.present/v.total*100):0;
     return `<div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px;color:var(--ink-mid)">${m.m}</span>
-        <span style="font-size:13px;font-weight:700;color:var(--maroon)">${m.present}/${m.total}</span>
+        <span style="font-size:13px;color:var(--ink-mid)">${m}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--maroon)">${v.present}/${v.total}</span>
       </div>
       <div class="progress"><div class="progress-fill progress-maroon" style="width:${pct}%"></div></div>
     </div>`;
-  }).join('');
+  }).join(''):`<div class="empty"><div class="empty-icon">📊</div><div>No attendance history available.</div></div>`;
 }
 
 /* TIMETABLE */
