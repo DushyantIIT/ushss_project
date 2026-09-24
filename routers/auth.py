@@ -178,24 +178,50 @@ def login(body: LoginRequest):
             f"session={bool(session)} user={bool(auth_user)}"
         )
     except Exception as e:
-        # Legacy/demo profiles may still contain a bcrypt password_hash while
-        # their Supabase Auth identity is missing or out of sync.  Verify that
-        # hash as a compatibility path so existing/default credentials don't
-        # become unusable after the Auth migration.
+        # Approved profiles can pre-date the Auth verification sync. If the
+        # portal already records the email/phone as verified, repair the linked
+        # Supabase Auth identity and retry the same password once.
         print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__}")
-        legacy_hash = user.get("password_hash")
-        if legacy_hash:
+        auth_uid = user.get("supabase_uid")
+        if auth_uid:
             try:
-                import bcrypt
-                authenticated = bcrypt.checkpw(
-                    body.password.encode("utf-8"),
-                    legacy_hash.encode("utf-8"),
-                )
-            except Exception as bcrypt_error:
+                confirm_fields = {}
+                if user.get("email_verified"):
+                    confirm_fields["email_confirm"] = True
+                if user.get("phone_verified"):
+                    confirm_fields["phone_confirm"] = True
+                if confirm_fields:
+                    sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
+                    retry = sb.auth.sign_in_with_password({
+                        "email": user["email"],
+                        "password": body.password,
+                    })
+                    retry_session = getattr(retry, "session", None)
+                    if retry_session:
+                        authenticated = True
+                        print(f"LOGIN AUTH REPAIR: username={body.username!r} confirmed={list(confirm_fields)}")
+            except Exception as repair_error:
                 print(
-                    f"LEGACY PASSWORD CHECK ERROR: username={body.username!r} "
-                    f"type={type(bcrypt_error).__name__}"
+                    f"LOGIN AUTH REPAIR FAILED: username={body.username!r} "
+                    f"type={type(repair_error).__name__}"
                 )
+
+        # Legacy/demo profiles may still contain a bcrypt password_hash while
+        # their Supabase Auth identity is missing or out of sync.
+        if not authenticated:
+            legacy_hash = user.get("password_hash")
+            if legacy_hash:
+                try:
+                    import bcrypt
+                    authenticated = bcrypt.checkpw(
+                        body.password.encode("utf-8"),
+                        legacy_hash.encode("utf-8"),
+                    )
+                except Exception as bcrypt_error:
+                    print(
+                        f"LEGACY PASSWORD CHECK ERROR: username={body.username!r} "
+                        f"type={type(bcrypt_error).__name__}"
+                    )
 
     if not authenticated:
         raise HTTPException(401, "Invalid username or password")
