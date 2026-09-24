@@ -918,7 +918,6 @@ function toast(msg, type='ok') {
 /* ═══ INIT ═══ */
 document.getElementById('att-date').value = new Date().toISOString().slice(0,10);
 initDashboard();
-</script>
 function logoutFaculty() {
   localStorage.removeItem("ushss_token");
   localStorage.removeItem("ushss_user");
@@ -938,6 +937,7 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
+
 <script>
 (async function loadFacultyProfile() {
   const token = localStorage.getItem('ushss_token');
