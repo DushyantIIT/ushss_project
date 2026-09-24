@@ -47,13 +47,17 @@ def login(body: LoginRequest):
     if status_val == "pending": raise HTTPException(403, detail={"status":"pending","redirect_url":"/waiting","message":"Account registration is pending approval."})
     if status_val == "rejected": raise HTTPException(403, detail={"status":"rejected","redirect_url":"/rejected","reason":user.get("rejection_reason"),"message":"Account registration was rejected."})
     if status_val != "approved": raise HTTPException(401, "Invalid username, role, or password")
+
+    # Verification is intentionally disabled for this portal. For every linked
+    # account, confirm both identifiers before password sign-in so Supabase Auth
+    # remains the actual authentication provider without email/SMS verification.
     auth_uid = user.get("supabase_uid")
     if auth_uid:
         try:
-            fields={"email_confirm":True}
-            if user.get("phone_verified"): fields["phone_confirm"]=True
-            sb.auth.admin.update_user_by_id(auth_uid, fields)
-        except Exception as e: print(f"LOGIN AUTH SYNC FAILED: {type(e).__name__}: {str(e)[:160]}")
+            sb.auth.admin.update_user_by_id(auth_uid, {"email_confirm": True, "phone_confirm": True})
+        except Exception as e:
+            print(f"LOGIN AUTH CONFIRM SYNC FAILED: {type(e).__name__}: {str(e)[:160]}")
+
     authenticated=False
     try:
         ar=sb.auth.sign_in_with_password({"email":user["email"],"password":body.password})
@@ -62,20 +66,16 @@ def login(body: LoginRequest):
         print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__} detail={str(e)[:240]!r}")
         if auth_uid:
             try:
-                fields={}
-                if user.get("email_verified"): fields["email_confirm"]=True
-                if user.get("phone_verified"): fields["phone_confirm"]=True
-                if fields:
-                    sb.auth.admin.update_user_by_id(auth_uid,fields)
-                    rr=sb.auth.sign_in_with_password({"email":user["email"],"password":body.password})
-                    authenticated=bool(getattr(rr,"session",None))
+                sb.auth.admin.update_user_by_id(auth_uid, {"email_confirm": True, "phone_confirm": True})
+                rr=sb.auth.sign_in_with_password({"email":user["email"],"password":body.password})
+                authenticated=bool(getattr(rr,"session",None))
             except Exception as repair: print(f"LOGIN AUTH REPAIR FAILED: {type(repair).__name__}")
         if not authenticated:
             demo=next((d for d in DEMO_USERS if d["username"]==body.username and d["role"]==user_role and d["password"]==body.password),None)
             if demo:
                 try:
                     uid=user.get("supabase_uid")
-                    if uid: sb.auth.admin.update_user_by_id(uid,{"password":demo["password"],"email_confirm":True})
+                    if uid: sb.auth.admin.update_user_by_id(uid,{"password":demo["password"],"email_confirm":True,"phone_confirm":True})
                     rr=sb.auth.sign_in_with_password({"email":demo["email"],"password":demo["password"]})
                     authenticated=bool(getattr(rr,"session",None))
                 except Exception as de: print(f"DEMO LOGIN REPAIR FAILED: {type(de).__name__}")
@@ -134,15 +134,16 @@ def register(body:RegisterRequest):
     elif not phone.startswith("+") or len(phone)<10: raise HTTPException(400,"Please enter a valid mobile number with country code, e.g. +919876543210")
     supabase_uid=None
     try:
-        # Use the trusted Auth Admin API. This works even when public email signup
-        # is disabled, while keeping the service-role key server-side only.
-        created=sb.auth.admin.create_user({"email":str(body.email),"phone":phone,"password":body.password,"email_confirm":False,"phone_confirm":False,"user_metadata":{"full_name":body.full_name,"role":body.role}})
+        # Create the Auth identity on the server and auto-confirm both identifiers.
+        # This does not expose the service-role key and works independently of
+        # Supabase's public signup/verification settings.
+        created=sb.auth.admin.create_user({"email":str(body.email),"phone":phone,"password":body.password,"email_confirm":True,"phone_confirm":True,"user_metadata":{"full_name":body.full_name,"role":body.role}})
         au=getattr(created,"user",None); supabase_uid=getattr(au,"id",None) if au else None
     except Exception as e:
         print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
         raise HTTPException(502,"Could not create the authentication account. Please try again.")
     if not supabase_uid: raise HTTPException(502,"Authentication account was not created. Please try again.")
-    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"programme":body.programme,"batch":body.batch,"designation":body.designation,"is_active":True,"status":"pending","email_verified":False,"phone_verified":False,"supabase_uid":supabase_uid}
+    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"programme":body.programme,"batch":body.batch,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid}
     try:
         res=sb.table("users").insert(row).execute()
         if not res.data: raise RuntimeError("Insert returned no row")
