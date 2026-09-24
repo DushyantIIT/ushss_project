@@ -1161,7 +1161,7 @@ function renderPage(page) {
    DASHBOARD
 ══════════════════════════════════════════ */
 function renderDashboard() {
-  const s=window.__supabaseStats||dbGetStats();
+  const s=window.__supabaseStats||{counts:{},log:[],timetable_count:0,attendance_sessions:[],attendance_records_count:0,announcements:[]};
   const rc={student:"#4A7FC0",faculty:"#8B6FC0",cr:"#3DAA72",admin:"#C9A84C"};
   const ri={student:"🎓",faculty:"📚",cr:"🤝",admin:"🔑"};
   const cards=["student","faculty","cr","admin"].map(r=>`
