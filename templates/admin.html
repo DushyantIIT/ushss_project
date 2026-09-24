@@ -1174,8 +1174,8 @@ function renderDashboard() {
       </div>
     </div>`).join("");
   const db=loadDB();
-  const ttCount=(window.__supabaseTimetable||[]).length;
-  const liveCount=(window.__supabaseAttendance||[]).filter(s=>s.is_open).length;
+  const ttCount=Number(s.timetable_count||0);
+  const liveCount=(s.attendance_sessions||[]).filter(x=>x.is_open).length;
   const log=s.log.slice(0,10).map(l=>`
     <div class="log-entry">
       <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":l.action.includes("TIMETABLE")?"var(--teal)":l.action.includes("ATTEND")?"var(--amber)":"var(--blue)"}"></div>
@@ -1228,10 +1228,10 @@ function renderDashboard() {
       </div>
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div><div class="card-title">Announcements</div><div class="card-sub">${(db.announcements||[]).length} total</div></div>
+          <div><div class="card-title">Announcements</div><div class="card-sub">${(s.announcements||[]).length} total</div></div>
           <button class="btn btn-primary btn-sm" onclick="document.getElementById('ann-modal').classList.add('open')">+ New</button>
         </div>
-        ${(db.announcements||[]).slice(0,3).map(a=>`
+        ${(s.announcements||[]).slice(0,3).map(a=>`
           <div style="padding:8px 0;border-bottom:1px solid var(--border)">
             <div style="font-size:12px;font-weight:600;color:var(--text)">${a.title}</div>
             <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px">${a.ts} · ${a.target} · <span style="color:${a.priority==='urgent'?'var(--red)':a.priority==='important'?'var(--amber)':'var(--muted)'}">${a.priority}</span></div>
