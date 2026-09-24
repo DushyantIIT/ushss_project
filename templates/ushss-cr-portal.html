@@ -544,6 +544,12 @@ async function loadCRData(){
     get('/api/cr/profile'),get('/api/cr/classmates'),get('/api/cr/announcements'),get('/api/cr/assignments'),get('/api/cr/materials'),get('/api/student/attendance/open')
   ]);
   crProfile=profile;
+  const setText=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v??'—';};
+  setText('cr-profile-name',profile.full_name||profile.username);
+  setText('cr-profile-role',profile.role?'CR · '+profile.role.toUpperCase():'Class Representative');
+  setText('cr-profile-class',(profile.programme||'')+(profile.batch?' · '+profile.batch:''));
+  setText('cr-sidebar-programme',profile.programme||'');
+  setText('cr-sidebar-batch',profile.batch||'');
   DB.classmates=(classmates.students||[]).map(s=>({roll:s.enrollment_no||s.username,name:s.full_name,phone:s.phone||'',email:s.email||'',att:0,active:s.is_active}));
   DB.announcements=anns||[];
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||''}));
