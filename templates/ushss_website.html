@@ -1161,29 +1161,24 @@ function updateRegistrationBatch() {
   const batch = document.getElementById("reg-batch");
   if (!batch) return;
 
+  const duration = programme === "B.A." ? 4 : programme === "M.A." ? 2 : 0;
   const currentYear = new Date().getFullYear();
   batch.innerHTML = '<option value="">— Select —</option>';
 
-  if (programme === "B.A.") {
-    if (currentYear === 2023) {
-      batch.innerHTML += '<option value="2023-27" selected>2023-27</option>';
-    } else if (currentYear === 2024) {
-      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28" selected>2024-28</option>';
-    } else if (currentYear === 2025) {
-      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28">2024-28</option><option value="2025-29" selected>2025-29</option>';
-    } else {
-      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28">2024-28</option><option value="2025-29">2025-29</option><option value="' + currentYear + '-' + String(currentYear + 4).slice(-2) + '" selected>' + currentYear + '-' + String(currentYear + 4).slice(-2) + '</option>';
-    }
-  } else if (programme === "M.A.") {
-    if (currentYear === 2023) {
-      batch.innerHTML += '<option value="2023-25" selected>2023-25</option>';
-    } else if (currentYear === 2024) {
-      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26" selected>2024-26</option>';
-    } else if (currentYear === 2025) {
-      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26">2024-26</option><option value="2025-27" selected>2025-27</option>';
-    } else {
-      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26">2024-26</option><option value="2025-27">2025-27</option><option value="' + currentYear + '-' + String(currentYear + 2).slice(-2) + '" selected>' + currentYear + '-' + String(currentYear + 2).slice(-2) + '</option>';
-    }
+  if (!duration) return;
+
+  // Keep the last few intake years available, with the full start-end year.
+  const firstYear = Math.max(2021, currentYear - 3);
+  for (let start = firstYear; start <= currentYear + 1; start++) {
+    const end = start + duration;
+    const value = start + "-" + end;
+    batch.innerHTML += '<option value="' + value + '">' + value + '</option>';
+  }
+
+  // Select the current intake by default.
+  const currentValue = currentYear + "-" + (currentYear + duration);
+  if (Array.from(batch.options).some(o => o.value === currentValue)) {
+    batch.value = currentValue;
   }
 }
 
