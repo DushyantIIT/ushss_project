@@ -34,16 +34,12 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         raise exc
 
     try:
-        # Use limit(1) instead of .single(): Supabase's .single() can turn
-        # an otherwise valid lookup into an exception/401 when the response
-        # shape is unexpected. Authentication should only fail when no active
-        # profile actually exists.
         res = (
             sb.table("users")
             .select("*")
             .eq("id", user_id)
             .eq("is_active", True)
-            .limit(1)
+            .single()
             .execute()
         )
     except Exception:
