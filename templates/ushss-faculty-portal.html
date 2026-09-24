@@ -825,31 +825,27 @@ function renderAnnList() {
 function openAnnModal() { document.getElementById('ann-modal').classList.add('open'); }
 function closeAnnModal() { document.getElementById('ann-modal').classList.remove('open'); }
 
-function postAnnouncement() {
+async function postAnnouncement() {
   const title = document.getElementById('ann-title-inp').value.trim();
   const body  = document.getElementById('ann-body-inp').value.trim();
   if (!title || !body) { toast('Title and message required','err'); return; }
-  const ann = {
-    id: Date.now(),
-    title, body,
-    target: document.getElementById('ann-class-inp').value,
-    priority: document.getElementById('ann-priority-inp').value,
-    ts: new Date().toLocaleString('en-IN'),
-  };
-  DB.announcements.unshift(ann);
-  document.getElementById('ann-cnt').textContent = DB.announcements.length;
-  closeAnnModal();
-  renderAnnList();
-  document.getElementById('ann-title-inp').value = '';
-  document.getElementById('ann-body-inp').value = '';
-  toast('Announcement posted!','ok');
+  try {
+    const r=await fetch('/api/faculty/announcements',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({
+      title, body, target:document.getElementById('ann-class-inp').value, priority:document.getElementById('ann-priority-inp').value
+    })});
+    const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Could not post announcement');
+    DB.announcements.unshift(d); document.getElementById('ann-cnt').textContent=DB.announcements.length;
+    closeAnnModal(); renderAnnList(); document.getElementById('ann-title-inp').value=''; document.getElementById('ann-body-inp').value='';
+    toast('Announcement posted!','ok');
+  } catch(e) { toast(e.message,'err'); }
 }
 
-function deleteAnn(id) {
-  DB.announcements = DB.announcements.filter(a => a.id !== id);
-  document.getElementById('ann-cnt').textContent = DB.announcements.length;
-  renderAnnList();
-  toast('Announcement deleted','ok');
+async function deleteAnn(id) {
+  try {
+    const r=await fetch('/api/faculty/announcements/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token')}});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not delete announcement');
+    DB.announcements=DB.announcements.filter(a=>a.id!==id); document.getElementById('ann-cnt').textContent=DB.announcements.length; renderAnnList(); toast('Announcement deleted','ok');
+  } catch(e) { toast(e.message,'err'); }
 }
 
 /* ═══ STUDENTS ═══ */
