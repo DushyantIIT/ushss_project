@@ -432,14 +432,27 @@ class SmartAuthProxy:
         self.admin = self
 
     def sign_in_with_password(self, credentials: dict):
+        """Authenticate without mutating the shared database client's session.
+
+        The main Supabase client uses the service-role key for backend DB work.
+        Calling sign_in_with_password() on that shared client replaces its Auth
+        session with the logging-in user's session, which can make subsequent
+        requests unexpectedly run with the user's JWT instead of the service
+        role and appear as an immediate application logout. Use a fresh client
+        for each password-auth operation so the DB client remains privileged
+        and stateless across requests.
+        """
         if not self.real_auth:
             raise RuntimeError("Supabase Auth is not configured.")
-        return self.real_auth.sign_in_with_password(credentials)
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return auth_client.auth.sign_in_with_password(credentials)
 
     def sign_up(self, credentials: dict):
+        """Create an Auth user without mutating the shared DB client's session."""
         if not self.real_auth:
             raise RuntimeError("Supabase Auth is not configured.")
-        return self.real_auth.sign_up(credentials)
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return auth_client.auth.sign_up(credentials)
 
     def create_user(self, credentials: dict):
         if not self.real_auth or not hasattr(self.real_auth, "admin"):
