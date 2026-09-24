@@ -592,15 +592,15 @@ function goPage(id, el) {
 async function loadFacultyData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
   const headers={'Authorization':'Bearer '+token};
-  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutFaculty();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
-  const [profile,students,anns,sessions,timetable]=await Promise.all([
-    get('/api/faculty/profile'),get('/api/faculty/students'),get('/api/faculty/announcements'),get('/api/faculty/attendance/sessions'),get('/api/faculty/timetable')
-  ]);
-  facultyProfile=profile;
-  DB.students=(students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:0,active:s.is_active}));
-  DB.announcements=anns||[];
-  DB.sessions=(sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:0,total:0,duration:'',is_open:s.is_open}));
-  DB.timetable=timetable||[];
+  const r=await fetch('/api/faculty/dashboard',{headers});
+  if(r.status===401){logoutFaculty();throw new Error('Session expired');}
+  if(!r.ok)throw new Error('Failed to load faculty dashboard from Supabase');
+  const data=await r.json();
+  facultyProfile=await (await fetch('/api/faculty/profile',{headers})).json();
+  DB.students=(data.students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:s.attendance_percentage??0,active:s.is_active}));
+  DB.announcements=data.announcements||[];
+  DB.sessions=(data.sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:s.present||0,total:s.total||0,duration:'',is_open:s.is_open}));
+  DB.timetable=data.timetable||[];
   updateFacultyStats();
   const course=document.getElementById('att-course');
   if(course&&DB.timetable.length){course.innerHTML=[...new Set(DB.timetable.map(s=>s.programme+' — '+s.batch))].map(x=>'<option>'+x+'</option>').join('');}
@@ -615,63 +615,33 @@ loadFacultyData().then(()=>initDashboard()).catch(e=>{console.error(e);toast('Co
 
 /* ═══ DASHBOARD INIT ═══ */
 function initDashboard() {
-  // Chart
-  const days = ["1","3","5","7","8","10","12","14"];
-  const vals = [88, 76, 91, 65, 84, 72, 95, 78];
-  const chartEl = document.getElementById('att-chart');
-  const lblEl   = document.getElementById('att-chart-labels');
-  chartEl.innerHTML = vals.map((v,i) =>
-    `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
-      <div class="chart-bar ${i===7?'today':''}" style="height:${v}%;width:100%;flex:1 0 auto;max-height:${v}%;min-height:4px" title="${v}%"></div>
-    </div>`
-  ).join('');
-  lblEl.innerHTML = days.map((d,i) =>
-    `<div style="flex:1;text-align:center;font-size:9px;color:${i===7?'var(--gold)':'var(--muted)'};font-family:var(--mono)">${d}</div>`
-  ).join('');
-
-  // Low attendance
-  const low = DB.students.filter(s => s.att < 75).sort((a,b) => a.att - b.att);
-  document.getElementById('low-att-list').innerHTML = low.length ? low.map(s => `
+  const recent=DB.sessions.slice(0,8).reverse();
+  const vals=recent.map(s=>s.total?Math.round((s.present/s.total)*100):0);
+  const labels=recent.map(s=>String(s.date||'').slice(5)||'—');
+  const chartEl=document.getElementById('att-chart'), lblEl=document.getElementById('att-chart-labels');
+  chartEl.innerHTML=vals.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center"><div class="chart-bar ${i===vals.length-1?'today':''}" style="height:${Math.max(v,4)}%;width:100%;flex:1 0 auto;max-height:${Math.max(v,4)}%;min-height:4px" title="${v}%"></div></div>`).join('');
+  lblEl.innerHTML=labels.map((d,i)=>`<div style="flex:1;text-align:center;font-size:9px;color:${i===labels.length-1?'var(--gold)':'var(--muted)'};font-family:var(--mono)">${d}</div>`).join('');
+  const low=DB.students.filter(s=>s.att<75 && s.att>0).sort((a,b)=>a.att-b.att);
+  document.getElementById('low-att-list').innerHTML=low.length?low.map(s=>`
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="width:28px;height:28px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--red);font-weight:700;flex-shrink:0">${s.name.charAt(0)}</div>
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--text)">${s.name}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${s.roll}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:14px;font-weight:700;color:var(--red)">${s.att}%</div>
-        <div class="progress" style="width:60px"><div class="progress-fill progress-red" style="width:${s.att}%"></div></div>
-      </div>
-    </div>
-  `).join('') : `<div class="empty"><div class="empty-icon">🎉</div><div>All students above 75%</div></div>`;
-
-  // Dashboard announcements
-  document.getElementById('dash-ann').innerHTML = DB.announcements.slice(0,2).map(a => annCardHTML(a, true)).join('');
-
-  // Upcoming
-  const upcoming = [
-    {day:"Mon 22 Apr",time:"3:00 PM",cls:"M.A. English — Sem III",room:"Seminar Hall A"},
-    {day:"Tue 23 Apr",time:"10:00 AM",cls:"M.A. Psychology — Sem I",room:"Room 204"},
-    {day:"Wed 24 Apr",time:"2:00 PM",cls:"M.A. Economics — Sem II",room:"Seminar Hall B"},
-  ];
-  document.getElementById('upcoming-list').innerHTML = upcoming.map(u => `
+      <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">${s.name}</div><div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${s.roll}</div></div>
+      <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--red)">${s.att}%</div><div class="progress" style="width:60px"><div class="progress-fill progress-red" style="width:${s.att}%"></div></div></div>
+    </div>`).join(''):`<div class="empty"><div class="empty-icon">🎉</div><div>No low-attendance records available.</div></div>`;
+  document.getElementById('dash-ann').innerHTML=DB.announcements.slice(0,2).map(a=>annCardHTML(a,true)).join('');
+  const now=new Date(), dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], today=dayNames[now.getDay()];
+  const upcoming=DB.timetable.filter(s=>s.day_of_week===today).sort((a,b)=>String(a.start_time).localeCompare(String(b.start_time))).slice(0,3);
+  document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(u=>`
     <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center">
       <div style="min-width:70px;text-align:center;padding:8px;background:var(--gold-pale);border-radius:6px;border:1px solid rgba(201,168,76,.2)">
-        <div style="font-size:9px;color:var(--gold);font-family:var(--mono);text-transform:uppercase">${u.day.split(' ')[0]}</div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream);line-height:1">${u.day.split(' ')[1]}</div>
-        <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">${u.time}</div>
+        <div style="font-size:9px;color:var(--gold);font-family:var(--mono);text-transform:uppercase">${u.day_of_week}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream);line-height:1">${String(u.start_time).slice(0,5)}</div>
+        <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">to ${String(u.end_time).slice(0,5)}</div>
       </div>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.cls}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ${u.room}</div>
-      </div>
-    </div>
-  `).join('');
-
-  // Session history mini
+      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${u.subject||'Class'}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ${u.room||'Room not assigned'} · ${u.programme||''} ${u.batch||''}</div></div>
+    </div>`).join(''):`<div class="empty"><div class="empty-icon">🗓️</div><div>No classes scheduled for today.</div></div>`;
   renderSessionHistory();
 }
-
 /* ═══ ATTENDANCE ═══ */
 function startAttendance() {
   const course = document.getElementById('att-course').value;
