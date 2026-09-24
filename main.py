@@ -32,10 +32,8 @@ async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend starting up…")
     if ping_db():
         print("✓  Supabase connection OK")
-        try:
-            seed()
-        except Exception as e:
-            print("SEED WARNING:", e)
+        # Production data is managed exclusively in Supabase.
+        # The development seed script is never executed automatically at startup.
     else:
         print("✗  WARNING: Cannot reach Supabase — check env vars on Render")
     print("✓  No SQLAlchemy — tables managed via Supabase SQL Editor")
