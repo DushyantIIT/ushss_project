@@ -192,6 +192,49 @@ def login(body: LoginRequest):
     )
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=6)
+    confirm_password: str = Field(..., min_length=6)
+
+@router.post("/change-password", summary="Change the authenticated user's password")
+def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_scheme)):
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+    user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(401, "Invalid authentication token")
+    res = sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id", user_id).limit(1).execute()
+    if not res.data:
+        raise HTTPException(401, "User account not found")
+    user = res.data[0]
+    if not user.get("is_active", True) or (user.get("status") or "approved") != "approved":
+        raise HTTPException(403, "Your account is not active")
+    if not user.get("supabase_uid"):
+        raise HTTPException(500, "This account has no linked Auth identity")
+    if body.new_password != body.confirm_password:
+        raise HTTPException(400, "New passwords do not match")
+    if body.current_password == body.new_password:
+        raise HTTPException(400, "New password must be different from the current password")
+    try:
+        auth_res = sb.auth.sign_in_with_password({"email": user["email"], "password": body.current_password})
+        if not getattr(auth_res, "session", None):
+            raise ValueError("Current password rejected")
+    except Exception:
+        raise HTTPException(400, "Current password is incorrect")
+    try:
+        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"password": body.new_password})
+    except Exception:
+        raise HTTPException(502, "Could not update the password. Please try again.")
+    try:
+        sb.table("audit_log").insert({"user_id": user["id"], "action": "PASSWORD_CHANGED", "detail": f"User '{user['username']}' changed their password"}).execute()
+    except Exception as e:
+        print(f"PASSWORD CHANGE WARNING: audit log failed: {e!r}")
+    return {"success": True, "message": "Password changed successfully."}
+
+
 # ── Registration ─────────────────────────────────────────────────────────────
 
 
