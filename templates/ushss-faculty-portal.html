@@ -894,9 +894,14 @@ function toast(msg, type='ok') {
 document.getElementById('att-date').value = new Date().toISOString().slice(0,10);
 initDashboard();
 function logoutFaculty() {
-  localStorage.removeItem("ushss_token");
-  localStorage.removeItem("ushss_user");
-  window.location.href = "/";
+  try {
+    localStorage.removeItem('ushss_token');
+    localStorage.removeItem('ushss_user');
+    localStorage.removeItem('ushss_pending_token');
+    sessionStorage.clear();
+  } finally {
+    window.location.replace('/');
+  }
 }
 </script>
 <!-- USHSS Real API Integration: loads real faculty profile into sidebar -->
