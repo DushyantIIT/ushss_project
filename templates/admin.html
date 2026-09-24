@@ -1759,70 +1759,38 @@ function stopSession(id) {
 const priIcon={normal:"📢",important:"⚠️",urgent:"🚨"};
 const priBadge={normal:"badge-blue",important:"badge-amber",urgent:"badge-inactive"};
 const tgtBadge={all:"badge-teal",student:"badge-student",faculty:"badge-faculty",cr:"badge-cr"};
-function renderAnnouncements() {
-  const db=loadDB();
-  const anns=db.announcements||[];
-  return `
-    <div class="sec-head">
-      <div><div class="sec-label">Communication</div><div class="sec-title">Announcements</div></div>
-      <button class="btn btn-primary" onclick="document.getElementById('ann-modal').classList.add('open')">+ New Announcement</button>
-    </div>
-    ${anns.length?anns.map(a=>`
-      <div class="ann-item">
-        <div class="ann-item-top">
-          <div class="ann-item-title">${priIcon[a.priority]||"📢"} ${a.title}</div>
-          <div style="display:flex;gap:6px;flex-shrink:0">
-            <span class="badge ${priBadge[a.priority]||"badge-blue"}">${a.priority.toUpperCase()}</span>
-            <span class="badge ${tgtBadge[a.target]||"badge-teal"}">${a.target==="all"?"EVERYONE":a.target.toUpperCase()}</span>
-          </div>
-        </div>
-        <div class="ann-item-body">${a.body}</div>
-        <div class="ann-item-footer">
-          <span class="ann-time">🕒 ${a.ts}</span>
-          ${a.pinUntil?`<span class="badge badge-amber" style="font-size:9px">📌 Pinned until ${a.pinUntil}</span>`:""}
-          <div style="margin-left:auto;display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="editAnn(${a.id})">✎ Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteAnn(${a.id})">🗑</button>
-          </div>
-        </div>
-      </div>`).join(""):
-      `<div class="empty-state"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`}`;
+let adminAnnouncements=[];
+async function loadAdminAnnouncements(){
+  const res=await fetch('/api/admin/announcements',{headers:authHeaders()});
+  if(res.status===401){logoutAdmin();return [];}
+  if(!res.ok)throw new Error('Could not load announcements');
+  adminAnnouncements=await res.json(); return adminAnnouncements;
 }
-function postAnn() {
-  const title=document.getElementById("ann-title").value.trim();
-  const body=document.getElementById("ann-body").value.trim();
+function renderAnnouncements(){
+  const anns=adminAnnouncements;
+  return `<div class="sec-head"><div><div class="sec-label">Communication</div><div class="sec-title">Announcements</div></div><button class="btn btn-primary" onclick="document.getElementById('ann-modal').classList.add('open')">+ New Announcement</button></div>
+  ${anns.length?anns.map(a=>`<div class="ann-item"><div class="ann-item-top"><div class="ann-item-title">${priIcon[a.priority]||"📢"} ${a.title}</div><div style="display:flex;gap:6px;flex-shrink:0"><span class="badge ${priBadge[a.priority]||"badge-blue"}">${(a.priority||"normal").toUpperCase()}</span><span class="badge ${tgtBadge[a.target]||"badge-teal"}">${a.target==="all"?"EVERYONE":(a.target||"ALL").toUpperCase()}</span></div></div><div class="ann-item-body">${a.body||""}</div><div class="ann-item-footer"><span class="ann-time">🕒 ${a.ts||""}</span><div style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="editAnn(${a.id})">✎ Edit</button><button class="btn btn-danger btn-sm" onclick="deleteAnn(${a.id})">🗑</button></div></div></div>`).join(""):`<div class="empty-state"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`}`;
+}
+async function postAnn(){
+  const title=document.getElementById("ann-title").value.trim(), body=document.getElementById("ann-body").value.trim();
   if(!title||!body){toast("Title and message required","error");return;}
-  const db=loadDB();
-  if(!db.announcements) db.announcements=[];
-  db.announcements.unshift({id:db._annId++,title,body,target:document.getElementById("ann-target").value,priority:document.getElementById("ann-priority").value,ts:new Date().toISOString().replace("T"," ").substring(0,19),pinUntil:document.getElementById("ann-pin").value||null});
-  saveDB(db);
-  logAudit("ANNOUNCEMENT_POST",`"${title}" → ${document.getElementById("ann-target").value}`);
-  document.getElementById("badge-ann").textContent=db.announcements.length;
-  closeModal2("ann-modal"); renderPage("announcements");
-  document.getElementById("ann-title").value=""; document.getElementById("ann-body").value="";
-  toast("Announcement broadcast to all portals","success");
+  const payload={title,body,target:document.getElementById("ann-target").value,priority:document.getElementById("ann-priority").value,pinUntil:document.getElementById("ann-pin").value||null};
+  const res=await fetch('/api/admin/announcements',{method:'POST',headers:authHeaders(),body:JSON.stringify(payload)});
+  const data=await res.json().catch(()=>({}));if(!res.ok){toast(data.detail||"Could not post announcement","error");return;}
+  await loadAdminAnnouncements();closeModal2("ann-modal");renderPage("announcements");toast("Announcement broadcast to all portals","success");
+  document.getElementById("ann-title").value="";document.getElementById("ann-body").value="";
 }
-function deleteAnn(id) {
-  const db=loadDB(); db.announcements=db.announcements.filter(a=>a.id!==id);
-  saveDB(db); logAudit("ANNOUNCEMENT_DELETE",`Deleted announcement id=${id}`);
-  document.getElementById("badge-ann").textContent=db.announcements.length;
-  renderPage("announcements"); toast("Deleted","success");
+async function deleteAnn(id){
+  const res=await fetch('/api/admin/announcements/'+id,{method:'DELETE',headers:authHeaders()});const data=await res.json().catch(()=>({}));
+  if(!res.ok){toast(data.detail||"Could not delete announcement","error");return;}await loadAdminAnnouncements();renderPage("announcements");toast("Deleted","success");
 }
-function editAnn(id) {
-  const db=loadDB(); const a=db.announcements.find(x=>x.id===id);
-  if(!a) return;
-  document.getElementById("ann-title").value=a.title;
-  document.getElementById("ann-body").value=a.body;
-  document.getElementById("ann-target").value=a.target;
-  document.getElementById("ann-priority").value=a.priority;
-  document.getElementById("ann-pin").value=a.pinUntil||"";
-  deleteAnn(id);
-  document.getElementById("ann-modal").classList.add("open");
+function editAnn(id){
+  const a=adminAnnouncements.find(x=>Number(x.id)===Number(id));if(!a)return;
+  document.getElementById("ann-title").value=a.title||"";document.getElementById("ann-body").value=a.body||"";
+  document.getElementById("ann-target").value=a.target||"all";document.getElementById("ann-priority").value=a.priority||"normal";document.getElementById("ann-pin").value=a.pinUntil||"";
+  deleteAnn(id);document.getElementById("ann-modal").classList.add("open");
 }
 
-/* ══════════════════════════════════════════
-   USER TABLE
-══════════════════════════════════════════ */
 let searchQuery="",statusFilter="";
 function renderUserTable(role) {
   const users=dbGetUsers({role,search:searchQuery});
