@@ -596,9 +596,9 @@ def reset_password(
 
 class TimetableCreate(BaseModel):
     subject:     str
-    day_of_week: str    # Monday  Saturday
+    day_of_week: str
     start_time:  str    # HH:MM
-    end_time:    str
+    end_time:    str    # HH:MM
     programme:   str
     batch:       str
     room:        Optional[str] = None
@@ -618,6 +618,33 @@ class TimetableUpdate(BaseModel):
     faculty_id:  Optional[int] = None
 
 
+# Academic timetable rule: classes are one hour, with a fixed 30-minute
+# break from 13:00 to 13:30. The API rejects any slot outside these windows.
+VALID_TIMETABLE_SLOTS = {
+    ("09:00", "10:00"),
+    ("10:00", "11:00"),
+    ("11:00", "12:00"),
+    ("12:00", "13:00"),
+    ("13:30", "14:30"),
+    ("14:30", "15:30"),
+    ("15:30", "16:30"),
+    ("16:30", "17:30"),
+}
+
+
+def _validate_timetable_slot(start_time: str, end_time: str, day_of_week: str) -> None:
+    day = (day_of_week or "").strip().lower()
+    if day not in {"monday", "tuesday", "wednesday", "thursday", "friday"}:
+        raise HTTPException(400, "Timetable day must be Monday through Friday.")
+
+    if (start_time, end_time) not in VALID_TIMETABLE_SLOTS:
+        raise HTTPException(
+            400,
+            "Invalid timetable slot. Classes run hourly from 9:00 AM to 1:00 PM "
+            "and 1:30 PM to 5:30 PM, with a fixed 30-minute break from 1:00 PM to 1:30 PM."
+        )
+
+
 @router.get("/timetable", summary="List all timetable slots")
 def list_timetable(
     programme: Optional[str] = Query(None),
@@ -633,6 +660,7 @@ def list_timetable(
 
 @router.post("/timetable", status_code=201, summary="Create a timetable slot")
 def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
+    _validate_timetable_slot(body.start_time, body.end_time, body.day_of_week)
     if body.faculty_id:
         fac = sb.table("users").select("id").eq("id", body.faculty_id).eq("role", "faculty").execute()
         if not fac.data:
@@ -651,6 +679,15 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(400, "No fields to update")
+
+    current = sb.table("timetable_slots").select(
+        "day_of_week,start_time,end_time"
+    ).eq("id", slot_id).single().execute().data or {}
+    _validate_timetable_slot(
+        updates.get("start_time", current.get("start_time")),
+        updates.get("end_time", current.get("end_time")),
+        updates.get("day_of_week", current.get("day_of_week")),
+    )
     res = sb.table("timetable_slots").update(updates).eq("id", slot_id).execute()
     _audit(admin["id"], "UPDATE_TIMETABLE", f"Updated slot id={slot_id}")
     return res.data[0]
