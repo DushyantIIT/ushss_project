@@ -858,6 +858,49 @@ def delete_news(nid: int, admin: dict = Depends(require_admin)):
 
 
 # 
+#  ANNOUNCEMENTS
+# 
+
+class AnnouncementBody(BaseModel):
+    title: str
+    body: Optional[str] = None
+    target: Optional[str] = None
+    priority: Optional[str] = None
+    pinUntil: Optional[datetime] = None
+
+@router.get("/announcements", summary="List announcements")
+def list_announcements(admin: dict = Depends(require_admin)):
+    return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+
+@router.post("/announcements", status_code=201, summary="Create announcement")
+def create_announcement(body: AnnouncementBody, admin: dict = Depends(require_admin)):
+    d=body.model_dump()
+    d["ts"]=datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    if d.get("pinUntil"): d["pinUntil"]=d["pinUntil"].replace(tzinfo=None).isoformat()
+    res=sb.table("announcements").insert(d).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_POST", f"Created announcement '{body.title}'")
+    return res.data[0]
+
+@router.put("/announcements/{aid}", summary="Update announcement")
+def update_announcement(aid:int, body:AnnouncementBody, admin:dict=Depends(require_admin)):
+    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    if not existing.data: raise HTTPException(404,"Announcement not found")
+    d=body.model_dump()
+    if d.get("pinUntil"): d["pinUntil"]=d["pinUntil"].replace(tzinfo=None).isoformat()
+    res=sb.table("announcements").update(d).eq("id",aid).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_UPDATE", f"Updated announcement id={aid}")
+    return res.data[0]
+
+@router.delete("/announcements/{aid}", summary="Delete announcement")
+def delete_announcement(aid:int, admin:dict=Depends(require_admin)):
+    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    if not existing.data: raise HTTPException(404,"Announcement not found")
+    sb.table("announcements").delete().eq("id",aid).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_DELETE", f"Deleted announcement id={aid}")
+    return {"message":"Announcement deleted"}
+
+
+# 
 #  FACULTY DIRECTORY
 # 
 
