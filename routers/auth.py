@@ -35,6 +35,7 @@ from app.database import sb, create_client, SUPABASE_URL, SUPABASE_KEY
 from app.deps import oauth2_scheme
 from app.security import create_access_token, decode_token
 from app.rate_limit import rate_limit
+from app.seed import DEMO_USERS
 
 router = APIRouter(tags=["Auth"])
 
@@ -208,6 +209,65 @@ def login(body: LoginRequest):
                     f"LOGIN AUTH REPAIR FAILED: username={body.username!r} "
                     f"type={type(repair_error).__name__}"
                 )
+
+        # Fixed demo accounts are allowed a safe Auth reconciliation only
+        # when the supplied password exactly matches the documented demo
+        # credential. This never changes passwords for real/self-registered
+        # users based on arbitrary login input.
+        if not authenticated:
+            demo = next(
+                (
+                    d for d in DEMO_USERS
+                    if d["username"] == body.username
+                    and d["role"] == user_role
+                    and d["password"] == body.password
+                ),
+                None,
+            )
+            if demo:
+                try:
+                    demo_uid = user.get("supabase_uid")
+                    if not demo_uid:
+                        listed = sb.auth.admin.list_users(page=1, per_page=1000)
+                        for auth_user in (getattr(listed, "users", None) or []):
+                            email = getattr(auth_user, "email", None)
+                            if email and email.lower() == demo["email"].lower():
+                                demo_uid = getattr(auth_user, "id", None)
+                                break
+                    if not demo_uid:
+                        created = sb.auth.admin.create_user({
+                            "email": demo["email"],
+                            "password": demo["password"],
+                            "email_confirm": True,
+                            "user_metadata": {
+                                "full_name": demo["full_name"],
+                                "role": demo["role"],
+                            },
+                        })
+                        auth_user = getattr(created, "user", None)
+                        demo_uid = getattr(auth_user, "id", None) if auth_user else None
+                    if demo_uid:
+                        sb.auth.admin.update_user_by_id(
+                            demo_uid,
+                            {"password": demo["password"], "email_confirm": True},
+                        )
+                        sb.table("users").update({
+                            "supabase_uid": demo_uid,
+                            "is_active": True,
+                            "status": "approved",
+                        }).eq("id", user["id"]).execute()
+                        retry = sb.auth.sign_in_with_password({
+                            "email": demo["email"],
+                            "password": demo["password"],
+                        })
+                        if getattr(retry, "session", None):
+                            authenticated = True
+                            print(f"DEMO LOGIN REPAIR: username={body.username!r}")
+                except Exception as demo_error:
+                    print(
+                        f"DEMO LOGIN REPAIR FAILED: username={body.username!r} "
+                        f"type={type(demo_error).__name__}"
+                    )
 
         # Legacy/demo profiles may still contain a bcrypt password_hash while
         # their Supabase Auth identity is missing or out of sync.
