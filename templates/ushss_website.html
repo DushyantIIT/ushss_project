@@ -420,6 +420,12 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
             <option value="">— Select —</option>
           </select>
         </div>
+        <div id="reg-row-semester">
+          <label class="portal-label">Semester</label>
+          <select class="portal-reg-select" id="reg-semester">
+            <option value="">— Select programme first —</option>
+          </select>
+        </div>
         <div id="reg-row-desig" style="display:none" class="full">
           <label class="portal-label">Designation</label>
           <input class="portal-input" id="reg-desig" type="text" placeholder="e.g. Assistant Professor"/>
@@ -1138,6 +1144,18 @@ async function submitPortalLogin() {
 }
 
 // ── Registration ──────────────────────────────────────────────────────────
+function updateRegistrationSemester() {
+  const programme = document.getElementById("reg-prog").value.trim();
+  const semester = document.getElementById("reg-semester");
+  if (!semester) return;
+  semester.innerHTML = '<option value="">— Select —</option>';
+  const maxSemesters = programme === "B.A." ? 8 : programme === "M.A." ? 4 : 0;
+  for (let i = 1; i <= maxSemesters; i++) {
+    semester.innerHTML += '<option value="' + i + '">Semester ' + i + '</option>';
+  }
+  if (!maxSemesters) semester.innerHTML = '<option value="">— Select programme first —</option>';
+}
+
 function updateRegistrationBatch() {
   const programme = document.getElementById("reg-prog").value.trim();
   const batch = document.getElementById("reg-batch");
@@ -1174,6 +1192,7 @@ function onRegRoleChange() {
   const isFaculty = role === "faculty";
   document.getElementById("reg-row-prog").style.display  = isFaculty ? "none" : "";
   document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-row-semester").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-desig").style.display = isFaculty ? "" : "none";
 
   const label = document.getElementById("reg-username-label");
@@ -1187,8 +1206,12 @@ function onRegRoleChange() {
   }
 }
 
-document.getElementById("reg-prog").addEventListener("change", updateRegistrationBatch);
+document.getElementById("reg-prog").addEventListener("change", () => {
+  updateRegistrationBatch();
+  updateRegistrationSemester();
+});
 updateRegistrationBatch();
+updateRegistrationSemester();
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -1208,6 +1231,7 @@ async function submitPortalRegister() {
   const dept      = document.getElementById("reg-dept").value;
   const prog      = document.getElementById("reg-prog").value;
   const batch     = document.getElementById("reg-batch").value;
+  const semester  = document.getElementById("reg-semester").value;
   const desig     = document.getElementById("reg-desig").value.trim();
   const pwd       = document.getElementById("reg-pwd").value;
   const pwd2      = document.getElementById("reg-pwd2").value;
@@ -1272,6 +1296,7 @@ async function submitPortalRegister() {
         department: dept || null,
         programme: role === "faculty" ? null : (prog || null),
         batch: role === "faculty" ? null : (batch || null),
+        semester: role === "faculty" ? null : (semester || null),
         designation: role === "faculty" ? (desig || null) : null
       })
     });
