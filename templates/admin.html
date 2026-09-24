@@ -2110,7 +2110,7 @@ const _db=loadDB();
   async function ushssChatLoad(){
     try{
       const [profile, conv]=await Promise.all([
-        api("/api/"+(location.pathname.includes("/faculty")?"faculty":location.pathname.includes("/cr")?"cr":location.pathname.includes("/admin")?"admin":"student")+"/profile"),
+        api("/api/chat/me"),
         api("/api/chat/conversations")
       ]);
       if(profile) me=profile;
