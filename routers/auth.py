@@ -80,6 +80,34 @@ def login(body: LoginRequest):
     if body.role is not None and body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
+    # If a registration request exists for this enrollment number and it is
+    # still pending, send the applicant to the Waiting page instead of treating
+    # the login attempt as a normal login failure.
+    pending_res = (
+        sb.table("users")
+        .select("*")
+        .eq("enrollment_no", body.username)
+        .eq("status", "pending")
+        .limit(1)
+        .execute()
+    )
+    if pending_res.data:
+        pending_user = pending_res.data[0]
+        pending_token = create_access_token({
+            "sub": pending_user["username"],
+            "id": pending_user["id"],
+            "role": pending_user["role"],
+        })
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "pending",
+                "redirect_url": "/waiting",
+                "pending_token": pending_token,
+                "message": "Your registration request is still pending approval.",
+            },
+        )
+
     # Fetch user by username only; role will be taken from the stored profile
     res = (
         sb.table("users")
