@@ -210,8 +210,8 @@ tr:hover td{background:var(--gold-pale)}
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sb-avatar">--</div>
         <div>
-          <div class="sb-pname">Loading…</div>
-          <div class="sb-pmeta">Loading profile…</div>
+          <div class="sb-pname" id="sb-student-name">Loading…</div>
+          <div class="sb-pmeta" id="sb-student-meta">Loading profile…</div>
           <div class="sb-roll">—</div>
         </div>
       </div>
@@ -781,6 +781,8 @@ async function loadPortalData(){
   const setValue=(id,value)=>{const el=document.getElementById(id);if(el)el.value=value??'';};
   const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value??'—';};
   setText('profile-initials', initials || '—');
+  setText('sb-student-name', profileName);
+  setText('sb-student-meta', (profile.programme||'Student') + (profile.batch ? ' · '+profile.batch : ''));
   setText('profile-name', profileName);
   setText('profile-role', profile.role ? profile.role.charAt(0).toUpperCase()+profile.role.slice(1) : 'Student');
   setText('profile-enrollment', profile.enrollment_no || profile.username);
