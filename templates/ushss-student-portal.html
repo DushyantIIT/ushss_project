@@ -710,19 +710,14 @@ function renderAttTable(){
   `).join('');
 }
 function renderSubjectAtt(){
-  const subjects=['Postcolonial Literature','Linguistics','Literary Theory','Modern Fiction'];
-  document.getElementById('subject-att').innerHTML=subjects.map(s=>{
+  const subjects=[...new Set(DB.attLog.map(a=>a.subject).filter(Boolean))];
+  document.getElementById('subject-att').innerHTML=subjects.length?subjects.map(s=>{
     const entries=DB.attLog.filter(a=>a.subject===s);
     const pct=entries.length?Math.round(entries.filter(a=>a.status==='present').length/entries.length*100):0;
-    return `<div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-        <span style="color:var(--ink-mid)">${s}</span>
-        <span style="font-weight:700;color:${pct>=75?'var(--green)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</span>
-      </div>
-      <div class="progress"><div class="progress-fill ${pct>=75?'progress-green':pct>=60?'progress-amber':'progress-red'}" style="width:${pct}%"></div></div>
-    </div>`;
-  }).join('');
+    return '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--ink-mid)">'+s+'</span><span style="font-weight:700">'+pct+'%</span></div><div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>';
+  }).join(''):'<div class="empty">No attendance data available</div>';
 }
+
 function renderMonthlySummary(){
   const groups={};
   (attendanceSummary.records||[]).forEach(r=>{
@@ -794,34 +789,26 @@ async function loadPortalData(){
   DB.announcements=(anns||[]).map(a=>({id:a.id,title:a.title,body:a.body||'',type:a.priority==='urgent'?'urgent':a.priority==='important'?'reminder':'info',from:a.target||'USHSS',ts:a.ts||'',read:false}));
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
   DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',by:m.uploaded_by||''}));
-  DB.attLog=(history.records||[]).map(r=>{const s=(r.attendance_sessions||{}).timetable_slots||{};return{id:r.id,date:(r.attendance_sessions||{}).date||'',subject:s.subject||'',topic:'',teacher:'',status:r.status,loc:'—'};});
+  DB.attLog=(history.records||[]).map(r=>{const session=r.attendance_sessions||{}, s=session.timetable_slots||{}, faculty=session.users||{}; return {id:r.id,date:session.date||'',subject:s.subject||'',topic:'',teacher:faculty.full_name||'—',status:r.status,loc:s.room||'—'};});
   attendanceSummary=history; DB.timetable=buildTimetable(timetable||[]);
   DB.liveSessions=(openSessions||[]).map(s=>({id:s.id,cls:(s.timetable_slots||{}).subject||'Class',topic:'',teacher:(s.users||{}).full_name||'',endsIn:0,slot_id:s.slot_id}));
   activeSessionId=DB.liveSessions[0]?.id||null; updatePortalUI();
 }
 function buildTimetable(slots){
-  const days=['Monday','Tuesday','Wednesday','Thursday','Friday'];
-  const slotTimes=[
-    ['09:00','10:00','9–10 AM'],
-    ['10:00','11:00','10–11 AM'],
-    ['11:00','12:00','11–12 PM'],
-    ['12:00','13:00','12–1 PM'],
-    ['13:30','14:30','1:30–2:30 PM'],
-    ['14:30','15:30','2:30–3:30 PM'],
-    ['15:30','16:30','3:30–4:30 PM'],
-    ['16:30','17:30','4:30–5:30 PM']
-  ];
-  const byTime={};
+  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const rows={};
   (slots||[]).forEach(s=>{
-    const key=(s.start_time||'').slice(0,5)+'|'+(s.end_time||'').slice(0,5);
-    (byTime[key]??={})[s.day_of_week]=s.subject||'—';
+    const day=s.day_of_week||'', start=String(s.start_time||'').slice(0,5), end=String(s.end_time||'').slice(0,5);
+    if(!day||!start||!end)return;
+    const key=start+'|'+end;
+    if(!rows[key]) rows[key]={start,end,label:start+'–'+end};
+    rows[key][day]=s.subject||'—';
   });
-  const rows=slotTimes.map(([start,end,label])=>[
-    label,...days.map(d=>(byTime[start+'|'+end]||{})[d]||'—')
+  return Object.values(rows).sort((x,y)=>x.start.localeCompare(y.start)).map(r=>[
+    r.label,...days.map(d=>r[d]||'—')
   ]);
-  rows.splice(4,0,['1–1:30 PM',...days.map(()=> 'BREAK')]);
-  return rows;
 }
+
 function updatePortalUI(){
   const pct=attendanceSummary.percentage||0,set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   set('dash-att-pct',pct+'%');set('dash-att-present',attendanceSummary.present||0);set('dash-att-absent',attendanceSummary.absent||0);
