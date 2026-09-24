@@ -691,17 +691,16 @@ function renderAnn(){
     `<div class="empty"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`;
 }
 
-function postAnn(){
+async function postAnn(){
   const t=document.getElementById('ann-t').value.trim();
   const b=document.getElementById('ann-b').value.trim();
   if(!t||!b){toast('Title and message required','err');return;}
-  DB.announcements.unshift({id:Date.now(),title:t,body:b,type:document.getElementById('ann-type').value,vis:document.getElementById('ann-vis').value,ts:new Date().toLocaleString('en-IN')});
-  document.getElementById('ann-cnt').textContent=DB.announcements.length;
-  closeModal('ann-modal');
-  renderAnn();
-  document.getElementById('ann-t').value='';
-  document.getElementById('ann-b').value='';
-  toast('Announcement posted!','ok');
+  try{
+    const r=await fetch('/api/cr/announcements',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({title:t,body:b,target:document.getElementById('ann-vis').value||null,priority:'normal'})});
+    const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Could not post announcement');
+    DB.announcements.unshift(d); document.getElementById('ann-cnt').textContent=DB.announcements.length;
+    closeModal('ann-modal'); renderAnn(); document.getElementById('ann-t').value=''; document.getElementById('ann-b').value=''; toast('Announcement posted!','ok');
+  }catch(e){toast(e.message,'err');}
 }
 function deleteAnn(id){DB.announcements=DB.announcements.filter(a=>a.id!==id);renderAnn();toast('Deleted','ok');}
 
@@ -726,20 +725,15 @@ function renderAssignments(){
     `<div class="empty"><div class="empty-icon">📝</div><div>No assignments posted</div></div>`;
 }
 
-function postAssignment(){
-  const t=document.getElementById('asgn-t').value.trim();
-  const b=document.getElementById('asgn-b').value.trim();
-  const due=document.getElementById('asgn-due').value;
+async function postAssignment(){
+  const t=document.getElementById('asgn-t').value.trim(), b=document.getElementById('asgn-b').value.trim(), due=document.getElementById('asgn-due').value;
   if(!t||!b||!due){toast('Fill all required fields','err');return;}
-  DB.assignments.unshift({id:Date.now(),title:t,desc:b,subject:document.getElementById('asgn-sub').value,due,file:asgnFileName||null,ts:new Date().toISOString().slice(0,10)});
-  document.getElementById('asgn-cnt').textContent=DB.assignments.length;
-  closeModal('asgn-modal');
-  renderAssignments();
-  document.getElementById('asgn-t').value='';
-  document.getElementById('asgn-b').value='';
-  asgnFileName=null;
-  document.getElementById('asgn-file-preview').innerHTML='';
-  toast('Assignment posted!','ok');
+  try{
+    const r=await fetch('/api/cr/assignments',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({title:t,description:b,subject:document.getElementById('asgn-sub').value,due_date:due,file_name:asgnFileName||null})});
+    const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Could not post assignment');
+    DB.assignments.unshift(d); document.getElementById('asgn-cnt').textContent=DB.assignments.length; closeModal('asgn-modal'); renderAssignments();
+    document.getElementById('asgn-t').value=''; document.getElementById('asgn-b').value=''; asgnFileName=null; document.getElementById('asgn-file-preview').innerHTML=''; toast('Assignment posted!','ok');
+  }catch(e){toast(e.message,'err');}
 }
 function deleteAsgn(id){DB.assignments=DB.assignments.filter(a=>a.id!==id);renderAssignments();toast('Deleted','ok');}
 let asgnFileName=null;
@@ -777,17 +771,19 @@ let matFileName=null;
 function handleMatFile(inp){if(!inp.files[0])return;matFileName=inp.files[0].name;document.getElementById('mat-file-preview').innerHTML=fileItemHTML(inp.files[0]);}
 function handleMatDrop(e){e.preventDefault();document.getElementById('mat-drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(!f)return;matFileName=f.name;document.getElementById('mat-file-preview').innerHTML=fileItemHTML(f);}
 
-function uploadMaterial(){
+async function uploadMaterial(){
   const t=document.getElementById('mat-t').value.trim();
   if(!t||!matFileName){toast('Title and file required','err');return;}
-  DB.materials.unshift({id:Date.now(),title:t,subject:document.getElementById('mat-sub').value,type:document.getElementById('mat-type').value.split(' ')[0].toLowerCase().replace('📄','pdf').replace('📊','slides').replace('📋','past-paper').replace('📚','reference'),size:'—',ts:new Date().toISOString().slice(0,10),desc:document.getElementById('mat-desc').value||'—'});
-  document.getElementById('mat-cnt').textContent=DB.materials.length;
-  closeModal('mat-modal');
-  renderMaterials();
-  document.getElementById('mat-t').value='';
-  matFileName=null;
-  document.getElementById('mat-file-preview').innerHTML='';
-  toast('Material uploaded!','ok');
+  const fileInput=document.querySelector('#mat-modal input[type="file"]');
+  const file=fileInput&&fileInput.files&&fileInput.files[0];
+  try{
+    const r=await fetch('/api/cr/materials',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({
+      title:t,subject:document.getElementById('mat-sub').value,description:document.getElementById('mat-desc').value||'',file_name:matFileName,size:file?((file.size/1024/1024).toFixed(2)+' MB'):''
+    })});
+    const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Could not upload material');
+    DB.materials.unshift(d); document.getElementById('mat-cnt').textContent=DB.materials.length; closeModal('mat-modal'); renderMaterials();
+    document.getElementById('mat-t').value=''; matFileName=null; document.getElementById('mat-file-preview').innerHTML=''; toast('Material saved!','ok');
+  }catch(e){toast(e.message,'err');}
 }
 function deleteMat(id){DB.materials=DB.materials.filter(m=>m.id!==id);renderMaterials();toast('Deleted','ok');}
 
@@ -874,6 +870,19 @@ async function changeMyPassword(){
       return;
     }
     const u = await res.json();
+    const contentHeaders = { 'Authorization': 'Bearer ' + token };
+    const [annRes, asgRes, matRes] = await Promise.all([
+      fetch('/api/cr/announcements', {headers: contentHeaders}),
+      fetch('/api/cr/assignments', {headers: contentHeaders}),
+      fetch('/api/cr/materials', {headers: contentHeaders})
+    ]);
+    if (annRes.ok) DB.announcements = await annRes.json();
+    if (asgRes.ok) DB.assignments = await asgRes.json();
+    if (matRes.ok) DB.materials = await matRes.json();
+    document.getElementById('ann-cnt').textContent = DB.announcements.length;
+    document.getElementById('asgn-cnt').textContent = DB.assignments.length;
+    document.getElementById('mat-cnt').textContent = DB.materials.length;
+    renderAnn(); renderAssignments(); renderMaterials();
 
     const nameEl   = document.getElementById('cr-name');
     const roleEl   = document.querySelector('.sb-prole');
