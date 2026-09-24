@@ -221,18 +221,29 @@ def get_announcements(student: dict = Depends(require_student)):
 
 @router.get("/assignments", summary="View assignments for your class")
 def get_assignments(student: dict = Depends(require_student)):
-    q = sb.table("assignments").select("*").eq("is_active", True)
-    if student.get("programme"):
-        q = q.or_(f"programme.is.null,programme.eq.{student['programme']}")
-    if student.get("batch"):
-        q = q.or_(f"batch.is.null,batch.eq.{student['batch']}")
-    return q.order("due_date").execute().data or []
+    # The installed Supabase Python client does not expose the PostgREST
+    # .or_() builder used by older code. Fetch active rows and apply the
+    # class visibility rule in Python instead.
+    rows = sb.table("assignments").select("*").eq("is_active", True).order("due_date").execute().data or []
+    programme = student.get("programme")
+    batch = student.get("batch")
+
+    def visible(row):
+        programme_ok = not programme or not row.get("programme") or row.get("programme") == programme
+        batch_ok = not batch or not row.get("batch") or row.get("batch") == batch
+        return programme_ok and batch_ok
+
+    return [row for row in rows if visible(row)]
 
 @router.get("/materials", summary="View study materials for your class")
 def get_materials(student: dict = Depends(require_student)):
-    q = sb.table("study_materials").select("*").eq("is_active", True)
-    if student.get("programme"):
-        q = q.or_(f"programme.is.null,programme.eq.{student['programme']}")
-    if student.get("batch"):
-        q = q.or_(f"batch.is.null,batch.eq.{student['batch']}")
-    return q.order("uploaded_at", desc=True).execute().data or []
+    rows = sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    programme = student.get("programme")
+    batch = student.get("batch")
+
+    def visible(row):
+        programme_ok = not programme or not row.get("programme") or row.get("programme") == programme
+        batch_ok = not batch or not row.get("batch") or row.get("batch") == batch
+        return programme_ok and batch_ok
+
+    return [row for row in rows if visible(row)]
