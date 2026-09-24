@@ -1238,7 +1238,7 @@ function renderDashboard() {
    TIMETABLE — MULTI-PROGRAMME SYSTEM
 ══════════════════════════════════════════ */
 const TT_DAYS=[{key:"mon",label:"Monday"},{key:"tue",label:"Tuesday"},{key:"wed",label:"Wednesday"},{key:"thu",label:"Thursday"},{key:"fri",label:"Friday"}];
-const TT_TIMES=["9–10 AM","10–11 AM","11–12 PM","12–1 PM","1–2 PM","2–3 PM","3–4 PM","4–5 PM"];
+const TT_TIMES=["9–10 AM","10–11 AM","11–12 PM","12–1 PM","1:30–2:30 PM","2:30–3:30 PM","3:30–4:30 PM","4:30–5:30 PM"];
 
 // State for timetable view
 let ttCurrentProg = "";   // empty = show all
@@ -1518,6 +1518,7 @@ function deleteTimetable(prog, sec) {
 
 /* ── Cell edit ──────────────────────────── */
 function openTTEdit(day, timeIdx) {
+  if (timeIdx < 0 || timeIdx >= TT_TIMES.length) return;
   ttEditing = {day, timeIdx};
   const db = loadDB();
   const k = ttKey(ttCurrentProg, ttCurrentSection);
