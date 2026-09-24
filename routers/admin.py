@@ -1011,8 +1011,17 @@ def stats(admin: dict = Depends(require_admin)):
                .order("last_login", desc=True).limit(10).execute().data or []
     log    = sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute().data or []
 
+    timetable_count = len(sb.table("timetable_slots").select("id").execute().data or [])
+    attendance_sessions = sb.table("attendance_sessions").select("id,is_open").execute().data or []
+    attendance_records = sb.table("attendance_records").select("id").execute().data or []
+    announcements = sb.table("announcements").select("id,title,body,ts,target,priority").order("ts", desc=True).limit(10).execute().data or []
+
     return {"counts": counts, "total": len(users), "active": active,
-            "recent_logins": recent, "log": log}
+            "recent_logins": recent, "log": log,
+            "timetable_count": timetable_count,
+            "attendance_sessions": attendance_sessions,
+            "attendance_records_count": len(attendance_records),
+            "announcements": announcements}
 
 
 @router.get("/audit", summary="Full audit log")
