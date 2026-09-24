@@ -37,14 +37,23 @@ def chat_users(user: dict = Depends(get_current_user)):
 
 @router.get("/conversations")
 def conversations(user: dict = Depends(get_current_user)):
-    rows = (
+    sent = (
         sb.table("chat_messages")
         .select("id,sender_id,recipient_id,message,is_read,created_at")
-        .or_(f"sender_id.eq.{user['id']},recipient_id.eq.{user['id']}")
+        .eq("sender_id", user["id"])
         .order("created_at", desc=True)
         .execute()
         .data or []
     )
+    received = (
+        sb.table("chat_messages")
+        .select("id,sender_id,recipient_id,message,is_read,created_at")
+        .eq("recipient_id", user["id"])
+        .order("created_at", desc=True)
+        .execute()
+        .data or []
+    )
+    rows = sorted(sent + received, key=lambda m: m.get("created_at") or "", reverse=True)
     ids = set()
     for row in rows:
         other = row["recipient_id"] if row["sender_id"] == user["id"] else row["sender_id"]
@@ -85,15 +94,25 @@ def thread(
     other = sb.table("users").select("id,full_name,username,role,is_super_admin").eq("id", other_id).eq("is_active", True).eq("status", "approved").single().execute()
     if not other.data:
         raise HTTPException(404, "User not found.")
-    rows = (
+    sent = (
         sb.table("chat_messages")
         .select("id,sender_id,recipient_id,message,is_read,created_at")
-        .or_(f"and(sender_id.eq.{user['id']},recipient_id.eq.{other_id}),and(sender_id.eq.{other_id},recipient_id.eq.{user['id']})")
+        .eq("sender_id", user["id"]).eq("recipient_id", other_id)
         .order("created_at")
         .limit(limit)
         .execute()
         .data or []
     )
+    received = (
+        sb.table("chat_messages")
+        .select("id,sender_id,recipient_id,message,is_read,created_at")
+        .eq("sender_id", other_id).eq("recipient_id", user["id"])
+        .order("created_at")
+        .limit(limit)
+        .execute()
+        .data or []
+    )
+    rows = sorted(sent + received, key=lambda m: m.get("created_at") or "")[-limit:]
     sb.table("chat_messages").update({"is_read": True}).eq("sender_id", other_id).eq("recipient_id", user["id"]).eq("is_read", False).execute()
     return {"user": other.data, "messages": rows}
 
