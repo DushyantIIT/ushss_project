@@ -1985,8 +1985,7 @@ async function saveUser() {
 
 /* DELETE / CONFIRM */
 function openDeleteConfirm(id,name) {
-  const db=loadDB();
-  const user=db.users.find(u=>u.id===id);
+  const user=(window.__supabaseUsers||[]).find(u=>Number(u.id)===Number(id));
 
   if(!user){
     toast("User not found","error");
