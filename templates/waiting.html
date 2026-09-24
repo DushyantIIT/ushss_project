@@ -79,7 +79,25 @@ async function checkStatus() {
 
     if (data.status === "approved") {
       badge.textContent = "Status: Approved";
-      window.location.href = "/";
+
+      // The same pending token becomes the authenticated portal token once
+      // the admin has approved the account. Send the applicant directly to
+      // the dashboard for their registered role.
+      localStorage.setItem("ushss_token", token);
+      localStorage.setItem("ushss_user", JSON.stringify({
+        full_name: data.full_name || "",
+        email: data.email || "",
+        role: data.role || ""
+      }));
+      localStorage.removeItem("ushss_pending_token");
+
+      const roleRedirects = {
+        student: "/dashboard/student",
+        cr: "/dashboard/cr",
+        faculty: "/dashboard/faculty",
+        admin: "/dashboard/admin"
+      };
+      window.location.href = roleRedirects[data.role] || "/";
     } else if (data.status === "rejected") {
       if (data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason", data.rejection_reason);
       window.location.href = "/rejected";
