@@ -15,6 +15,13 @@ from app.deps import require_student   # CR role is included in require_student
 router = APIRouter(prefix="/cr", tags=["Class Representative"])
 
 
+@router.get("/profile", summary="View CR profile")
+def get_profile(cr: dict = Depends(require_student)):
+    if cr["role"] not in ("cr", "admin"):
+        raise HTTPException(403, "Class Representatives only")
+    cr.pop("password_hash", None)
+    return cr
+
 @router.get("/classmates", summary="View all students in your programme and batch")
 def view_classmates(cr: dict = Depends(require_student)):
     """
