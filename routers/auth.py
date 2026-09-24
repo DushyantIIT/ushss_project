@@ -167,9 +167,6 @@ def login(body: LoginRequest):
         })
         session = getattr(auth_res, "session", None)
         auth_user = getattr(auth_res, "user", None)
-        # Supabase normally returns both. Treat a returned session as the
-        # authoritative success signal, while accepting a returned confirmed
-        # user for SDK response-shape compatibility.
         authenticated = bool(session) or bool(
             auth_user and (
                 getattr(auth_user, "email_confirmed_at", None)
@@ -178,11 +175,27 @@ def login(body: LoginRequest):
         )
         print(
             f"LOGIN AUTH RESULT: username={body.username!r} "
-            f"session={bool(session)} user={bool(auth_user)} "
-            f"confirmed={bool(getattr(auth_user, 'email_confirmed_at', None) if auth_user else False)}"
+            f"session={bool(session)} user={bool(auth_user)}"
         )
     except Exception as e:
+        # Legacy/demo profiles may still contain a bcrypt password_hash while
+        # their Supabase Auth identity is missing or out of sync.  Verify that
+        # hash as a compatibility path so existing/default credentials don't
+        # become unusable after the Auth migration.
         print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__}")
+        legacy_hash = user.get("password_hash")
+        if legacy_hash:
+            try:
+                import bcrypt
+                authenticated = bcrypt.checkpw(
+                    body.password.encode("utf-8"),
+                    legacy_hash.encode("utf-8"),
+                )
+            except Exception as bcrypt_error:
+                print(
+                    f"LEGACY PASSWORD CHECK ERROR: username={body.username!r} "
+                    f"type={type(bcrypt_error).__name__}"
+                )
 
     if not authenticated:
         raise HTTPException(401, "Invalid username or password")
