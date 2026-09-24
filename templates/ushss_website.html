@@ -421,7 +421,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           </select>
         </div>
         <div id="reg-row-semester">
-          <label class="portal-label">Semester</label>
+          <label class="portal-label">Semester <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-semester">
             <option value="">— Select programme first —</option>
           </select>
@@ -1188,6 +1188,7 @@ function onRegRoleChange() {
   document.getElementById("reg-row-prog").style.display  = isFaculty ? "none" : "";
   document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-semester").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-semester").required = !isFaculty;
   document.getElementById("reg-row-desig").style.display = isFaculty ? "" : "none";
 
   const label = document.getElementById("reg-username-label");
@@ -1247,6 +1248,11 @@ async function submitPortalRegister() {
   }
   if (ENROLLMENT_ROLES.includes(role) && !username) {
     err.textContent = "Enrollment number is required for this role.";
+    err.style.display = "block";
+    return;
+  }
+  if (role !== "faculty" && !semester) {
+    err.textContent = "Please select your semester.";
     err.style.display = "block";
     return;
   }
