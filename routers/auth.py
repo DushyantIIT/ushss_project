@@ -137,9 +137,24 @@ def login(body: LoginRequest):
             "email": user["email"],
             "password": body.password,
         })
-        authenticated = bool(getattr(auth_res, "session", None))
+        session = getattr(auth_res, "session", None)
+        auth_user = getattr(auth_res, "user", None)
+        # Supabase normally returns both. Treat a returned session as the
+        # authoritative success signal, while accepting a returned confirmed
+        # user for SDK response-shape compatibility.
+        authenticated = bool(session) or bool(
+            auth_user and (
+                getattr(auth_user, "email_confirmed_at", None)
+                or (isinstance(auth_user, dict) and auth_user.get("email_confirmed_at"))
+            )
+        )
+        print(
+            f"LOGIN AUTH RESULT: username={body.username!r} "
+            f"session={bool(session)} user={bool(auth_user)} "
+            f"confirmed={bool(getattr(auth_user, 'email_confirmed_at', None) if auth_user else False)}"
+        )
     except Exception as e:
-        print("SUPABASE SIGNIN NOTE:", repr(e))
+        print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__}")
 
     if not authenticated:
         raise HTTPException(401, "Invalid username or password")
