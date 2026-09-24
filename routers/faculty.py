@@ -190,6 +190,47 @@ def session_records(sid: int, faculty: dict = Depends(require_faculty)):
 #  SHARED CLASS CONTENT
 # ═══════════════════════════════════════════════════════════════
 
+@router.get("/dashboard", summary="Live faculty dashboard data")
+def faculty_dashboard(faculty: dict = Depends(require_faculty)):
+    students = sb.table("users").select(
+        "id,username,full_name,email,enrollment_no,programme,batch,is_active,department"
+    ).eq("role","student").eq("is_active",True)
+    if faculty.get("department"):
+        students = students.eq("department", faculty["department"])
+    student_rows = students.order("full_name").execute().data or []
+
+    sessions = sb.table("attendance_sessions").select(
+        "id,slot_id,date,opened_at,closed_at,is_open,timetable_slots(subject,programme,batch,start_time,end_time,day_of_week,room)"
+    ).eq("faculty_id", faculty["id"]).order("date", desc=True).limit(100).execute().data or []
+    session_ids = [s["id"] for s in sessions]
+    records = []
+    if session_ids:
+        records = sb.table("attendance_records").select("session_id,student_id,status").in_("session_id", session_ids).execute().data or []
+
+    by_student = {}
+    for rec in records:
+        st = by_student.setdefault(rec["student_id"], {"present":0,"total":0})
+        st["total"] += 1
+        if rec["status"] == "present":
+            st["present"] += 1
+    for st in student_rows:
+        x = by_student.get(st["id"], {"present":0,"total":0})
+        st["attendance_percentage"] = round((x["present"] / x["total"]) * 100, 1) if x["total"] else None
+
+    for sess in sessions:
+        recs = [r for r in records if r["session_id"] == sess["id"]]
+        sess["present"] = sum(1 for r in recs if r["status"] == "present")
+        sess["total"] = len(recs)
+
+    timetable = sb.table("timetable_slots").select("*").eq("faculty_id", faculty["id"]).order("day_of_week").order("start_time").execute().data or []
+    return {
+        "students": student_rows,
+        "sessions": sessions,
+        "timetable": timetable,
+        "announcements": sb.table("announcements").select("*").order("ts", desc=True).limit(10).execute().data or []
+    }
+
+
 @router.get("/announcements", summary="View announcements")
 def get_announcements(faculty: dict = Depends(require_faculty)):
     return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
