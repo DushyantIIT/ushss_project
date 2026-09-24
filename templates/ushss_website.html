@@ -391,13 +391,22 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           <label class="portal-label">Phone</label>
           <input class="portal-input" id="reg-phone" type="tel" placeholder="+91 98xxx xxxxx"/>
         </div>
-        <div>
+        <div id="reg-row-programme">
           <label class="portal-label">Programme</label>
           <select class="portal-reg-select" id="reg-prog">
             <option value="">— Select —</option>
             <option>B.A. </option>
             <option>M.A. </option>
             <option>Ph.D.</option>
+          </select>
+        </div>
+        <div id="reg-row-domain" style="display:none">
+          <label class="portal-label">Domain <span style="color:#e3c881">*</span></label>
+          <select class="portal-reg-select" id="reg-domain">
+            <option value="">— Select —</option>
+            <option>English</option><option>Economics</option><option>History</option>
+            <option>Political Science</option><option>Psychology</option><option>Sociology</option>
+            <option>Hindi</option><option>Philosophy</option>
           </select>
         </div>
         <div id="reg-row-prog">
@@ -1185,7 +1194,9 @@ function updateRegistrationBatch() {
 function onRegRoleChange() {
   const role = document.getElementById("reg-role").value;
   const isFaculty = role === "faculty";
+  document.getElementById("reg-row-programme").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-prog").style.display  = isFaculty ? "none" : "";
+  document.getElementById("reg-row-domain").style.display = isFaculty ? "" : "none";
   document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-semester").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-semester").required = !isFaculty;
@@ -1226,6 +1237,7 @@ async function submitPortalRegister() {
   const phone     = document.getElementById("reg-phone").value.trim();
   const dept      = document.getElementById("reg-dept").value;
   const prog      = document.getElementById("reg-prog").value;
+  const domain    = document.getElementById("reg-domain").value;
   const batch     = document.getElementById("reg-batch").value;
   const semester  = document.getElementById("reg-semester").value;
   const desig     = document.getElementById("reg-desig").value.trim();
@@ -1253,6 +1265,11 @@ async function submitPortalRegister() {
   }
   if (role !== "faculty" && !semester) {
     err.textContent = "Please select your semester.";
+    err.style.display = "block";
+    return;
+  }
+  if (role === "faculty" && !domain) {
+    err.textContent = "Please select your domain.";
     err.style.display = "block";
     return;
   }
