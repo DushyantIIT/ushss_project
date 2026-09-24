@@ -870,8 +870,21 @@ async function fetchAdminStats() {
   if(res.status===401){ logoutAdmin(); return null; }
   if(!res.ok) throw new Error("Could not load dashboard statistics");
   const data=await res.json();
+  window.__supabaseStats=data;
   window.__supabaseAudit=data.log||[];
   return data;
+}
+async function fetchAdminDashboardData() {
+  const [stats, timetable, attendance, announcements] = await Promise.all([
+    fetchAdminStats(),
+    fetch("/api/admin/timetable",{headers:authHeaders()}).then(r=>r.ok?r.json():[]),
+    fetch("/api/admin/attendance/sessions",{headers:authHeaders()}).then(r=>r.ok?r.json():[]),
+    fetch("/api/admin/announcements",{headers:authHeaders()}).then(r=>r.ok?r.json():[])
+  ]);
+  window.__supabaseTimetable=timetable||[];
+  window.__supabaseAttendance=attendance||[];
+  window.__supabaseAnnouncements=announcements||[];
+  return {stats,timetable,attendance,announcements};
 }
 function logAudit(action,detail) {
   const db=loadDB(); const ts=new Date().toISOString().replace("T"," ").substring(0,19);
@@ -1148,7 +1161,7 @@ function renderPage(page) {
    DASHBOARD
 ══════════════════════════════════════════ */
 function renderDashboard() {
-  const s=dbGetStats();
+  const s=window.__supabaseStats||dbGetStats();
   const rc={student:"#4A7FC0",faculty:"#8B6FC0",cr:"#3DAA72",admin:"#C9A84C"};
   const ri={student:"🎓",faculty:"📚",cr:"🤝",admin:"🔑"};
   const cards=["student","faculty","cr","admin"].map(r=>`
@@ -1157,12 +1170,12 @@ function renderDashboard() {
       <div>
         <div class="stat-num">${s.counts[r]||0}</div>
         <div class="stat-label">${r==="cr"?"Class Reps":r.charAt(0).toUpperCase()+r.slice(1)+"s"}</div>
-        <div class="stat-trend" style="color:var(--green)">● active: ${dbGetUsers({role:r}).filter(u=>u.is_active).length}</div>
+        <div class="stat-trend" style="color:var(--green)">● active: ${(window.__supabaseUsers||[]).filter(u=>u.role===r && u.is_active).length}</div>
       </div>
     </div>`).join("");
   const db=loadDB();
-  const ttCount=(db.timetableMeta||[]).length;
-  const liveCount=(db.liveSessions||[]).filter(s=>s.active).length;
+  const ttCount=(window.__supabaseTimetable||[]).length;
+  const liveCount=(window.__supabaseAttendance||[]).filter(s=>s.is_open).length;
   const log=s.log.slice(0,10).map(l=>`
     <div class="log-entry">
       <div class="log-dot" style="background:${l.action.includes("DELETE")?"var(--red)":l.action.includes("CREATE")?"var(--green)":l.action.includes("TIMETABLE")?"var(--teal)":l.action.includes("ATTEND")?"var(--amber)":"var(--blue)"}"></div>
@@ -1198,7 +1211,7 @@ function renderDashboard() {
       </div>
       <div class="stat-card" style="cursor:pointer" onclick="showPage('attendance')">
         <div class="stat-icon" style="background:rgba(212,160,23,.15)">✅</div>
-        <div><div class="stat-num">${liveCount>0?`<span style="color:var(--green)">${liveCount}</span>`:db.attendance?.length||0}</div>
+        <div><div class="stat-num">${liveCount>0?`<span style="color:var(--green)">${liveCount}</span>`:(window.__supabaseAttendance||[]).length}</div>
         <div class="stat-label">${liveCount>0?"Live Sessions":"Att. Records"}</div>
         <div class="stat-trend" style="color:${liveCount>0?"var(--green)":"var(--muted)"}">● ${liveCount>0?"Session Active":"Edit Records"}</div></div>
       </div>
