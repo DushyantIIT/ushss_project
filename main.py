@@ -24,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.database import ping_db
 from app.seed import seed
-from routers import auth, admin, student, faculty, cr, chat, password_reset, public
+from routers import auth, admin, student, faculty, cr, password_reset, public
 
 
 @asynccontextmanager
@@ -78,7 +78,6 @@ app.include_router(admin.router,          prefix="/api")
 app.include_router(student.router,        prefix="/api")
 app.include_router(faculty.router,        prefix="/api")
 app.include_router(cr.router,             prefix="/api")
-app.include_router(chat.router,            prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
