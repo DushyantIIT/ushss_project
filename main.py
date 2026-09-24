@@ -77,7 +77,7 @@ app.include_router(auth.router,           prefix="/api")
 app.include_router(admin.router,          prefix="/api")
 app.include_router(student.router,        prefix="/api")
 app.include_router(faculty.router,        prefix="/api")
-app.include_router(cr.router,             prefix="/api")
+app.include_router(cr.router,             prefix="/api")\napp.include_router(chat.router,            prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
