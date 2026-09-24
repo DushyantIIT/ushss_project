@@ -462,9 +462,6 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
     if target["status"] != "pending":
         raise HTTPException(400, f"This request has already been {target['status']}")
 
-    if not target.get("email_verified", False) or not target.get("phone_verified", False):
-        raise HTTPException(400, "This registration cannot be approved until both email and mobile OTPs are verified.")
-
     # Backend-enforced rule: only a Super Admin may approve an Admin
     # registration. Never trust a role check done on the frontend.
     if target["role"] == "admin" and not admin.get("is_super_admin", False):
@@ -482,13 +479,13 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
         )
 
     try:
-        confirm_fields = {"email_confirm": True}
-        if target.get("phone_verified"):
-            confirm_fields["phone_confirm"] = True
+        # Email and phone verification are disabled for this portal.
+        # Auto-confirm both identifiers so Supabase password authentication works.
+        confirm_fields = {"email_confirm": True, "phone_confirm": True}
         sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
         print(
             f"APPROVAL AUTH SYNC: username={target['username']!r} "
-            f"email_confirm=True phone_confirm={bool(target.get('phone_verified'))}"
+            "email_confirm=True phone_confirm=True"
         )
     except Exception as e:
         print(
