@@ -796,29 +796,11 @@ function initDB() {
   };
   db.timetableMeta.push({prog:"Ph.D.",section:"Research Seminar",batch:"",accentIdx:6,createdAt:now()});
 
-  // Sample attendance
-  const attStudents = ["2301001","2301002","2401001","2401101","2401201"];
-  const sessions = [
-    {date:"2025-04-14",subject:"Postcolonial Literature",faculty:"Dr. Shuchi Sharma",programme:"M.A. English"},
-    {date:"2025-04-12",subject:"Linguistics",faculty:"Dr. Chetna Tiwari",programme:"M.A. English"},
-    {date:"2025-04-10",subject:"Literary Theory",faculty:"Dr. Anup Singh Beniwal",programme:"M.A. English"},
-    {date:"2025-04-08",subject:"Development Economics",faculty:"Dr. Vivek Sachdeva",programme:"M.A. Economics"},
-    {date:"2025-04-11",subject:"Old English & Medieval Lit.",faculty:"Dr. Anup Singh Beniwal",programme:"B.A. (Hons.) English"},
-  ];
-  let attId=1;
-  for(const sess of sessions){
-    for(const roll of attStudents){
-      db.attendance.push({id:attId++,roll,date:sess.date,subject:sess.subject,faculty:sess.faculty,programme:sess.programme,status:Math.random()>.3?"present":"absent",note:"",edited_by:null,edited_at:null});
-    }
-  }
-  db._attId=attId;
+  // Attendance is loaded from Supabase APIs; no demo records are created here.
+  db._attId=1;
 
-  db.announcements = [
-    {id:1,title:"M.A. Admissions 2025–26 Now Open",body:"Applications for M.A. programmes are now open via IPU CET. Last date: May 15, 2025.",target:"all",priority:"important",ts:"2025-04-14 10:00",pinUntil:"2025-05-15"},
-    {id:2,title:"Mid-Semester Results Published",body:"Mid-semester examination results are now available on the university portal.",target:"student",priority:"normal",ts:"2025-04-08 14:00",pinUntil:null},
-    {id:3,title:"Faculty Meeting — Department Review",body:"All faculty members are requested to attend the departmental review meeting on April 20th at 2:00 PM.",target:"faculty",priority:"urgent",ts:"2025-04-10 09:00",pinUntil:null},
-  ];
-  db._annId=4;
+  db.announcements = [];
+
   db.audit.push({id:1,user_id:1,action:"DB_INIT",detail:"Database initialised with v4 schema",ts:now()});
   saveDB(db);
   return db;
