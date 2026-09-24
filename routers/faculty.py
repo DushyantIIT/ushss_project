@@ -231,6 +231,32 @@ def faculty_dashboard(faculty: dict = Depends(require_faculty)):
     }
 
 
+class AnnouncementBody(BaseModel):
+    title: str
+    body: Optional[str] = None
+    target: Optional[str] = None
+    priority: Optional[str] = None
+
+@router.post("/announcements", status_code=201, summary="Create a persistent announcement")
+def create_announcement(body: AnnouncementBody, faculty: dict = Depends(require_faculty)):
+    row = {
+        "title": body.title.strip(),
+        "body": (body.body or "").strip(),
+        "target": body.target or "All",
+        "priority": body.priority or "normal",
+        "ts": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
+    }
+    res = sb.table("announcements").insert(row).execute()
+    return res.data[0]
+
+@router.delete("/announcements/{aid}", summary="Delete an announcement")
+def delete_announcement(aid: int, faculty: dict = Depends(require_faculty)):
+    existing = sb.table("announcements").select("id").eq("id", aid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "Announcement not found")
+    sb.table("announcements").delete().eq("id", aid).execute()
+    return {"message": "Announcement deleted"}
+
 @router.get("/announcements", summary="View announcements")
 def get_announcements(faculty: dict = Depends(require_faculty)):
     return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
