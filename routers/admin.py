@@ -417,7 +417,7 @@ def list_pending_requests(
         sb.table("users")
         .select(
             "id, username, full_name, email, role, enrollment_no, "
-            "department, programme, batch, designation, created_at"
+            "department, programme, batch, designation, email_verified, phone_verified, created_at"
         )
         .eq("status", "pending")
     )
@@ -442,7 +442,7 @@ def list_pending_requests(
 def approve_request(uid: int, admin: dict = Depends(require_admin)):
     existing = (
         sb.table("users")
-        .select("id, username, role, status, email, full_name")
+        .select("id, username, role, status, email, full_name, email_verified, phone_verified")
         .eq("id", uid)
         .single()
         .execute()
@@ -453,6 +453,9 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
     target = existing.data
     if target["status"] != "pending":
         raise HTTPException(400, f"This request has already been {target['status']}")
+
+    if not target.get("email_verified", False) or not target.get("phone_verified", False):
+        raise HTTPException(400, "This registration cannot be approved until both email and mobile OTPs are verified.")
 
     # Backend-enforced rule: only a Super Admin may approve an Admin
     # registration. Never trust a role check done on the frontend.
