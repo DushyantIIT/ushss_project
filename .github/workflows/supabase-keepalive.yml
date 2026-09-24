@@ -2,20 +2,27 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    # Run every 3 days at a flexible UTC time.
-    - cron: "17 3 */3 * *"
+    # GitHub cron has no native "every N days" interval, so run daily
+    # and perform the Supabase request only on every third UTC day.
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Ping Supabase every 3 days
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
+
+          day_number="$(( $(date -u +%s) / 86400 ))"
+          if [ $((day_number % 3)) -ne 0 ]; then
+            echo "Not a keepalive day; skipping Supabase request."
+            exit 0
+          fi
 
           if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
             echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY GitHub Actions secret."
