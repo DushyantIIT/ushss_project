@@ -40,9 +40,19 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
   <div class="icon">&#9203;</div>
   <h1>Registration Received</h1>
   <p>Your account has been created successfully.</p>
-  <p>Your email has been verified once you click the confirmation link we sent you.</p>
-  <p>Your registration request has been sent for approval.</p>
-  <p>You will be able to log in once your account is approved.</p>
+  <p>We have sent a verification OTP to your <strong>email address</strong> and <strong>mobile number</strong>.</p>
+  <p>Verify both OTPs below. Your registration will be sent for admin approval after both contacts are verified.</p>
+  <div id="verification-box" style="margin:1.25rem 0;text-align:left">
+    <label style="display:block;font-size:12px;color:var(--ink-muted);margin-bottom:6px">Email OTP</label>
+    <div style="display:flex;gap:8px"><input id="email-otp" maxlength="6" inputmode="numeric" placeholder="6-digit OTP" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:4px"/><button type="button" onclick="verifyOtp('email')">Verify</button></div>
+    <div id="email-status" style="font-size:11px;margin:5px 0 12px;color:var(--ink-muted)">Not verified</div>
+    <label style="display:block;font-size:12px;color:var(--ink-muted);margin-bottom:6px">Mobile OTP</label>
+    <div style="display:flex;gap:8px"><input id="phone-otp" maxlength="6" inputmode="numeric" placeholder="6-digit OTP" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:4px"/><button type="button" onclick="verifyOtp('phone')">Verify</button></div>
+    <div id="phone-status" style="font-size:11px;margin:5px 0 12px;color:var(--ink-muted)">Not verified</div>
+    <button type="button" class="primary" onclick="resendOtps()" style="width:100%;margin-top:4px">Resend OTPs</button>
+  </div>
+  <p id="verification-message" style="display:none"></p>
+  <p>You will be able to log in once both contacts are verified and an admin approves your registration.</p>
   <div class="status-badge" id="status-badge">Status: Pending</div>
   <p id="who" style="display:none"></p>
   <div class="loading" id="loading">Checking status…</div>
@@ -62,52 +72,69 @@ async function checkStatus() {
   const badge = document.getElementById("status-badge");
   const who = document.getElementById("who");
   const loading = document.getElementById("loading");
-  if (!token) return; // nothing to poll — static pending message stands
-
+  if (!token) return;
   try {
     loading.style.display = "block";
-    const res = await fetch("/api/registration-status", {
-      headers: { Authorization: "Bearer " + token }
-    });
+    const res = await fetch("/api/registration-status", {headers:{Authorization:"Bearer "+token}});
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || "Could not check status");
-
     if (data.full_name) {
       who.textContent = "Applicant: " + data.full_name + " (" + data.email + ")";
       who.style.display = "block";
     }
-
+    document.getElementById("email-status").textContent = data.email_verified ? "✓ Email verified" : "Not verified";
+    document.getElementById("phone-status").textContent = data.phone_verified ? "✓ Mobile verified" : "Not verified";
     if (data.status === "approved") {
       badge.textContent = "Status: Approved";
-
-      // The same pending token becomes the authenticated portal token once
-      // the admin has approved the account. Send the applicant directly to
-      // the dashboard for their registered role.
       localStorage.setItem("ushss_token", token);
-      localStorage.setItem("ushss_user", JSON.stringify({
-        full_name: data.full_name || "",
-        email: data.email || "",
-        role: data.role || ""
-      }));
+      localStorage.setItem("ushss_user", JSON.stringify({full_name:data.full_name||"",email:data.email||"",role:data.role||""}));
       localStorage.removeItem("ushss_pending_token");
-
-      const roleRedirects = {
-        student: "/dashboard/student",
-        cr: "/dashboard/cr",
-        faculty: "/dashboard/faculty",
-        admin: "/dashboard/admin"
-      };
-      window.location.href = roleRedirects[data.role] || "/";
+      const roleRedirects={student:"/dashboard/student",cr:"/dashboard/cr",faculty:"/dashboard/faculty",admin:"/dashboard/admin"};
+      window.location.href=roleRedirects[data.role]||"/";
     } else if (data.status === "rejected") {
-      if (data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason", data.rejection_reason);
-      window.location.href = "/rejected";
+      if(data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason",data.rejection_reason);
+      window.location.href="/rejected";
     } else {
-      badge.textContent = "Status: Pending";
+      badge.textContent = data.email_verified && data.phone_verified ? "Status: Verified — Pending Admin Approval" : "Status: Pending Verification";
     }
-  } catch (e) {
-    // Silently keep showing the static pending message.
-  } finally {
-    loading.style.display = "none";
+  } catch(e) {
+    const msg=document.getElementById("verification-message");
+    msg.textContent=e.message||"Could not check verification status.";
+    msg.style.display="block";
+  } finally { loading.style.display="none"; }
+}
+
+async function verifyOtp(channel) {
+  const token=getToken();
+  const input=document.getElementById(channel+"-otp");
+  if(!token||!input.value.trim()) return;
+  try {
+    const res=await fetch("/api/registration/verify-"+channel,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,otp:input.value.trim()})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||"Invalid OTP");
+    document.getElementById(channel+"-status").textContent="✓ "+(channel==="email"?"Email":"Mobile")+" verified";
+    checkStatus();
+  } catch(e) {
+    const msg=document.getElementById("verification-message");
+    msg.textContent=e.message||"Invalid OTP";
+    msg.style.display="block";
+  }
+}
+
+async function resendOtps() {
+  const token=getToken();
+  if(!token) return;
+  try {
+    const res=await fetch("/api/registration/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token})});
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.detail||"Could not resend OTPs");
+    const msg=document.getElementById("verification-message");
+    msg.textContent="New OTPs have been sent to your unverified email/mobile.";
+    msg.style.display="block";
+  } catch(e) {
+    const msg=document.getElementById("verification-message");
+    msg.textContent=e.message||"Could not resend OTPs.";
+    msg.style.display="block";
   }
 }
 
