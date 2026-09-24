@@ -1911,7 +1911,7 @@ function openCreateModal(role="student") {
   ["f-username","f-name","f-email","f-phone","f-desig","f-pwd"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("f-dept").value="";
   document.getElementById("f-prog").value="";
-  document.getElementById("f-batch").value="";\n  document.getElementById("f-semester").value="";
+  document.getElementById("f-batch").value="";\n  document.getElementById("f-semester").innerHTML='<option value="">— Select Semester —</option>';
   document.getElementById("f-active").value="1";
   document.getElementById("row-active").style.display="none";
   onRoleChange();
@@ -1931,7 +1931,9 @@ function openEditModal(id) {
   document.getElementById("f-phone").value=user.phone||"";
   document.getElementById("f-dept").value=user.department||"";
   document.getElementById("f-prog").value=user.programme||"";
-  document.getElementById("f-batch").value=user.batch||"";\n  document.getElementById("f-semester").value=user.semester||"";
+  document.getElementById("f-batch").value=user.batch||"";\n  const semesterSelect=document.getElementById("f-semester");
+  semesterSelect.innerHTML='<option value="">— Select Semester —</option>';
+  populateSemesterOptions(user.programme, user.semester||"");
   document.getElementById("f-desig").value=user.designation||"";
   document.getElementById("f-pwd").value="";
   document.getElementById("f-active").value=String(user.is_active);
@@ -1947,6 +1949,18 @@ function closeModal() {
   editingId=null;
 }
 function closeModal2(id) { document.getElementById(id).classList.remove("open"); }
+function populateSemesterOptions(programme, selected=""){
+  const semester=document.getElementById("f-semester");
+  const duration=getProgrammeDuration(programme);
+  semester.innerHTML='<option value="">— Select Semester —</option>';
+  const maxSemesters=duration===4 ? 8 : duration===2 ? 4 : 0;
+  for(let i=1;i<=maxSemesters;i++){
+    const option=document.createElement("option");
+    option.value=String(i); option.textContent=`Semester ${i}`;
+    semester.appendChild(option);
+  }
+  semester.value=(selected && Number(selected)<=maxSemesters) ? String(selected) : "";
+}
 function getProgrammeDuration(programme){
   const p=(programme||"").toLowerCase();
   if(p.includes("b.a.") || p.includes("b.a ") || p.includes("ba english") || p.includes("ba economics")) return 4;
@@ -1995,7 +2009,7 @@ function onRoleChange() {
   document.getElementById("row-prog").style.display=showStu?"flex":"none";
   document.getElementById("row-batch").style.display=showStu?"flex":"none";\n  document.getElementById("row-semester").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
-  if(showStu) populateBatchOptions(document.getElementById("f-batch").value);
+  if(showStu){ populateBatchOptions(document.getElementById("f-batch").value); populateSemesterOptions(document.getElementById("f-prog").value, document.getElementById("f-semester").value); }
 }
 async function saveUser() {
   const role=document.getElementById("f-role").value;
