@@ -494,10 +494,10 @@ tr:hover td{background:var(--gold-pale)}
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:16px">Change Password</div>
-          <div class="form-group"><label class="form-label">Current Password</label><input class="form-input" type="password" placeholder="••••••••"/></div>
-          <div class="form-group"><label class="form-label">New Password</label><input class="form-input" type="password"/></div>
-          <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" type="password"/></div>
-          <button class="btn btn-primary" onclick="toast('Password changed','ok')">Update Password</button>
+          <div class="form-group"><label class="form-label">Current Password</label><input class="form-input" id="current-password" type="password" placeholder="Enter current password"/></div>
+          <div class="form-group"><label class="form-label">New Password</label><input class="form-input" id="new-password" type="password" placeholder="Minimum 6 characters"/></div>
+          <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-input" id="confirm-password" type="password" placeholder="Repeat new password"/></div>
+          <button class="btn btn-primary" onclick="changeMyPassword()">Update Password</button>
         </div>
       </div>
     </div>
@@ -792,6 +792,18 @@ function updatePortalUI(){
 
 loadPortalData().then(initDashboard).catch(e=>{console.error(e);toast('Could not load portal data from Supabase','err');});
 </script>
+
+async function changeMyPassword(){
+  const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
+  if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
+  if(next.value.length<6){toast('New password must be at least 6 characters','err');return;}
+  if(next.value!==confirm.value){toast('New passwords do not match','err');return;}
+  try{
+    const r=await fetch('/api/change-password',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({current_password:current.value,new_password:next.value,confirm_password:confirm.value})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not change password');
+    current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
+  }catch(e){toast(e.message,'err');}
+}
 <script>
 /* ── USHSS Real API Integration ──────────────────────────────
    Loads the logged-in student's real profile from the backend.
