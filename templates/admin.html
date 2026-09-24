@@ -391,7 +391,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <option>M.A. Political Science</option><option>M.A. History</option><option>M.A. Philosophy</option><option>Ph.D.</option>
           </select>
         </div>
-        <div class="form-group" id="row-batch"><label class="form-label">Batch / Course Duration</label>
+        <div class="form-group" id="row-semester"><label class="form-label">Semester</label>\n          <select class="form-select" id="f-semester">\n            <option value="">— Select Semester —</option>\n            <option value="1">Semester 1</option><option value="2">Semester 2</option>\n            <option value="3">Semester 3</option><option value="4">Semester 4</option>\n            <option value="5">Semester 5</option><option value="6">Semester 6</option>\n            <option value="7">Semester 7</option><option value="8">Semester 8</option>\n          </select>\n        </div>\n        <div class="form-group" id="row-batch"><label class="form-label">Batch / Course Duration</label>
           <select class="form-select" id="f-batch" onchange="validateBatchForProgramme()">
             <option value="">— Select programme first —</option>
           </select>
@@ -1911,7 +1911,7 @@ function openCreateModal(role="student") {
   ["f-username","f-name","f-email","f-phone","f-desig","f-pwd"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("f-dept").value="";
   document.getElementById("f-prog").value="";
-  document.getElementById("f-batch").value="";
+  document.getElementById("f-batch").value="";\n  document.getElementById("f-semester").value="";
   document.getElementById("f-active").value="1";
   document.getElementById("row-active").style.display="none";
   onRoleChange();
@@ -1931,7 +1931,7 @@ function openEditModal(id) {
   document.getElementById("f-phone").value=user.phone||"";
   document.getElementById("f-dept").value=user.department||"";
   document.getElementById("f-prog").value=user.programme||"";
-  document.getElementById("f-batch").value=user.batch||"";
+  document.getElementById("f-batch").value=user.batch||"";\n  document.getElementById("f-semester").value=user.semester||"";
   document.getElementById("f-desig").value=user.designation||"";
   document.getElementById("f-pwd").value="";
   document.getElementById("f-active").value=String(user.is_active);
@@ -1993,7 +1993,7 @@ function onRoleChange() {
   const showStu=role==="student"||role==="cr";
   const showDesig=role==="faculty"||role==="admin"||role==="cr";
   document.getElementById("row-prog").style.display=showStu?"flex":"none";
-  document.getElementById("row-batch").style.display=showStu?"flex":"none";
+  document.getElementById("row-batch").style.display=showStu?"flex":"none";\n  document.getElementById("row-semester").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
   if(showStu) populateBatchOptions(document.getElementById("f-batch").value);
 }
@@ -2010,7 +2010,7 @@ async function saveUser() {
   const btn=document.getElementById("modal-save-btn");
   const wasEditing=!!editingId;
   try{
-    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
+    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,semester:document.getElementById("f-semester").value||undefined,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
     btn.disabled=true;
     btn.textContent=wasEditing?"Saving...":"Creating...";
     if(wasEditing) await dbUpdateUser(editingId,data);
