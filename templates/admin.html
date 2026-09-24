@@ -906,9 +906,14 @@ function authHeaders() {
 }
 
 function logoutAdmin() {
-  localStorage.removeItem("ushss_token");
-  localStorage.removeItem("ushss_user");
-  window.location.href = "/";
+  try {
+    localStorage.removeItem('ushss_token');
+    localStorage.removeItem('ushss_user');
+    localStorage.removeItem('ushss_pending_token');
+    sessionStorage.clear();
+  } finally {
+    window.location.replace('/');
+  }
 }
 
 async function loadAdminProfile() {
