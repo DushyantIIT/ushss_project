@@ -31,7 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
 
-from app.database import sb
+from app.database import sb, create_client, SUPABASE_URL, SUPABASE_KEY
 from app.deps import oauth2_scheme
 from app.security import create_access_token, decode_token
 from app.rate_limit import rate_limit
@@ -166,6 +166,26 @@ def login(body: LoginRequest):
         print(f"LOGIN WARNING: failed to update last_login for {user['username']!r}: {e!r}")
 
     # Record audit log
+    # Send OTPs to both verified channels immediately after account creation.
+    # Supabase must have Email OTP configured and an SMS provider enabled.
+    try:
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        email_otp = auth_client.auth.sign_in_with_otp({
+            "email": body.email,
+            "options": {"should_create_user": False},
+        })
+        phone_otp = auth_client.auth.sign_in_with_otp({
+            "phone": phone,
+        })
+    except Exception as e:
+        print(f"REGISTER OTP ERROR for {body.username!r}: {e!r}")
+        try:
+            sb.table("users").delete().eq("id", new_user["id"]).execute()
+            sb.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            pass
+        raise HTTPException(502, "We could not send the verification OTPs. Please try again later.")
+
     try:
         sb.table("audit_log").insert({
             "user_id": user["id"],
@@ -244,7 +264,7 @@ class RegisterRequest(BaseModel):
     role:          str      = Field(default="student")
     full_name:     str      = Field(..., min_length=1)
     email:         EmailStr
-    phone:         Optional[str] = None
+    phone:         str
     enrollment_no: Optional[str] = None
     department:    Optional[str] = None
     programme:     Optional[str] = None
@@ -287,9 +307,16 @@ def register(body: RegisterRequest):
         raise HTTPException(409, "Email address is already registered")
 
     supabase_uid = None
+    phone = body.phone.strip()
+    if phone.isdigit() and len(phone) == 10:
+        phone = "+91" + phone
+    elif not phone.startswith("+") or len(phone) < 10:
+        raise HTTPException(400, "Please enter a valid mobile number with country code, e.g. +919876543210")
+
     try:
         auth_res = sb.auth.sign_up({
             "email": body.email,
+            "phone": phone,
             "password": body.password,
             "options": {"data": {"full_name": body.full_name, "role": body.role}},
         })
@@ -309,7 +336,7 @@ def register(body: RegisterRequest):
         "role":            body.role,
         "full_name":       body.full_name,
         "email":           body.email,
-        "phone":           body.phone,
+        "phone":           phone,
         "enrollment_no":   body.enrollment_no or body.username,
         "department":      body.department,
         "programme":       body.programme,
@@ -317,6 +344,8 @@ def register(body: RegisterRequest):
         "designation":     body.designation,
         "is_active":       True,
         "status":          "pending",
+        "email_verified":  False,
+        "phone_verified":  False,
         "supabase_uid":    supabase_uid,
     }
     try:
@@ -356,13 +385,75 @@ def register(body: RegisterRequest):
 
     return RegisterResponse(
         success=True,
-        message=(
-            "Account created. We've sent a verification email — please confirm it, "
-            "then wait for admin approval before logging in."
-        ),
+        message="Account created. OTPs have been sent to your email and mobile number. Verify both before admin approval.",
         token=token,
         redirect_url="/waiting",
     )
+
+
+class RegistrationOtpRequest(BaseModel):
+    token: str
+    otp: str = Field(..., min_length=6, max_length=8)
+
+def _pending_registration(token: str):
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(401, "Invalid or expired registration token")
+    uid = payload.get("id")
+    if not uid:
+        raise HTTPException(401, "Invalid registration token")
+    res = sb.table("users").select(
+        "id,username,email,phone,status,supabase_uid,email_verified,phone_verified"
+    ).eq("id", uid).limit(1).execute()
+    if not res.data:
+        raise HTTPException(404, "Registration not found")
+    user = res.data[0]
+    if user.get("status") != "pending":
+        raise HTTPException(400, "This registration is no longer pending")
+    return user
+
+@router.post("/registration/send-otp")
+def send_registration_otp(body: dict):
+    user = _pending_registration(body.get("token", ""))
+    try:
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        if not user.get("email_verified"):
+            auth_client.auth.sign_in_with_otp({"email": user["email"], "options": {"should_create_user": False}})
+        if not user.get("phone_verified"):
+            auth_client.auth.sign_in_with_otp({"phone": user["phone"]})
+    except Exception as e:
+        print(f"RESEND OTP ERROR for {user['username']!r}: {e!r}")
+        raise HTTPException(502, "Could not send the verification OTPs. Please try again.")
+    return {"success": True, "message": "OTP sent to the unverified contact details."}
+
+@router.post("/registration/verify-email")
+def verify_registration_email(body: RegistrationOtpRequest):
+    user = _pending_registration(body.token)
+    if user.get("email_verified"):
+        return {"success": True, "email_verified": True, "phone_verified": user.get("phone_verified", False)}
+    try:
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        auth_client.auth.verify_otp({"email": user["email"], "token": body.otp, "type": "email"})
+        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"email_confirm": True})
+    except Exception:
+        raise HTTPException(400, "Invalid or expired email OTP")
+    sb.table("users").update({"email_verified": True}).eq("id", user["id"]).execute()
+    return {"success": True, "email_verified": True, "phone_verified": user.get("phone_verified", False)}
+
+@router.post("/registration/verify-phone")
+def verify_registration_phone(body: RegistrationOtpRequest):
+    user = _pending_registration(body.token)
+    if user.get("phone_verified"):
+        return {"success": True, "email_verified": user.get("email_verified", False), "phone_verified": True}
+    try:
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        auth_client.auth.verify_otp({"phone": user["phone"], "token": body.otp, "type": "sms"})
+        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"phone_confirm": True})
+    except Exception:
+        raise HTTPException(400, "Invalid or expired mobile OTP")
+    sb.table("users").update({"phone_verified": True}).eq("id", user["id"]).execute()
+    return {"success": True, "email_verified": user.get("email_verified", False), "phone_verified": True}
 
 
 @router.get("/check-username", summary="Check whether a username is available for a role")
@@ -386,7 +477,7 @@ def registration_status(token: str = Depends(oauth2_scheme)):
         raise HTTPException(401, "Invalid or expired token")
 
     res = sb.table("users").select(
-        "status, rejection_reason, full_name, email, role"
+        "status, rejection_reason, full_name, email, role, email_verified, phone_verified"
     ).eq("id", uid).limit(1).execute()
 
     if not res.data:
@@ -399,4 +490,6 @@ def registration_status(token: str = Depends(oauth2_scheme)):
         "full_name":        row.get("full_name"),
         "email":            row.get("email"),
         "role":             row.get("role"),
+        "email_verified":   row.get("email_verified", False),
+        "phone_verified":   row.get("phone_verified", False),
     }
