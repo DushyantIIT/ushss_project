@@ -40,18 +40,8 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
   <div class="icon">&#9203;</div>
   <h1>Registration Received</h1>
   <p>Your account has been created successfully.</p>
-  <p>We have sent a verification OTP to your <strong>email address</strong> and <strong>mobile number</strong>.</p>
-  <p>Verify both OTPs below. Your registration will be sent for admin approval after both contacts are verified.</p>
-  <div id="verification-box" style="margin:1.25rem 0;text-align:left">
-    <label style="display:block;font-size:12px;color:var(--ink-muted);margin-bottom:6px">Email OTP</label>
-    <div style="display:flex;gap:8px"><input id="email-otp" maxlength="6" inputmode="numeric" placeholder="6-digit OTP" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:4px"/><button type="button" onclick="verifyOtp('email')">Verify</button></div>
-    <div id="email-status" style="font-size:11px;margin:5px 0 12px;color:var(--ink-muted)">Not verified</div>
-    <label style="display:block;font-size:12px;color:var(--ink-muted);margin-bottom:6px">Mobile OTP</label>
-    <div style="display:flex;gap:8px"><input id="phone-otp" maxlength="6" inputmode="numeric" placeholder="6-digit OTP" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:4px"/><button type="button" onclick="verifyOtp('phone')">Verify</button></div>
-    <div id="phone-status" style="font-size:11px;margin:5px 0 12px;color:var(--ink-muted)">Not verified</div>
-    <button type="button" class="primary" onclick="resendOtps()" style="width:100%;margin-top:4px">Resend OTPs</button>
-  </div>
-  <p id="verification-message" style="display:none"></p>
+  <p>Your registration request has been sent for admin approval.</p>
+  
   <p>You will be able to log in once both contacts are verified and an admin approves your registration.</p>
   <div class="status-badge" id="status-badge">Status: Pending</div>
   <p id="who" style="display:none"></p>
@@ -82,8 +72,6 @@ async function checkStatus() {
       who.textContent = "Applicant: " + data.full_name + " (" + data.email + ")";
       who.style.display = "block";
     }
-    document.getElementById("email-status").textContent = data.email_verified ? "✓ Email verified" : "Not verified";
-    document.getElementById("phone-status").textContent = data.phone_verified ? "✓ Mobile verified" : "Not verified";
     if (data.status === "approved") {
       badge.textContent = "Status: Approved";
       localStorage.setItem("ushss_token", token);
@@ -102,23 +90,6 @@ async function checkStatus() {
     msg.textContent=e.message||"Could not check verification status.";
     msg.style.display="block";
   } finally { loading.style.display="none"; }
-}
-
-async function verifyOtp(channel) {
-  const token=getToken();
-  const input=document.getElementById(channel+"-otp");
-  if(!token||!input.value.trim()) return;
-  try {
-    const res=await fetch("/api/registration/verify-"+channel,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,otp:input.value.trim()})});
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.detail||"Invalid OTP");
-    document.getElementById(channel+"-status").textContent="✓ "+(channel==="email"?"Email":"Mobile")+" verified";
-    checkStatus();
-  } catch(e) {
-    const msg=document.getElementById("verification-message");
-    msg.textContent=e.message||"Invalid OTP";
-    msg.style.display="block";
-  }
 }
 
 async function resendOtps() {
