@@ -1,562 +1,174 @@
-"""
-routers/auth.py
-
-Authentication — login returns a JWT.
-
-  POST /api/login                 login (Supabase Auth verifies the password)
-  POST /api/register              self-register via Supabase Auth (email verification + approval)
-  GET  /api/check-username        live username-availability check for the registration form
-  GET  /api/registration-status   poll pending/rejected/approved status after registering
-
-Registration / approval workflow
-─────────────────────────────────
-No password is ever hashed or stored by this app. Every account's credential
-lives in Supabase Auth — created via `sb.auth.sign_up` on self-registration,
-or via `sb.auth.admin.create_user` when an admin creates the account directly
-(see routers/admin.py). We link the two records with `users.supabase_uid`,
-which is mandatory: a profile row with no `supabase_uid` cannot log in.
-
-Every self-registered profile starts with `status = 'pending'`. An admin (or,
-for the `admin` role itself, only a SuperAdmin) must approve the request
-before the account can log in — see routers/admin.py for the approval panel.
-Login always follows the same path for every account: verify the password
-against Supabase Auth, then check `status` / `is_active` on the profile row.
-There is no other branch.
-"""
+"""Authentication routes."""
 
 from datetime import datetime, timezone
 from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
-
-from app.database import sb, create_client, SUPABASE_URL, SUPABASE_KEY
+from app.database import sb
 from app.deps import oauth2_scheme
 from app.security import create_access_token, decode_token
 from app.rate_limit import rate_limit
 from app.seed import DEMO_USERS
 
 router = APIRouter(tags=["Auth"])
-
 VALID_ROLES = ("student", "faculty", "cr", "admin")
-
-# Roles selectable on the public self-registration form. SuperAdmin is never
-# offered here, and "admin" self-registration (if ever enabled) would still
-# require a SuperAdmin's approval — enforced server-side, not by this list.
 SELF_REGISTER_ROLES = ("student", "faculty", "cr")
-
-# Roles that must supply an enrollment number to register.
 ENROLLMENT_REQUIRED_ROLES = ("student", "cr")
-
-ROLE_REDIRECTS = {
-    "admin":   "/dashboard/admin",
-    "faculty": "/dashboard/faculty",
-    "cr":      "/dashboard/cr",
-    "student": "/dashboard/student",
-}
-
-
-# ── Login ────────────────────────────────────────────────────────────────────
+ROLE_REDIRECTS = {"admin": "/dashboard/admin", "faculty": "/dashboard/faculty", "cr": "/dashboard/cr", "student": "/dashboard/student"}
 
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
-    role: Optional[str] = Field(default=None)
+    role: Optional[str] = None
     model_config = {"str_strip_whitespace": True}
-
 class LoginResponse(BaseModel):
-    success:      bool
-    token:        str
-    token_type:   str = "bearer"
+    success: bool
+    token: str
+    token_type: str = "bearer"
     redirect_url: str
-    user:         dict
+    user: dict
 
-@router.post(
-    "/login", response_model=LoginResponse, summary="Login and get JWT",
-    dependencies=[Depends(rate_limit("login", max_calls=10, window_seconds=300))],
-)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit("login", max_calls=10, window_seconds=300))])
 def login(body: LoginRequest):
-    # If a role is supplied, validate it against allowed roles
     if body.role is not None and body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
-
-    # If a registration request exists for this enrollment number and it is
-    # still pending, send the applicant to the Waiting page instead of treating
-    # the login attempt as a normal login failure.
-    pending_res = (
-        sb.table("users")
-        .select("*")
-        .eq("enrollment_no", body.username)
-        .eq("status", "pending")
-        .limit(1)
-        .execute()
-    )
+    pending_res = sb.table("users").select("*").eq("enrollment_no", body.username).eq("status", "pending").limit(1).execute()
     if pending_res.data:
-        pending_user = pending_res.data[0]
-        pending_token = create_access_token({
-            "sub": pending_user["username"],
-            "id": pending_user["id"],
-            "role": pending_user["role"],
-        })
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "pending",
-                "redirect_url": "/waiting",
-                "pending_token": pending_token,
-                "message": "Your registration request is still pending approval.",
-            },
-        )
-
-    # Fetch user by username only; role will be taken from the stored profile
-    res = (
-        sb.table("users")
-        .select("*")
-        .eq("username", body.username)
-        .limit(1)
-        .execute()
-    )
-
-    if not res.data:
-        raise HTTPException(401, "Invalid username or password")
-
-    user = res.data[0]
-    user_role = user.get("role")
-    if not user_role:
-        raise HTTPException(500, "User role missing in profile")
-
-    # Always use the stored database role — ignore the tab the user clicked on.
-    # This means admin001 logs in correctly even if the "Student" tab was active.
-    role_to_use = user_role
-    # If the request supplied a role, ensure it matches the stored role
-    if body.role is not None and body.role != user_role:
-        raise HTTPException(401, "Invalid role for this user")
-
-    if not user.get("is_active", True):
-        print(f"LOGIN DEBUG: user {body.username!r} is_active=False")
-        raise HTTPException(401, "Invalid username or password")
-
+        u = pending_res.data[0]
+        raise HTTPException(403, detail={"status":"pending","redirect_url":"/waiting","pending_token":create_access_token({"sub":u["username"],"id":u["id"],"role":u["role"]}),"message":"Your registration request is still pending approval."})
+    res = sb.table("users").select("*").eq("username", body.username).limit(1).execute()
+    if not res.data: raise HTTPException(401, "Invalid username or password")
+    user = res.data[0]; user_role = user.get("role")
+    if not user_role: raise HTTPException(500, "User role missing in profile")
+    if body.role is not None and body.role != user_role: raise HTTPException(401, "Invalid role for this user")
+    if not user.get("is_active", True): raise HTTPException(401, "Invalid username or password")
     status_val = user.get("status") or "approved"
-    if status_val == "pending":
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "pending",
-                "redirect_url": "/waiting",
-                "message": "Account registration is pending approval.",
-            },
-        )
-    elif status_val == "rejected":
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "rejected",
-                "redirect_url": "/rejected",
-                "reason": user.get("rejection_reason"),
-                "message": "Account registration was rejected.",
-            },
-        )
-    elif status_val != "approved":
-        raise HTTPException(401, "Invalid username, role, or password")
-
-    # Admin-approved accounts must be usable in Supabase Auth immediately.
-    # Sync the Auth verification flag before password sign-in. This does not
-    # change the user's password and only runs for an already-approved,
-    # active profile linked to its Supabase Auth identity.
+    if status_val == "pending": raise HTTPException(403, detail={"status":"pending","redirect_url":"/waiting","message":"Account registration is pending approval."})
+    if status_val == "rejected": raise HTTPException(403, detail={"status":"rejected","redirect_url":"/rejected","reason":user.get("rejection_reason"),"message":"Account registration was rejected."})
+    if status_val != "approved": raise HTTPException(401, "Invalid username, role, or password")
     auth_uid = user.get("supabase_uid")
     if auth_uid:
         try:
-            confirm_fields = {"email_confirm": True}
-            if user.get("phone_verified"):
-                confirm_fields["phone_confirm"] = True
-            sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
-            print(
-                f"LOGIN AUTH SYNC: username={body.username!r} "
-                f"confirmed={list(confirm_fields)}"
-            )
-        except Exception as sync_error:
-            print(
-                f"LOGIN AUTH SYNC FAILED: username={body.username!r} "
-                f"type={type(sync_error).__name__} detail={str(sync_error)[:160]!r}"
-            )
-
-    authenticated = False
+            fields={"email_confirm":True}
+            if user.get("phone_verified"): fields["phone_confirm"]=True
+            sb.auth.admin.update_user_by_id(auth_uid, fields)
+        except Exception as e: print(f"LOGIN AUTH SYNC FAILED: {type(e).__name__}: {str(e)[:160]}")
+    authenticated=False
     try:
-        auth_res = sb.auth.sign_in_with_password({
-            "email": user["email"],
-            "password": body.password,
-        })
-        session = getattr(auth_res, "session", None)
-        auth_user = getattr(auth_res, "user", None)
-        authenticated = bool(session) or bool(
-            auth_user and (
-                getattr(auth_user, "email_confirmed_at", None)
-                or (isinstance(auth_user, dict) and auth_user.get("email_confirmed_at"))
-            )
-        )
-        print(
-            f"LOGIN AUTH RESULT: username={body.username!r} "
-            f"session={bool(session)} user={bool(auth_user)}"
-        )
+        ar=sb.auth.sign_in_with_password({"email":user["email"],"password":body.password})
+        authenticated=bool(getattr(ar,"session",None))
     except Exception as e:
-        # Approved profiles can pre-date the Auth verification sync. If the
-        # portal already records the email/phone as verified, repair the linked
-        # Supabase Auth identity and retry the same password once.
-        print(
-            f"SUPABASE SIGNIN ERROR: username={body.username!r} "
-            f"type={type(e).__name__} detail={str(e)[:240]!r}"
-        )
-        auth_uid = user.get("supabase_uid")
+        print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__} detail={str(e)[:240]!r}")
         if auth_uid:
             try:
-                confirm_fields = {}
-                if user.get("email_verified"):
-                    confirm_fields["email_confirm"] = True
-                if user.get("phone_verified"):
-                    confirm_fields["phone_confirm"] = True
-                if confirm_fields:
-                    sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
-                    retry = sb.auth.sign_in_with_password({
-                        "email": user["email"],
-                        "password": body.password,
-                    })
-                    retry_session = getattr(retry, "session", None)
-                    if retry_session:
-                        authenticated = True
-                        print(f"LOGIN AUTH REPAIR: username={body.username!r} confirmed={list(confirm_fields)}")
-            except Exception as repair_error:
-                print(
-                    f"LOGIN AUTH REPAIR FAILED: username={body.username!r} "
-                    f"type={type(repair_error).__name__}"
-                )
-
-        # Fixed demo accounts are allowed a safe Auth reconciliation only
-        # when the supplied password exactly matches the documented demo
-        # credential. This never changes passwords for real/self-registered
-        # users based on arbitrary login input.
+                fields={}
+                if user.get("email_verified"): fields["email_confirm"]=True
+                if user.get("phone_verified"): fields["phone_confirm"]=True
+                if fields:
+                    sb.auth.admin.update_user_by_id(auth_uid,fields)
+                    rr=sb.auth.sign_in_with_password({"email":user["email"],"password":body.password})
+                    authenticated=bool(getattr(rr,"session",None))
+            except Exception as repair: print(f"LOGIN AUTH REPAIR FAILED: {type(repair).__name__}")
         if not authenticated:
-            demo = next(
-                (
-                    d for d in DEMO_USERS
-                    if d["username"] == body.username
-                    and d["role"] == user_role
-                    and d["password"] == body.password
-                ),
-                None,
-            )
+            demo=next((d for d in DEMO_USERS if d["username"]==body.username and d["role"]==user_role and d["password"]==body.password),None)
             if demo:
                 try:
-                    demo_uid = user.get("supabase_uid")
-                    if not demo_uid:
-                        listed = sb.auth.admin.list_users(page=1, per_page=1000)
-                        for auth_user in (getattr(listed, "users", None) or []):
-                            email = getattr(auth_user, "email", None)
-                            if email and email.lower() == demo["email"].lower():
-                                demo_uid = getattr(auth_user, "id", None)
-                                break
-                    if not demo_uid:
-                        created = sb.auth.admin.create_user({
-                            "email": demo["email"],
-                            "password": demo["password"],
-                            "email_confirm": True,
-                            "user_metadata": {
-                                "full_name": demo["full_name"],
-                                "role": demo["role"],
-                            },
-                        })
-                        auth_user = getattr(created, "user", None)
-                        demo_uid = getattr(auth_user, "id", None) if auth_user else None
-                    if demo_uid:
-                        sb.auth.admin.update_user_by_id(
-                            demo_uid,
-                            {"password": demo["password"], "email_confirm": True},
-                        )
-                        sb.table("users").update({
-                            "supabase_uid": demo_uid,
-                            "is_active": True,
-                            "status": "approved",
-                        }).eq("id", user["id"]).execute()
-                        retry = sb.auth.sign_in_with_password({
-                            "email": demo["email"],
-                            "password": demo["password"],
-                        })
-                        if getattr(retry, "session", None):
-                            authenticated = True
-                            print(f"DEMO LOGIN REPAIR: username={body.username!r}")
-                except Exception as demo_error:
-                    print(
-                        f"DEMO LOGIN REPAIR FAILED: username={body.username!r} "
-                        f"type={type(demo_error).__name__}"
-                    )
-
-        # Legacy/demo profiles may still contain a bcrypt password_hash while
-        # their Supabase Auth identity is missing or out of sync.
-        if not authenticated:
-            legacy_hash = user.get("password_hash")
-            if legacy_hash:
-                try:
-                    import bcrypt
-                    authenticated = bcrypt.checkpw(
-                        body.password.encode("utf-8"),
-                        legacy_hash.encode("utf-8"),
-                    )
-                except Exception as bcrypt_error:
-                    print(
-                        f"LEGACY PASSWORD CHECK ERROR: username={body.username!r} "
-                        f"type={type(bcrypt_error).__name__}"
-                    )
-
-    if not authenticated:
-        raise HTTPException(401, "Invalid username or password")
-
-    # Update last login timestamp
-    try:
-        sb.table("users").update({"last_login": datetime.now(timezone.utc).isoformat()}).eq("id", user["id"]).execute()
-    except Exception as e:
-        print(f"LOGIN WARNING: failed to update last_login for {user['username']!r}: {e!r}")
-
-    # Record audit log
-    try:
-        sb.table("audit_log").insert({
-            "user_id": user["id"],
-            "action":  "LOGIN",
-            "detail":  f"{user['role']} '{user['username']}' logged in",
-        }).execute()
-    except Exception as e:
-        print(f"LOGIN WARNING: failed to write audit_log for {user['username']!r}: {e!r}")
-
-    token = create_access_token({
-        "sub":  user["username"],
-        "id":   user["id"],
-        "role": user["role"],
-    })
-
-    user.pop("password_hash", None)
-
-    return LoginResponse(
-        success=True,
-        token=token,
-        token_type="bearer",
-        redirect_url=ROLE_REDIRECTS.get(role_to_use, "/"),
-        user=user,
-    )
-
+                    uid=user.get("supabase_uid")
+                    if uid: sb.auth.admin.update_user_by_id(uid,{"password":demo["password"],"email_confirm":True})
+                    rr=sb.auth.sign_in_with_password({"email":demo["email"],"password":demo["password"]})
+                    authenticated=bool(getattr(rr,"session",None))
+                except Exception as de: print(f"DEMO LOGIN REPAIR FAILED: {type(de).__name__}")
+        if not authenticated and user.get("password_hash"):
+            try:
+                import bcrypt
+                authenticated=bcrypt.checkpw(body.password.encode(),user["password_hash"].encode())
+            except Exception: pass
+    if not authenticated: raise HTTPException(401,"Invalid username or password")
+    try: sb.table("users").update({"last_login":datetime.now(timezone.utc).isoformat()}).eq("id",user["id"]).execute()
+    except Exception as e: print(f"LOGIN WARNING: {e!r}")
+    try: sb.table("audit_log").insert({"user_id":user["id"],"action":"LOGIN","detail":f"{user['role']} '{user['username']}' logged in"}).execute()
+    except Exception as e: print(f"LOGIN WARNING: audit log: {e!r}")
+    token=create_access_token({"sub":user["username"],"id":user["id"],"role":user["role"]}); user.pop("password_hash",None)
+    return LoginResponse(success=True,token=token,redirect_url=ROLE_REDIRECTS.get(user_role,"/"),user=user)
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
-@router.post("/change-password", summary="Change the authenticated user's password")
+@router.post("/change-password")
 def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_scheme)):
+    try: payload=decode_token(token)
+    except JWTError: raise HTTPException(401,"Your session has expired. Please log in again.")
+    uid=payload.get("id")
+    res=sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id",uid).limit(1).execute()
+    if not res.data: raise HTTPException(401,"User account not found")
+    user=res.data[0]
+    if not user.get("is_active",True) or (user.get("status") or "approved")!="approved": raise HTTPException(403,"Your account is not active")
+    if not user.get("supabase_uid"): raise HTTPException(500,"This account has no linked Auth identity")
+    if body.new_password!=body.confirm_password: raise HTTPException(400,"New passwords do not match")
+    if body.current_password==body.new_password: raise HTTPException(400,"New password must be different from the current password")
     try:
-        payload = decode_token(token)
-    except JWTError:
-        raise HTTPException(401, "Your session has expired. Please log in again.")
-    user_id = payload.get("id")
-    if not user_id:
-        raise HTTPException(401, "Invalid authentication token")
-    res = sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id", user_id).limit(1).execute()
-    if not res.data:
-        raise HTTPException(401, "User account not found")
-    user = res.data[0]
-    if not user.get("is_active", True) or (user.get("status") or "approved") != "approved":
-        raise HTTPException(403, "Your account is not active")
-    if not user.get("supabase_uid"):
-        raise HTTPException(500, "This account has no linked Auth identity")
-    if body.new_password != body.confirm_password:
-        raise HTTPException(400, "New passwords do not match")
-    if body.current_password == body.new_password:
-        raise HTTPException(400, "New password must be different from the current password")
-    try:
-        auth_res = sb.auth.sign_in_with_password({"email": user["email"], "password": body.current_password})
-        if not getattr(auth_res, "session", None):
-            raise ValueError("Current password rejected")
-    except Exception:
-        raise HTTPException(400, "Current password is incorrect")
-    try:
-        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"password": body.new_password})
-    except Exception:
-        raise HTTPException(502, "Could not update the password. Please try again.")
-    try:
-        sb.table("audit_log").insert({"user_id": user["id"], "action": "PASSWORD_CHANGED", "detail": f"User '{user['username']}' changed their password"}).execute()
-    except Exception as e:
-        print(f"PASSWORD CHANGE WARNING: audit log failed: {e!r}")
-    return {"success": True, "message": "Password changed successfully."}
-
-
-# ── Registration ─────────────────────────────────────────────────────────────
-
+        ar=sb.auth.sign_in_with_password({"email":user["email"],"password":body.current_password})
+        if not getattr(ar,"session",None): raise ValueError()
+    except Exception: raise HTTPException(400,"Current password is incorrect")
+    try: sb.auth.admin.update_user_by_id(user["supabase_uid"],{"password":body.new_password})
+    except Exception: raise HTTPException(502,"Could not update the password. Please try again.")
+    return {"success":True,"message":"Password changed successfully."}
 
 class RegisterRequest(BaseModel):
-    username:      str      = Field(..., min_length=1)
-    password:      str      = Field(..., min_length=6)
-    role:          str      = Field(default="student")
-    full_name:     str      = Field(..., min_length=1)
-    email:         EmailStr
-    phone:         str
-    enrollment_no: Optional[str] = None
-    department:    Optional[str] = None
-    programme:     Optional[str] = None
-    batch:         Optional[str] = None
-    designation:   Optional[str] = None
-    model_config = {"str_strip_whitespace": True}
-
-
+    username: str = Field(..., min_length=1); password: str = Field(..., min_length=6); role: str = Field(default="student"); full_name: str = Field(..., min_length=1); email: EmailStr; phone: str; enrollment_no: Optional[str]=None; department: Optional[str]=None; programme: Optional[str]=None; batch: Optional[str]=None; designation: Optional[str]=None
+    model_config={"str_strip_whitespace":True}
 class RegisterResponse(BaseModel):
-    success:      bool
-    message:      str
-    token:        str
-    redirect_url: str = "/waiting"
+    success: bool; message: str; token: str; redirect_url: str="/waiting"
 
-
-@router.post("/register", status_code=201, response_model=RegisterResponse,
-             summary="Self-register a new portal user (Supabase Auth + approval workflow)",
-             dependencies=[Depends(rate_limit("register", max_calls=5, window_seconds=600))])
-def register(body: RegisterRequest):
-    if body.role not in SELF_REGISTER_ROLES:
-        raise HTTPException(400, f"Self-registration is only allowed for: {SELF_REGISTER_ROLES}")
-
-    if body.role in ENROLLMENT_REQUIRED_ROLES and not body.enrollment_no:
-        raise HTTPException(400, "Enrollment number is required for this role")
-
-    # duplicate username + role
-    dup = (
-        sb.table("users")
-        .select("id")
-        .eq("username", body.username)
-        .eq("role", body.role)
-        .execute()
-    )
-    if dup.data:
-        raise HTTPException(409, "Username already exists for this role")
-
-    # duplicate email in our profile table
-    dup_email = sb.table("users").select("id").eq("email", body.email).execute()
-    if dup_email.data:
-        raise HTTPException(409, "Email address is already registered")
-
-    supabase_uid = None
-    phone = body.phone.strip()
-    if phone.isdigit() and len(phone) == 10:
-        phone = "+91" + phone
-    elif not phone.startswith("+") or len(phone) < 10:
-        raise HTTPException(400, "Please enter a valid mobile number with country code, e.g. +919876543210")
-
+@router.post("/register", status_code=201, response_model=RegisterResponse, dependencies=[Depends(rate_limit("register", max_calls=5, window_seconds=600))])
+def register(body:RegisterRequest):
+    if body.role not in SELF_REGISTER_ROLES: raise HTTPException(400,f"Self-registration is only allowed for: {SELF_REGISTER_ROLES}")
+    if body.role in ENROLLMENT_REQUIRED_ROLES and not body.enrollment_no: raise HTTPException(400,"Enrollment number is required for this role")
+    if sb.table("users").select("id").eq("username",body.username).eq("role",body.role).execute().data: raise HTTPException(409,"Username already exists for this role")
+    if sb.table("users").select("id").eq("email",body.email).execute().data: raise HTTPException(409,"Email address is already registered")
+    phone=body.phone.strip()
+    if phone.isdigit() and len(phone)==10: phone="+91"+phone
+    elif not phone.startswith("+") or len(phone)<10: raise HTTPException(400,"Please enter a valid mobile number with country code, e.g. +919876543210")
+    supabase_uid=None
     try:
-        auth_res = sb.auth.sign_up({
-            "email": body.email,
-            "phone": phone,
-            "password": body.password,
-            "options": {"data": {"full_name": body.full_name, "role": body.role}},
-        })
-        supabase_user = getattr(auth_res, "user", None)
-        supabase_uid = getattr(supabase_user, "id", None) if supabase_user else None
+        # Use the trusted Auth Admin API. This works even when public email signup
+        # is disabled, while keeping the service-role key server-side only.
+        created=sb.auth.admin.create_user({"email":str(body.email),"phone":phone,"password":body.password,"email_confirm":False,"phone_confirm":False,"user_metadata":{"full_name":body.full_name,"role":body.role}})
+        au=getattr(created,"user",None); supabase_uid=getattr(au,"id",None) if au else None
     except Exception as e:
-        print("SIGNUP SUPABASE NOTE:", e)
-
-    if not supabase_uid:
-        raise HTTPException(
-            502,
-            "Supabase Auth is unavailable; registration could not be completed.",
-        )
-
-    row = {
-        "username":        body.username,
-        "role":            body.role,
-        "full_name":       body.full_name,
-        "email":           body.email,
-        "phone":           phone,
-        "enrollment_no":   body.enrollment_no or body.username,
-        "department":      body.department,
-        "programme":       body.programme,
-        "batch":           body.batch,
-        "designation":     body.designation,
-        "is_active":       True,
-        "status":          "pending",
-        "email_verified":  False,
-        "phone_verified":  False,
-        "supabase_uid":    supabase_uid,
-    }
+        print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
+        raise HTTPException(502,"Could not create the authentication account. Please try again.")
+    if not supabase_uid: raise HTTPException(502,"Authentication account was not created. Please try again.")
+    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"programme":body.programme,"batch":body.batch,"designation":body.designation,"is_active":True,"status":"pending","email_verified":False,"phone_verified":False,"supabase_uid":supabase_uid}
     try:
-        res = sb.table("users").insert(row).execute()
-        if not res.data:
-            raise RuntimeError("Insert returned no row")
-        new_user = res.data[0]
+        res=sb.table("users").insert(row).execute()
+        if not res.data: raise RuntimeError("Insert returned no row")
+        new_user=res.data[0]
     except Exception as e:
-        print(f"REGISTER ERROR: profile insert failed for {body.username!r}: {e!r}")
-        # Clean up the Supabase Auth account so it isn't orphaned
-        try:
-            if not supabase_uid.startswith("local-"):
-                sb.auth.admin.delete_user(supabase_uid)
-        except Exception:
-            pass
-        raise HTTPException(
-            502,
-            "Could not complete registration — your details could not be saved. Please try again.",
-        )
+        print(f"REGISTER ERROR: profile insert failed: {e!r}")
+        try: sb.auth.admin.delete_user(supabase_uid)
+        except Exception: pass
+        raise HTTPException(502,"Could not complete registration — your details could not be saved. Please try again.")
+    try: sb.table("audit_log").insert({"user_id":new_user["id"],"action":"SELF_REGISTER","detail":f"{body.role} '{body.username}' self-registered — pending approval"}).execute()
+    except Exception as e: print(f"REGISTER WARNING: {e!r}")
+    token=create_access_token({"sub":new_user["username"],"id":new_user["id"],"role":new_user["role"]})
+    return RegisterResponse(success=True,message="Account created. Your registration request has been submitted and is awaiting admin approval.",token=token,redirect_url="/waiting")
 
+@router.get("/check-username")
+def check_username(username:str,role:str):
+    if role not in VALID_ROLES: raise HTTPException(400,f"Invalid role. Must be one of: {VALID_ROLES}")
+    return {"available":not bool(sb.table("users").select("id").eq("username",username.strip()).eq("role",role).execute().data)}
+
+@router.get("/registration-status")
+def registration_status(token:str=Depends(oauth2_scheme)):
     try:
-        sb.table("audit_log").insert({
-            "user_id": new_user["id"],
-            "action":  "SELF_REGISTER",
-            "detail":  f"{body.role} '{body.username}' self-registered — pending approval",
-        }).execute()
-    except Exception as e:
-        print(f"REGISTER WARNING: failed to write audit_log for {new_user['username']!r}: {e!r}")
-
-    # Short-lived token so the Waiting page can poll /registration-status
-    # even though the account isn't approved (and can't use /login) yet.
-    token = create_access_token({
-        "sub":  new_user["username"],
-        "id":   new_user["id"],
-        "role": new_user["role"],
-    })
-
-    return RegisterResponse(
-        success=True,
-        message="Account created. Your registration request has been submitted and is awaiting admin approval.",
-        token=token,
-        redirect_url="/waiting",
-    )
-
-
-
-@router.get("/check-username", summary="Check whether a username is available for a role")
-def check_username(username: str, role: str):
-    if role not in VALID_ROLES:
-        raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
-    if not username.strip():
-        return {"available": False}
-    res = sb.table("users").select("id").eq("username", username.strip()).eq("role", role).execute()
-    return {"available": not bool(res.data)}
-
-
-@router.get("/registration-status", summary="Poll the status of a pending/rejected registration")
-def registration_status(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = decode_token(token)
-        uid = payload.get("id")
-        if not uid:
-            raise HTTPException(401, "Invalid or expired token")
-    except JWTError:
-        raise HTTPException(401, "Invalid or expired token")
-
-    res = sb.table("users").select(
-        "status, rejection_reason, full_name, email, role"
-    ).eq("id", uid).limit(1).execute()
-
-    if not res.data:
-        raise HTTPException(404, "Account not found")
-
-    row = res.data[0]
-    return {
-        "status":           row.get("status") or "approved",
-        "rejection_reason": row.get("rejection_reason"),
-        "full_name":        row.get("full_name"),
-        "email":            row.get("email"),
-        "role":             row.get("role"),
-        "email_verified":   row.get("email_verified", False),
-        "phone_verified":   row.get("phone_verified", False),
-    }
+        p=decode_token(token); uid=p.get("id")
+        if not uid: raise HTTPException(401,"Invalid or expired token")
+    except JWTError: raise HTTPException(401,"Invalid or expired token")
+    res=sb.table("users").select("status,rejection_reason,full_name,email,role,email_verified,phone_verified").eq("id",uid).limit(1).execute()
+    if not res.data: raise HTTPException(404,"Account not found")
+    row=res.data[0]
+    return row
