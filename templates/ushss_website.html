@@ -1110,35 +1110,27 @@ function updateRegistrationBatch() {
   if (!batch) return;
 
   const currentYear = new Date().getFullYear();
-  let endYear = null;
-
-  if (programme === "B.A.") {
-    endYear = currentYear + 4;
-  } else if (programme === "M.A.") {
-    endYear = currentYear + 2;
-  }
-
   batch.innerHTML = '<option value="">— Select —</option>';
 
   if (programme === "B.A.") {
-    // Show BA batches from 2023 through the current admission year.
-    for (let startYear = 2023; startYear <= currentYear; startYear++) {
-      const end = startYear + 4;
-      const option = document.createElement("option");
-      option.value = startYear + "-" + String(end).slice(-2);
-      option.textContent = startYear + "-" + String(end).slice(-2);
-      if (startYear === currentYear) option.selected = true;
-      batch.appendChild(option);
+    if (currentYear === 2023) {
+      batch.innerHTML += '<option value="2023-27" selected>2023-27</option>';
+    } else if (currentYear === 2024) {
+      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28" selected>2024-28</option>';
+    } else if (currentYear === 2025) {
+      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28">2024-28</option><option value="2025-29" selected>2025-29</option>';
+    } else {
+      batch.innerHTML += '<option value="2023-27">2023-27</option><option value="2024-28">2024-28</option><option value="2025-29">2025-29</option><option value="' + currentYear + '-' + String(currentYear + 4).slice(-2) + '" selected>' + currentYear + '-' + String(currentYear + 4).slice(-2) + '</option>';
     }
   } else if (programme === "M.A.") {
-    // Show MA batches from 2023 through the current admission year.
-    for (let startYear = 2023; startYear <= currentYear; startYear++) {
-      const end = startYear + 2;
-      const option = document.createElement("option");
-      option.value = startYear + "-" + String(end).slice(-2);
-      option.textContent = startYear + "-" + String(end).slice(-2);
-      if (startYear === currentYear) option.selected = true;
-      batch.appendChild(option);
+    if (currentYear === 2023) {
+      batch.innerHTML += '<option value="2023-25" selected>2023-25</option>';
+    } else if (currentYear === 2024) {
+      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26" selected>2024-26</option>';
+    } else if (currentYear === 2025) {
+      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26">2024-26</option><option value="2025-27" selected>2025-27</option>';
+    } else {
+      batch.innerHTML += '<option value="2023-25">2023-25</option><option value="2024-26">2024-26</option><option value="2025-27">2025-27</option><option value="' + currentYear + '-' + String(currentYear + 2).slice(-2) + '" selected>' + currentYear + '-' + String(currentYear + 2).slice(-2) + '</option>';
     }
   }
 }
