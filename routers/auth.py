@@ -366,20 +366,6 @@ def register(body: RegisterRequest):
             "Could not complete registration — your details could not be saved. Please try again.",
         )
 
-    # Send OTPs to both channels immediately after account creation.
-    try:
-        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        auth_client.auth.sign_in_with_otp({"email": body.email, "options": {"should_create_user": False}})
-        auth_client.auth.sign_in_with_otp({"phone": phone})
-    except Exception as e:
-        print(f"REGISTER OTP ERROR for {body.username!r}: {e!r}")
-        try:
-            sb.table("users").delete().eq("id", new_user["id"]).execute()
-            sb.auth.admin.delete_user(supabase_uid)
-        except Exception:
-            pass
-        raise HTTPException(502, "We could not send the verification OTPs. Please try again later.")
-
     try:
         sb.table("audit_log").insert({
             "user_id": new_user["id"],
@@ -404,70 +390,6 @@ def register(body: RegisterRequest):
         redirect_url="/waiting",
     )
 
-
-class RegistrationOtpRequest(BaseModel):
-    token: str
-    otp: str = Field(..., min_length=6, max_length=8)
-
-def _pending_registration(token: str):
-    try:
-        payload = decode_token(token)
-    except JWTError:
-        raise HTTPException(401, "Invalid or expired registration token")
-    uid = payload.get("id")
-    if not uid:
-        raise HTTPException(401, "Invalid registration token")
-    res = sb.table("users").select(
-        "id,username,email,phone,status,supabase_uid,email_verified,phone_verified"
-    ).eq("id", uid).limit(1).execute()
-    if not res.data:
-        raise HTTPException(404, "Registration not found")
-    user = res.data[0]
-    if user.get("status") != "pending":
-        raise HTTPException(400, "This registration is no longer pending")
-    return user
-
-@router.post("/registration/send-otp")
-def send_registration_otp(body: dict):
-    user = _pending_registration(body.get("token", ""))
-    try:
-        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        if not user.get("email_verified"):
-            auth_client.auth.sign_in_with_otp({"email": user["email"], "options": {"should_create_user": False}})
-        if not user.get("phone_verified"):
-            auth_client.auth.sign_in_with_otp({"phone": user["phone"]})
-    except Exception as e:
-        print(f"RESEND OTP ERROR for {user['username']!r}: {e!r}")
-        raise HTTPException(502, "Could not send the verification OTPs. Please try again.")
-    return {"success": True, "message": "OTP sent to the unverified contact details."}
-
-@router.post("/registration/verify-email")
-def verify_registration_email(body: RegistrationOtpRequest):
-    user = _pending_registration(body.token)
-    if user.get("email_verified"):
-        return {"success": True, "email_verified": True, "phone_verified": user.get("phone_verified", False)}
-    try:
-        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        auth_client.auth.verify_otp({"email": user["email"], "token": body.otp, "type": "email"})
-        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"email_confirm": True})
-    except Exception:
-        raise HTTPException(400, "Invalid or expired email OTP")
-    sb.table("users").update({"email_verified": True}).eq("id", user["id"]).execute()
-    return {"success": True, "email_verified": True, "phone_verified": user.get("phone_verified", False)}
-
-@router.post("/registration/verify-phone")
-def verify_registration_phone(body: RegistrationOtpRequest):
-    user = _pending_registration(body.token)
-    if user.get("phone_verified"):
-        return {"success": True, "email_verified": user.get("email_verified", False), "phone_verified": True}
-    try:
-        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        auth_client.auth.verify_otp({"phone": user["phone"], "token": body.otp, "type": "sms"})
-        sb.auth.admin.update_user_by_id(user["supabase_uid"], {"phone_confirm": True})
-    except Exception:
-        raise HTTPException(400, "Invalid or expired mobile OTP")
-    sb.table("users").update({"phone_verified": True}).eq("id", user["id"]).execute()
-    return {"success": True, "email_verified": user.get("email_verified", False), "phone_verified": True}
 
 
 @router.get("/check-username", summary="Check whether a username is available for a role")
