@@ -15,6 +15,11 @@ class SendMessageBody(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
 
 
+@router.get("/me")
+def chat_me(user: dict = Depends(get_current_user)):
+    return {"id": user["id"], "full_name": user.get("full_name"), "username": user.get("username"), "role": user.get("role"), "is_super_admin": user.get("is_super_admin", False)}
+
+
 @router.get("/users")
 def chat_users(user: dict = Depends(get_current_user)):
     rows = (
