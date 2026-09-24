@@ -426,11 +426,17 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         </div>
         <div>
           <label class="portal-label">Password <span style="color:#e3c881">*</span></label>
-          <input class="portal-input" id="reg-pwd" type="password" placeholder="Min 6 characters"/>
+          <div style="position:relative">
+            <input class="portal-input" id="reg-pwd" type="password" placeholder="Min 6 characters" style="padding-right:80px"/>
+            <button type="button" id="toggle-reg-password" onclick="toggleRegistrationPassword('reg-pwd','toggle-reg-password')" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--maroon);font-size:12px;font-weight:500;cursor:pointer;padding:6px 8px">Show</button>
+          </div>
         </div>
         <div>
           <label class="portal-label">Confirm Password <span style="color:#e3c881">*</span></label>
-          <input class="portal-input" id="reg-pwd2" type="password" placeholder="Re-enter password"/>
+          <div style="position:relative">
+            <input class="portal-input" id="reg-pwd2" type="password" placeholder="Re-enter password" style="padding-right:80px"/>
+            <button type="button" id="toggle-reg-confirm-password" onclick="toggleRegistrationPassword('reg-pwd2','toggle-reg-confirm-password')" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--maroon);font-size:12px;font-weight:500;cursor:pointer;padding:6px 8px">Show</button>
+          </div>
         </div>
       </div>
       <div class="portal-login-error" id="portal-reg-error"></div>
@@ -1053,6 +1059,16 @@ function toggleLoginPassword() {
   const button = document.getElementById("toggle-login-password");
   if (!input || !button) return;
 
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  button.textContent = showing ? "Show" : "Hide";
+  button.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+}
+
+function toggleRegistrationPassword(inputId, buttonId) {
+  const input = document.getElementById(inputId);
+  const button = document.getElementById(buttonId);
+  if (!input || !button) return;
   const showing = input.type === "text";
   input.type = showing ? "password" : "text";
   button.textContent = showing ? "Show" : "Hide";
