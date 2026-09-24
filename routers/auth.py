@@ -194,26 +194,6 @@ def login(body: LoginRequest):
         print(f"LOGIN WARNING: failed to update last_login for {user['username']!r}: {e!r}")
 
     # Record audit log
-    # Send OTPs to both verified channels immediately after account creation.
-    # Supabase must have Email OTP configured and an SMS provider enabled.
-    try:
-        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        email_otp = auth_client.auth.sign_in_with_otp({
-            "email": body.email,
-            "options": {"should_create_user": False},
-        })
-        phone_otp = auth_client.auth.sign_in_with_otp({
-            "phone": phone,
-        })
-    except Exception as e:
-        print(f"REGISTER OTP ERROR for {body.username!r}: {e!r}")
-        try:
-            sb.table("users").delete().eq("id", new_user["id"]).execute()
-            sb.auth.admin.delete_user(supabase_uid)
-        except Exception:
-            pass
-        raise HTTPException(502, "We could not send the verification OTPs. Please try again later.")
-
     try:
         sb.table("audit_log").insert({
             "user_id": user["id"],
@@ -413,7 +393,7 @@ def register(body: RegisterRequest):
 
     return RegisterResponse(
         success=True,
-        message="Account created. OTPs have been sent to your email and mobile number. Verify both before admin approval.",
+        message="Account created. Your registration request has been submitted and is awaiting admin approval.",
         token=token,
         redirect_url="/waiting",
     )
