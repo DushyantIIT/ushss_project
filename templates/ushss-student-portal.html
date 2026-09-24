@@ -768,6 +768,19 @@ async function loadPortalData(){
     get('/api/student/attendance/open')
   ]);
   portalProfile=profile;
+  const profileName = profile.full_name || profile.username || '—';
+  const initials = profileName.split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const setValue=(id,value)=>{const el=document.getElementById(id);if(el)el.value=value??'';};
+  const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value??'—';};
+  setText('profile-initials', initials || '—');
+  setText('profile-name', profileName);
+  setText('profile-role', profile.role ? profile.role.charAt(0).toUpperCase()+profile.role.slice(1) : 'Student');
+  setText('profile-enrollment', profile.enrollment_no || profile.username);
+  setValue('profile-full-name', profile.full_name);
+  setValue('profile-email', profile.email);
+  setValue('profile-phone', profile.phone);
+  setValue('profile-programme', profile.programme);
+  setValue('profile-batch', profile.batch);
   DB.announcements=(anns||[]).map(a=>({id:a.id,title:a.title,body:a.body||'',type:a.priority==='urgent'?'urgent':a.priority==='important'?'reminder':'info',from:a.target||'USHSS',ts:a.ts||'',read:false}));
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
   DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',by:m.uploaded_by||''}));
@@ -804,54 +817,6 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
-<script>
-/* ── USHSS Real API Integration ──────────────────────────────
-   Loads the logged-in student's real profile from the backend.
-   Falls back to demo display if no token is found.
-─────────────────────────────────────────────────────────── */
-(async function loadRealProfile() {
-  const token = localStorage.getItem('ushss_token');
-  if (!token) return; // no login — keep demo display
 
-  try {
-    const res = await fetch('/api/student/profile', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!res.ok) return;
-    const u = await res.json();
-
-    // Sidebar name & meta
-    const nameEl = document.querySelector('.sb-pname');
-    const metaEl = document.querySelector('.sb-pmeta');
-    const rollEl = document.querySelector('.sb-roll');
-    const avatarEl = document.querySelector('.sb-avatar');
-
-    if (nameEl)   nameEl.textContent = u.full_name || u.username;
-    if (metaEl)   metaEl.textContent = [u.programme, u.batch].filter(Boolean).join(' · ');
-    if (rollEl)   rollEl.textContent = u.enrollment_no || u.username;
-    if (avatarEl) avatarEl.textContent = (u.full_name || u.username)
-                    .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-
-    // Profile page fields (if rendered)
-    const pname = document.getElementById('prof-name');
-    const pemail = document.getElementById('prof-email');
-    const pprog = document.getElementById('prof-prog');
-    const penroll = document.getElementById('prof-enroll');
-    if (pname)   pname.textContent  = u.full_name;
-    if (pemail)  pemail.textContent = u.email;
-    if (pprog)   pprog.textContent  = u.programme || '—';
-    if (penroll) penroll.textContent = u.enrollment_no || '—';
-
-  } catch(e) { console.warn('USHSS API: profile load failed', e); }
-})();
-function logoutStudent() {
-  // Clear every client-side credential/state used by the portal.
-  localStorage.removeItem("ushss_token");
-  localStorage.removeItem("ushss_user");
-  localStorage.removeItem("ushss_pending_token");
-  sessionStorage.removeItem("ushss_rejection_reason");
-  window.location.replace("/");
-}
-</script>
 </body>
 </html>
