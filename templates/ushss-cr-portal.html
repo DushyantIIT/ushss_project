@@ -831,9 +831,14 @@ function toast(msg,type='ok'){const el=document.createElement('div');el.classNam
 /* INIT */
 document.getElementById('asgn-due').value=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
 function logoutCR() {
-  localStorage.removeItem("ushss_token");
-  localStorage.removeItem("ushss_user");
-  window.location.href = "/";
+  try {
+    localStorage.removeItem('ushss_token');
+    localStorage.removeItem('ushss_user');
+    localStorage.removeItem('ushss_pending_token');
+    sessionStorage.clear();
+  } finally {
+    window.location.replace('/');
+  }
 }
 </script>
 <!-- USHSS Real API Integration: loads real CR profile and classmates -->
