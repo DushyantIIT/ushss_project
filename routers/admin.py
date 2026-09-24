@@ -102,6 +102,7 @@ class UserUpdate(BaseModel):
     department:    Optional[str]      = None
     programme:     Optional[str]      = None
     batch:         Optional[str]      = None
+    semester:      Optional[str]      = None
     is_active:     Optional[bool]     = None
     password:      Optional[str]      = Field(None, min_length=6)
     role:          Optional[str]      = None   # SuperAdmin only — see update_user()
