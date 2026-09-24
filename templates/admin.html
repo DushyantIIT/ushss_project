@@ -2053,5 +2053,131 @@ const _db=loadDB();
   if(s.duration>0) startTimerInterval(s.id, s.timeLeft);
 });
 </script>
+
+<style id="ushss-chat-styles">
+#ushss-chat-launcher{position:fixed;right:22px;bottom:22px;z-index:9998;border:0;border-radius:999px;width:58px;height:58px;background:var(--accent,#2563eb);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.22);cursor:pointer;font-size:25px}
+#ushss-chat-launcher .ushss-chat-count{position:absolute;right:-2px;top:-4px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;line-height:19px;font-weight:700}
+#ushss-chat-panel{display:none;position:fixed;right:22px;bottom:92px;width:370px;height:520px;max-width:calc(100vw - 28px);z-index:9999;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden}
+#ushss-chat-panel.open{display:flex;flex-direction:column}
+.ushss-chat-head{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;background:var(--accent,#2563eb);color:#fff}
+.ushss-chat-head strong{font-size:15px}.ushss-chat-head button{border:0;background:transparent;color:#fff;font-size:21px;cursor:pointer}
+.ushss-chat-body{display:flex;min-height:0;flex:1}
+.ushss-chat-list{width:38%;border-right:1px solid var(--border,#e5e7eb);overflow:auto;background:var(--surface2,#f8fafc)}
+.ushss-chat-list button{display:block;width:100%;padding:11px 9px;border:0;border-bottom:1px solid var(--border,#e5e7eb);background:transparent;text-align:left;cursor:pointer;color:var(--text,#111827)}
+.ushss-chat-list button.active{background:rgba(37,99,235,.10)}
+.ushss-chat-list .name{font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ushss-chat-list .role{font-size:10px;opacity:.65;margin-top:2px}
+.ushss-chat-thread{flex:1;display:flex;flex-direction:column;min-width:0}
+.ushss-chat-messages{flex:1;overflow:auto;padding:12px;background:var(--surface,#fff)}
+.ushss-chat-msg{max-width:82%;margin:5px 0;padding:8px 10px;border-radius:12px;font-size:12px;line-height:1.4;word-break:break-word}
+.ushss-chat-msg.mine{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:3px}
+.ushss-chat-msg.theirs{margin-right:auto;background:var(--surface2,#f1f5f9);color:var(--text,#111827);border-bottom-left-radius:3px}
+.ushss-chat-msg time{display:block;font-size:9px;opacity:.65;margin-top:3px}
+.ushss-chat-compose{display:flex;gap:6px;padding:9px;border-top:1px solid var(--border,#e5e7eb)}
+.ushss-chat-compose input{flex:1;min-width:0;border:1px solid var(--border,#d1d5db);border-radius:10px;padding:9px;font-size:12px;background:var(--surface,#fff);color:var(--text,#111827)}
+.ushss-chat-compose button,.ushss-chat-new{border:0;border-radius:10px;padding:9px 11px;background:#2563eb;color:#fff;cursor:pointer;font-weight:700}
+.ushss-chat-empty{padding:22px;text-align:center;font-size:12px;opacity:.65}
+.ushss-chat-new{margin:8px;width:calc(100% - 16px)}
+.ushss-chat-all{border-top:1px solid var(--border,#e5e7eb);padding:8px;font-size:11px;background:var(--surface2,#f8fafc)}
+.ushss-chat-all button{width:100%;border:1px solid var(--border,#d1d5db);background:var(--surface,#fff);border-radius:8px;padding:7px;cursor:pointer;color:var(--text,#111827)}
+@media(max-width:600px){#ushss-chat-panel{right:10px;bottom:78px;width:calc(100vw - 20px);height:70vh}#ushss-chat-launcher{right:14px;bottom:14px}}
+</style>
+<button id="ushss-chat-launcher" type="button" aria-label="Open chat" onclick="ushssChatToggle()">💬<span id="ushss-chat-count" class="ushss-chat-count" style="display:none">0</span></button>
+<div id="ushss-chat-panel" aria-label="Chat">
+  <div class="ushss-chat-head"><strong>USHSS Chat</strong><button type="button" onclick="ushssChatToggle()">×</button></div>
+  <div class="ushss-chat-body">
+    <div class="ushss-chat-list" id="ushss-chat-list"><button class="ushss-chat-new" onclick="ushssChatNew()">+ New Chat</button><div class="ushss-chat-empty">Loading…</div></div>
+    <div class="ushss-chat-thread">
+      <div id="ushss-chat-messages" class="ushss-chat-messages"><div class="ushss-chat-empty">Select a person to start chatting.</div></div>
+      <div class="ushss-chat-compose"><input id="ushss-chat-input" maxlength="4000" placeholder="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ushssChatSend()}"><button type="button" onclick="ushssChatSend()">Send</button></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const token=()=>localStorage.getItem("ushss_token")||"";
+  const headers=()=>({Authorization:"Bearer "+token(),"Content-Type":"application/json"});
+  const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  let me=null, users=[], conversations=[], currentId=null, poll=null;
+
+  window.ushssChatToggle=function(){
+    const p=document.getElementById("ushss-chat-panel");
+    p.classList.toggle("open");
+    if(p.classList.contains("open")){ushssChatLoad(); if(!poll) poll=setInterval(ushssChatLoad,5000);}
+    else if(poll){clearInterval(poll);poll=null;}
+  };
+  async function api(url,opt={}){const r=await fetch(url,{...opt,headers:{...(opt.headers||{}),...headers()}}); if(r.status===401){return null;} const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||"Chat request failed"); return d;}
+  async function ushssChatLoad(){
+    try{
+      const [profile, conv]=await Promise.all([
+        api("/api/"+(location.pathname.includes("/faculty")?"faculty":location.pathname.includes("/cr")?"cr":location.pathname.includes("/admin")?"admin":"student")+"/profile"),
+        api("/api/chat/conversations")
+      ]);
+      if(profile) me=profile;
+      if(conv) conversations=conv;
+      const count=conversations.reduce((n,x)=>n+(x.unread||0),0);
+      const badge=document.getElementById("ushss-chat-count"); badge.textContent=count; badge.style.display=count?"block":"none";
+      renderList();
+      if(currentId) await openThread(currentId,true);
+    }catch(e){console.error(e);}
+  }
+  function renderList(){
+    const el=document.getElementById("ushss-chat-list");
+    let html='<button class="ushss-chat-new" onclick="ushssChatNew()">+ New Chat</button>';
+    if(!conversations.length) html+='<div class="ushss-chat-empty">No conversations yet.</div>';
+    html+=conversations.map(c=>{const u=c.user||{};return '<button class="'+(Number(u.id)===Number(currentId)?"active":"")+'" onclick="ushssChatOpen('+Number(u.id)+')"><div class="name">'+esc(u.full_name||u.username||"User")+'</div><div class="role">'+esc(u.role||"")+(c.unread?' · '+c.unread+' new':'')+'</div></button>';}).join("");
+    el.innerHTML=html;
+  }
+  window.ushssChatNew=async function(){
+    try{
+      users=await api("/api/chat/users")||[];
+      const el=document.getElementById("ushss-chat-list");
+      el.innerHTML='<button class="ushss-chat-new" onclick="ushssChatLoad()">← Back</button>'+
+        users.map(u=>'<button onclick="ushssChatOpen('+Number(u.id)+')"><div class="name">'+esc(u.full_name||u.username)+'</div><div class="role">'+esc(u.role||"")+'</div></button>').join("")+
+        (users.length?"":"<div class='ushss-chat-empty'>No other active users.</div>");
+    }catch(e){alert(e.message);}
+  };
+  window.ushssChatOpen=async function(id){currentId=Number(id);renderList();await openThread(currentId,false);};
+  async function openThread(id,silent){
+    try{
+      const d=await api("/api/chat/thread/"+id); if(!d)return;
+      currentId=id;
+      document.getElementById("ushss-chat-messages").innerHTML=(d.messages||[]).map(m=>{
+        const mine=me&&Number(m.sender_id)===Number(me.id);
+        return '<div class="ushss-chat-msg '+(mine?"mine":"theirs")+'">'+esc(m.message)+'<time>'+new Date(m.created_at).toLocaleString()+'</time></div>';
+      }).join("")||'<div class="ushss-chat-empty">No messages yet. Say hello.</div>';
+      const box=document.getElementById("ushss-chat-messages");box.scrollTop=box.scrollHeight;
+      if(!silent)renderList();
+    }catch(e){console.error(e);}
+  }
+  window.ushssChatSend=async function(){
+    if(!currentId){alert("Select a person first.");return;}
+    const input=document.getElementById("ushss-chat-input"), message=input.value.trim();
+    if(!message)return;
+    try{await api("/api/chat/send",{method:"POST",body:JSON.stringify({recipient_id:currentId,message})});input.value="";await openThread(currentId,false);await ushssChatLoad();}
+    catch(e){alert(e.message);}
+  };
+  // Super Admin gets a separate all-chat view without exposing it to ordinary admins.
+  async function superAdminCheck(){
+    try{
+      const d=await api("/api/chat/admin/all"); if(!d)return;
+      const list=document.getElementById("ushss-chat-list");
+      const b=document.createElement("div");b.className="ushss-chat-all";
+      b.innerHTML='<button type="button">👑 Super Admin: View All Chats</button>';
+      b.querySelector("button").onclick=()=>showAll(d);
+      list.appendChild(b);
+    }catch(e){}
+  }
+  function showAll(d){
+    const rows=d.messages||[], users=d.users||{};
+    document.getElementById("ushss-chat-messages").innerHTML=rows.length?rows.map(m=>{
+      const s=users[m.sender_id]||{}, r=users[m.recipient_id]||{};
+      return '<div class="ushss-chat-msg theirs" style="max-width:96%"><b>'+esc(s.full_name||s.username||"Unknown")+' → '+esc(r.full_name||r.username||"Unknown")+'</b><br>'+esc(m.message)+'<time>'+new Date(m.created_at).toLocaleString()+' · '+esc(s.email||"")+'</time></div>';
+    }).join(""):'<div class="ushss-chat-empty">No chat messages yet.</div>';
+  }
+  document.addEventListener("DOMContentLoaded",()=>{ushssChatLoad();setTimeout(superAdminCheck,800);});
+})();
+</script>
+
 </body>
 </html>
