@@ -1955,20 +1955,32 @@ function onRoleChange() {
   document.getElementById("row-batch").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
 }
-function saveUser() {
+async function saveUser() {
   const role=document.getElementById("f-role").value;
   const username=document.getElementById("f-username").value.trim();
   const name=document.getElementById("f-name").value.trim();
   const pwd=document.getElementById("f-pwd").value;
   if(!name){toast("Full name is required","error");return;}
   if(!editingId&&(!username||!pwd)){toast("Username and password required","error");return;}
+  const btn=document.getElementById("modal-save-btn");
+  const wasEditing=!!editingId;
   try{
     const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
-    if(editingId) dbUpdateUser(editingId,data);
-    else dbCreateUser({role,username,...data,password:pwd});
-    toast(editingId?"User updated":"User created","success");
-    closeModal(); renderPage(currentPage);
-  }catch(e){toast(e.message,"error");}
+    btn.disabled=true;
+    btn.textContent=wasEditing?"Saving...":"Creating...";
+    if(wasEditing) await dbUpdateUser(editingId,data);
+    else await dbCreateUser({role,username,...data,password:pwd});
+    toast(wasEditing?"User updated":"User created","success");
+    closeModal();
+    await fetchAdminUsers();
+    updateBadges();
+    renderPage(currentPage);
+  }catch(e){
+    toast(e.message||"Could not save user","error");
+  }finally{
+    btn.disabled=false;
+    btn.textContent=wasEditing?"Save Changes":"Create User";
+  }
 }
 
 /* DELETE / CONFIRM */
@@ -1996,21 +2008,28 @@ function openDeleteConfirm(id,name) {
 function closeConfirm() { deleteId=null; deleteCallback=null; document.getElementById("confirm-overlay").classList.remove("open"); }
 async function confirmDelete() {
   if(deleteCallback){
-    deleteCallback();
+    await deleteCallback();
     closeConfirm();
     return;
   }
 
   if(!deleteId) return;
 
+  const id=deleteId;
+  const btn=document.getElementById("confirm-ok-btn");
   try{
-    dbDeleteUser(deleteId);
+    btn.disabled=true;
+    btn.textContent="Deleting...";
+    await dbDeleteUser(id);
     toast("User deleted","success");
     closeConfirm();
+    updateBadges();
     renderPage(currentPage);
   }catch(error){
-    toast(error.message,"error");
-    closeConfirm();
+    toast(error.message||"Could not delete user","error");
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Delete";
   }
 }
 
