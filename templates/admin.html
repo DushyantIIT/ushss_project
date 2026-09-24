@@ -2010,7 +2010,7 @@ function openDeleteConfirm(id,name) {
   document.getElementById("confirm-overlay").classList.add("open");
 }
 function closeConfirm() { deleteId=null; deleteCallback=null; document.getElementById("confirm-overlay").classList.remove("open"); }
-function confirmDelete() {
+async function confirmDelete() {
   if(deleteCallback){
     deleteCallback();
     closeConfirm();
