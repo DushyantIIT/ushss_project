@@ -1118,15 +1118,26 @@ function updateRegistrationBatch() {
     endYear = currentYear + 2;
   }
 
-  if (endYear) {
-    batch.innerHTML = '<option value="">— Select —</option>';
+  batch.innerHTML = '<option value="">— Select —</option>';
+
+  if (programme === "B.A.") {
+    // Show BA batches from 2023 through the current admission year.
+    for (let startYear = 2023; startYear <= currentYear; startYear++) {
+      const end = startYear + 4;
+      const option = document.createElement("option");
+      option.value = startYear + "-" + String(end).slice(-2);
+      option.textContent = startYear + "-" + String(end).slice(-2);
+      if (startYear === currentYear) option.selected = true;
+      batch.appendChild(option);
+    }
+  } else if (programme === "M.A.") {
+    // MA is a 2-year programme; show the current batch.
+    const endYear = currentYear + 2;
     const option = document.createElement("option");
     option.value = currentYear + "-" + String(endYear).slice(-2);
     option.textContent = currentYear + "-" + String(endYear).slice(-2);
     option.selected = true;
     batch.appendChild(option);
-  } else {
-    batch.innerHTML = '<option value="">— Select —</option>';
   }
 }
 
