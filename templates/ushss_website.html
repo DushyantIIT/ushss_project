@@ -354,7 +354,10 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
       <label class="portal-label" id="portal-id-label">Enrollment Number</label>
       <input class="portal-input" id="portal-id" type="text" placeholder="Enter your enrollment number"/>
       <label class="portal-label">Password</label>
-      <input class="portal-input" id="portal-password" type="password" placeholder="Enter password"/>
+      <div style="position:relative">
+        <input class="portal-input" id="portal-password" type="password" placeholder="Enter password" style="padding-right:80px"/>
+        <button type="button" id="toggle-login-password" onclick="toggleLoginPassword()" aria-label="Show password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--maroon);font-size:12px;font-weight:500;cursor:pointer;padding:6px 8px">Show</button>
+      </div>
       <div class="portal-login-error" id="portal-login-error">Please fill both fields.</div>
       <button class="portal-signin" type="button" onclick="submitPortalLogin()">Sign In</button>
       <div class="portal-login-foot">Forgot password? Contact <a href="mailto:admin.ushss@ipu.ac.in">admin.ushss@ipu.ac.in</a></div>
@@ -1045,6 +1048,17 @@ function setPortalMode(mode) {
         loginBtn.classList.add("active");
     }
 }
+function toggleLoginPassword() {
+  const input = document.getElementById("portal-password");
+  const button = document.getElementById("toggle-login-password");
+  if (!input || !button) return;
+
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  button.textContent = showing ? "Show" : "Hide";
+  button.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+}
+
 async function submitPortalLogin() {
   const uid = document.getElementById("portal-id").value.trim();
   const pwd = document.getElementById("portal-password").value.trim();
