@@ -388,7 +388,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           <input class="portal-input" id="reg-email" type="email" placeholder="email@ipu.ac.in"/>
         </div>
         <div>
-          <label class="portal-label">Phone</label>
+          <label class="portal-label">Phone <span style="color:#e3c881">*</span></label>
           <input class="portal-input" id="reg-phone" type="tel" placeholder="+91 98xxx xxxxx"/>
         </div>
         <div>
@@ -1217,7 +1217,7 @@ async function submitPortalRegister() {
 
   const ENROLLMENT_ROLES = ["student", "cr"];
 
-  if (!name || !username || !email || !pwd || !pwd2) {
+  if (!name || !username || !email || !phone || !pwd || !pwd2) {
     err.textContent = "Please fill in all required fields.";
     err.style.display = "block";
     return;
