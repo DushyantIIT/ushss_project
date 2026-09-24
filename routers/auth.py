@@ -413,7 +413,7 @@ def registration_status(token: str = Depends(oauth2_scheme)):
         raise HTTPException(401, "Invalid or expired token")
 
     res = sb.table("users").select(
-        "status, rejection_reason, full_name, email, role, email_verified, phone_verified"
+        "status, rejection_reason, full_name, email, role"
     ).eq("id", uid).limit(1).execute()
 
     if not res.data:
