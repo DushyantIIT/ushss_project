@@ -832,6 +832,16 @@ function updatePortalUI(){
 }
 
 loadPortalData().then(initDashboard).catch(e=>{console.error(e);toast('Could not load portal data from Supabase','err');});
+function logoutStudent(){
+  try{
+    localStorage.removeItem('ushss_token');
+    localStorage.removeItem('ushss_user');
+    localStorage.removeItem('ushss_pending_token');
+    sessionStorage.clear();
+  }finally{
+    window.location.replace('/');
+  }
+}
 async function changeMyPassword(){
   const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
   if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
