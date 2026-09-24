@@ -467,6 +467,33 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
     if target["role"] == "admin" and not admin.get("is_super_admin", False):
         raise HTTPException(403, "Only the Super Admin can approve Admin registrations.")
 
+    # Approval is the final gate. Keep the Supabase Auth identity in sync
+    # with the portal's verified email/phone flags so the approved user can
+    # sign in immediately.
+    auth_uid_res = (
+        sb.table("users")
+        .select("supabase_uid, email_verified, phone_verified")
+        .eq("id", uid)
+        .single()
+        .execute()
+    )
+    auth_profile = auth_uid_res.data or {}
+    auth_uid = auth_profile.get("supabase_uid")
+    if auth_uid:
+        try:
+            confirm_fields = {}
+            if auth_profile.get("email_verified"):
+                confirm_fields["email_confirm"] = True
+            if auth_profile.get("phone_verified"):
+                confirm_fields["phone_confirm"] = True
+            if confirm_fields:
+                sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
+        except Exception as e:
+            print(
+                f"APPROVAL AUTH SYNC WARNING: username={target['username']!r} "
+                f"type={type(e).__name__}"
+            )
+
     sb.table("users").update({
             "status":           "approved",
             "is_active":        True,
