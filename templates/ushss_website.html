@@ -1111,6 +1111,10 @@ async function submitPortalLogin() {
       if (detail.status === "rejected" && detail.reason) {
         sessionStorage.setItem("ushss_rejection_reason", detail.reason);
       }
+      if (detail.status === "pending" && detail.pending_token) {
+        localStorage.setItem("ushss_pending_token", detail.pending_token);
+        localStorage.removeItem("ushss_token");
+      }
       closePortalLogin();
       window.location.href = detail.redirect_url;
       return;
