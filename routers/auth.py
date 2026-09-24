@@ -160,6 +160,27 @@ def login(body: LoginRequest):
     elif status_val != "approved":
         raise HTTPException(401, "Invalid username, role, or password")
 
+    # Admin-approved accounts must be usable in Supabase Auth immediately.
+    # Sync the Auth verification flag before password sign-in. This does not
+    # change the user's password and only runs for an already-approved,
+    # active profile linked to its Supabase Auth identity.
+    auth_uid = user.get("supabase_uid")
+    if auth_uid:
+        try:
+            confirm_fields = {"email_confirm": True}
+            if user.get("phone_verified"):
+                confirm_fields["phone_confirm"] = True
+            sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
+            print(
+                f"LOGIN AUTH SYNC: username={body.username!r} "
+                f"confirmed={list(confirm_fields)}"
+            )
+        except Exception as sync_error:
+            print(
+                f"LOGIN AUTH SYNC FAILED: username={body.username!r} "
+                f"type={type(sync_error).__name__} detail={str(sync_error)[:160]!r}"
+            )
+
     authenticated = False
     try:
         auth_res = sb.auth.sign_in_with_password({
