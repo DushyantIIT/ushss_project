@@ -16,6 +16,8 @@ import bcrypt
 
 load_dotenv()
 
+USE_SQLITE_FALLBACK: bool = os.getenv("USE_SQLITE_FALLBACK", "").strip() == "1"
+
 SUPABASE_URL: str = (
     os.getenv("SUPABASE_URL")
     or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
