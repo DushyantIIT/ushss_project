@@ -274,7 +274,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(139,32,32,.2)">🎓</div>
           <div>
-            <div class="stat-num" id="s-total">38</div>
+            <div class="stat-num" id="s-total">0</div>
             <div class="stat-lbl">Total Students</div>
             <div class="stat-sub" style="color:var(--green)">● 36 active</div>
           </div>
@@ -282,7 +282,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(201,168,76,.1)">📋</div>
           <div>
-            <div class="stat-num" id="s-sessions">12</div>
+            <div class="stat-num" id="s-sessions">0</div>
             <div class="stat-lbl">Sessions This Month</div>
             <div class="stat-sub" style="color:var(--muted)">Last: Today</div>
           </div>
@@ -290,7 +290,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(46,204,113,.1)">📈</div>
           <div>
-            <div class="stat-num" id="s-avg">78%</div>
+            <div class="stat-num" id="s-avg">0%</div>
             <div class="stat-lbl">Avg Attendance</div>
             <div class="stat-sub" style="color:var(--amber)">⚠ 4 below 75%</div>
           </div>
@@ -298,7 +298,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(52,152,219,.1)">📢</div>
           <div>
-            <div class="stat-num">3</div>
+            <div class="stat-num" id="s-announcements">0</div>
             <div class="stat-lbl">Announcements</div>
             <div class="stat-sub" style="color:var(--muted)">2 this week</div>
           </div>
@@ -556,32 +556,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
 <script>
 /* ═══ DATA STORE ═══ */
-const DB = {
-  students: [
-    {id:1,roll:"2301001",name:"Arjun Sharma",prog:"M.A. English",batch:"2023",att:82,active:true},
-    {id:2,roll:"2301002",name:"Priya Verma",prog:"M.A. English",batch:"2023",att:91,active:true},
-    {id:3,roll:"2301003",name:"Riya Kapoor",prog:"M.A. English",batch:"2023",att:68,active:true},
-    {id:4,roll:"2401001",name:"Rahul Gupta",prog:"M.A. Economics",batch:"2024",att:73,active:true},
-    {id:5,roll:"2401002",name:"Sneha Kapoor",prog:"M.A. Economics",batch:"2024",att:55,active:true},
-    {id:6,roll:"2301004",name:"Mohit Singh",prog:"M.A. English",batch:"2023",att:88,active:true},
-    {id:7,roll:"2301005",name:"Ananya Roy",prog:"M.A. Psychology",batch:"2023",att:95,active:true},
-    {id:8,roll:"2301006",name:"Dev Malhotra",prog:"M.A. Psychology",batch:"2023",att:71,active:true},
-    {id:9,roll:"2401003",name:"Kavya Reddy",prog:"M.A. Economics",batch:"2024",att:84,active:true},
-    {id:10,roll:"2401004",name:"Vikram Nair",prog:"M.A. English",batch:"2024",att:62,active:false},
-  ],
-  announcements: [
-    {id:1,title:"Assignment 2 Deadline Extended",body:"The submission deadline for Assignment 2 (Postcolonial Literature) has been extended to 30th April 2025 due to the upcoming seminar week.",target:"M.A. English — Sem III",priority:"important",ts:"2025-04-14 10:30"},
-    {id:2,title:"Guest Lecture on 22nd April",body:"Prof. Ramesh Gupta from Delhi University will deliver a special lecture on Constitutional Democracy at 3 PM in Seminar Hall A.",target:"All",priority:"normal",ts:"2025-04-10 09:00"},
-    {id:3,title:"Mid-Semester Results Published",body:"Mid-semester examination results are now available on the university portal. Students are encouraged to review and approach during office hours for clarification.",target:"All",priority:"urgent",ts:"2025-04-08 14:15"},
-  ],
-  sessions: [
-    {date:"2025-04-14",cls:"M.A. English — Sem III",topic:"Postcolonial Theory",present:28,total:32,duration:"15 min"},
-    {date:"2025-04-12",cls:"M.A. Psychology — Sem I",topic:"Cognitive Behavioral Therapy",present:22,total:26,duration:"10 min"},
-    {date:"2025-04-10",cls:"M.A. Economics — Sem II",topic:"Keynesian Economics",present:18,total:22,duration:"15 min"},
-    {date:"2025-04-08",cls:"M.A. English — Sem III",topic:"Said's Orientalism",present:30,total:32,duration:"15 min"},
-    {date:"2025-04-05",cls:"M.A. English — Sem III",topic:"Diaspora Literature",present:25,total:32,duration:"30 min"},
-  ],
-};
+const DB = { students:[], announcements:[], sessions:[], timetable:[] };
+let facultyProfile=null;
+;
 
 let attStatus = {}; // roll -> 'present'|'absent'|null
 let timerInterval = null;
@@ -610,6 +587,31 @@ function goPage(id, el) {
   if (id === 'students') renderRoster(DB.students);
   if (id === 'history') renderFullHistory();
 }
+
+/* SUPABASE DATA */
+async function loadFacultyData(){
+  const token=localStorage.getItem('ushss_token');if(!token)return;
+  const headers={'Authorization':'Bearer '+token};
+  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutFaculty();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
+  const [profile,students,anns,sessions,timetable]=await Promise.all([
+    get('/api/faculty/profile'),get('/api/faculty/students'),get('/api/faculty/announcements'),get('/api/faculty/attendance/sessions'),get('/api/faculty/timetable')
+  ]);
+  facultyProfile=profile;
+  DB.students=(students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:0,active:s.is_active}));
+  DB.announcements=anns||[];
+  DB.sessions=(sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:0,total:0,duration:'',is_open:s.is_open}));
+  DB.timetable=timetable||[];
+  updateFacultyStats();
+  const course=document.getElementById('att-course');
+  if(course&&DB.timetable.length){course.innerHTML=[...new Set(DB.timetable.map(s=>s.programme+' — '+s.batch))].map(x=>'<option>'+x+'</option>').join('');}
+}
+function updateFacultyStats(){
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('s-total',DB.students.length);
+  set('s-sessions',DB.sessions.length);
+  set('s-announcements',DB.announcements.length);
+}
+loadFacultyData().then(()=>initDashboard()).catch(e=>{console.error(e);toast('Could not load faculty data from Supabase','err');});
 
 /* ═══ DASHBOARD INIT ═══ */
 function initDashboard() {
