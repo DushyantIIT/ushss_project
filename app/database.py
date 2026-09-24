@@ -197,6 +197,16 @@ class ResponseWrapper:
         self.data = data
 
 
+class _NotFilterProxy:
+    """Implements Supabase .not_.is_(...) query chaining."""
+    def __init__(self, parent):
+        self.parent = parent
+
+    def is_(self, col: str, val):
+        self.parent._filters.append((col, "is_not", val))
+        return self.parent
+
+
 # ── Table Query Builder Wrapper ───────────────────────────────────────────────
 class TableQueryBuilder:
     def __init__(self, table_name: str, real_sb: Client = None):
@@ -213,10 +223,14 @@ class TableQueryBuilder:
 
     @property
     def not_(self):
-        return self
+        return _NotFilterProxy(self)
 
     def is_(self, col: str, val):
         self._filters.append((col, "is", val))
+        return self
+
+    def or_(self, filters: str, reference_table: str = None):
+        self._filters.append(("__or__", filters, reference_table))
         return self
 
     def select(self, cols: str = "*"):
@@ -274,10 +288,14 @@ class TableQueryBuilder:
                 if self._action == "select":
                     q = real_table.select(self._select_cols)
                     for col, op, val in self._filters:
-                        if op == "eq": q = q.eq(col, val)
+                        if col == "__or__":
+                            q = q.or_(op, reference_table=val) if val else q.or_(op)
+                        elif op == "eq": q = q.eq(col, val)
                         elif op == "neq": q = q.neq(col, val)
                         elif op == "in": q = q.in_(col, val)
                         elif op == "ilike": q = q.ilike(col, val)
+                        elif op == "is": q = q.is_(col, val)
+                        elif op == "is_not": q = q.not_.is_(col, val)
                     for col, desc in self._orders:
                         q = q.order(col, desc=desc)
                     if self._limit_num is not None:
@@ -345,6 +363,16 @@ class TableQueryBuilder:
                 elif op == "ilike":
                     where_clauses.append(f"{clean_col} LIKE ?")
                     params.append(val.replace("%", "%"))
+                elif op == "is":
+                    if str(val).lower() == "null":
+                        where_clauses.append(f"{clean_col} IS NULL")
+                    else:
+                        where_clauses.append(f"{clean_col} IS {val}")
+                elif op == "is_not":
+                    if str(val).lower() == "null":
+                        where_clauses.append(f"{clean_col} IS NOT NULL")
+                    else:
+                        where_clauses.append(f"{clean_col} IS NOT {val}")
 
             if where_clauses:
                 sql += " WHERE " + " AND ".join(where_clauses)
