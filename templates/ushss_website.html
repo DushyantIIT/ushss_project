@@ -415,10 +415,6 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           <label class="portal-label">Batch</label>
           <select class="portal-reg-select" id="reg-batch">
             <option value="">— Select —</option>
-            <option>2024-26</option>
-            <option>2023-25</option>
-            <option>2022-24</option>
-            <option>2025-27</option>
           </select>
         </div>
         <div id="reg-row-desig" style="display:none" class="full">
@@ -1108,6 +1104,32 @@ async function submitPortalLogin() {
 }
 
 // ── Registration ──────────────────────────────────────────────────────────
+function updateRegistrationBatch() {
+  const programme = document.getElementById("reg-prog").value.trim();
+  const batch = document.getElementById("reg-batch");
+  if (!batch) return;
+
+  const currentYear = new Date().getFullYear();
+  let endYear = null;
+
+  if (programme === "B.A.") {
+    endYear = currentYear + 4;
+  } else if (programme === "M.A.") {
+    endYear = currentYear + 2;
+  }
+
+  if (endYear) {
+    batch.innerHTML = '<option value="">— Select —</option>';
+    const option = document.createElement("option");
+    option.value = currentYear + "-" + String(endYear).slice(-2);
+    option.textContent = currentYear + "-" + String(endYear).slice(-2);
+    option.selected = true;
+    batch.appendChild(option);
+  } else {
+    batch.innerHTML = '<option value="">— Select —</option>';
+  }
+}
+
 function onRegRoleChange() {
   const role = document.getElementById("reg-role").value;
   const isFaculty = role === "faculty";
@@ -1125,6 +1147,9 @@ function onRegRoleChange() {
     input.placeholder = "e.g. 2401001";
   }
 }
+
+document.getElementById("reg-prog").addEventListener("change", updateRegistrationBatch);
+updateRegistrationBatch();
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
