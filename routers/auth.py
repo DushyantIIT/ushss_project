@@ -181,7 +181,10 @@ def login(body: LoginRequest):
         # Approved profiles can pre-date the Auth verification sync. If the
         # portal already records the email/phone as verified, repair the linked
         # Supabase Auth identity and retry the same password once.
-        print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__}")
+        print(
+            f"SUPABASE SIGNIN ERROR: username={body.username!r} "
+            f"type={type(e).__name__} detail={str(e)[:240]!r}"
+        )
         auth_uid = user.get("supabase_uid")
         if auth_uid:
             try:
