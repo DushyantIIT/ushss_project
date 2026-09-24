@@ -682,28 +682,7 @@ function initDB() {
     _annId: 1,
   };
 
-  const users = [
-    {role:"admin",username:"admin001",password:"Admin@1234",full_name:"USHSS Administrator",email:"admin.ushss@ipu.ac.in",phone:"",department:"Administration",programme:"",batch:"",designation:"Super Administrator",is_active:1,is_super_admin:true},
-    {role:"student",username:"2301001",password:"Student@123",full_name:"Arjun Sharma",email:"arjun.sharma@ipu.ac.in",phone:"+91 98100 11001",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
-    {role:"student",username:"2301002",password:"Student@123",full_name:"Priya Verma",email:"priya.verma@ipu.ac.in",phone:"+91 98100 11002",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"",is_active:1},
-    {role:"student",username:"2401001",password:"Student@123",full_name:"Rahul Gupta",email:"rahul.gupta@ipu.ac.in",phone:"+91 98100 11003",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"",is_active:1},
-    {role:"student",username:"2401002",password:"Student@123",full_name:"Sneha Kapoor",email:"sneha.k@ipu.ac.in",phone:"+91 98100 11004",department:"Social Sciences",programme:"M.A. Sociology",batch:"2024",designation:"",is_active:1},
-    {role:"student",username:"2301003",password:"Student@123",full_name:"Arjun Mishra",email:"arjun.m@ipu.ac.in",phone:"+91 98100 11005",department:"Humanities",programme:"M.A. Philosophy",batch:"2023",designation:"",is_active:0},
-    // B.A. students
-    {role:"student",username:"2401101",password:"Student@123",full_name:"Kabir Mehta",email:"kabir.m@ipu.ac.in",phone:"+91 98100 12001",department:"Humanities",programme:"B.A. (Hons.) English",batch:"2024",designation:"",is_active:1},
-    {role:"student",username:"2401102",password:"Student@123",full_name:"Ananya Singh",email:"ananya.s@ipu.ac.in",phone:"+91 98100 12002",department:"Humanities",programme:"B.A. (Hons.) English",batch:"2024",designation:"",is_active:1},
-    {role:"student",username:"2401201",password:"Student@123",full_name:"Riya Agarwal",email:"riya.a@ipu.ac.in",phone:"+91 98100 12003",department:"Social Sciences",programme:"B.A. (Hons.) Economics",batch:"2024",designation:"",is_active:1},
-    {role:"faculty",username:"fac001",password:"Faculty@123",full_name:"Dr. Anup Singh Beniwal",email:"anupbeniwal@ipu.ac.in",phone:"011-2530-2167",department:"USHSS",programme:"",batch:"",designation:"Professor",is_active:1},
-    {role:"faculty",username:"fac002",password:"Faculty@123",full_name:"Dr. Shuchi Sharma",email:"shuchi.sharma@ipu.ac.in",phone:"011-2530-2168",department:"USHSS",programme:"",batch:"",designation:"Dean / Professor",is_active:1},
-    {role:"faculty",username:"fac003",password:"Faculty@123",full_name:"Dr. Chetna Tiwari",email:"chetna.ushss@ipu.ac.in",phone:"011-2530-2169",department:"USHSS",programme:"",batch:"",designation:"Associate Professor",is_active:1},
-    {role:"faculty",username:"fac004",password:"Faculty@123",full_name:"Dr. Vivek Sachdeva",email:"viveksachdeva@ipu.ac.in",phone:"011-2530-2170",department:"USHSS",programme:"",batch:"",designation:"Professor",is_active:1},
-    {role:"cr",username:"cr2301001",password:"Cr@12345",full_name:"Amit Kumar (CR)",email:"cr.english@ipu.ac.in",phone:"+91 98100 22001",department:"Humanities",programme:"M.A. English",batch:"2023",designation:"Class Representative",is_active:1},
-    {role:"cr",username:"cr2401001",password:"Cr@12345",full_name:"Neha Singh (CR)",email:"cr.eco@ipu.ac.in",phone:"+91 98100 22002",department:"Social Sciences",programme:"M.A. Economics",batch:"2024",designation:"Class Representative",is_active:1},
-  ];
-  let id=1;
-  for(const u of users) db.users.push({id:id++,...u,is_super_admin:u.is_super_admin===true,password_hash:hash(u.password),created_at:now(),last_login:null});
-  db._nextId=id;
-
+  // Users are loaded from Supabase via the admin API. No user records are hardcoded here.
   /* ── Seed timetables ──────────────────────────────────────────── */
 
   // M.A. English — Semester III
@@ -821,89 +800,69 @@ function initDB() {
    CRUD HELPERS
 ══════════════════════════════════════════ */
 function dbGetUsers(f={}) {
-  const db=loadDB(); let u=[...db.users];
+  let u=[...(window.__supabaseUsers||[])];
   if(f.role) u=u.filter(x=>x.role===f.role);
-  if(f.search){const q=f.search.toLowerCase();u=u.filter(x=>x.full_name.toLowerCase().includes(q)||x.username.toLowerCase().includes(q)||(x.email||"").toLowerCase().includes(q));}
-  return u.sort((a,b)=>b.id-a.id);
+  if(f.search){
+    const q=f.search.toLowerCase();
+    u=u.filter(x=>(x.full_name||"").toLowerCase().includes(q) ||
+      (x.username||"").toLowerCase().includes(q) ||
+      (x.email||"").toLowerCase().includes(q));
+  }
+  return u.sort((a,b)=>Number(b.id||0)-Number(a.id||0));
 }
 function dbGetStats() {
-  const db=loadDB(); const counts={};
-  for(const u of db.users) counts[u.role]=(counts[u.role]||0)+1;
-  return {counts,active:db.users.filter(u=>u.is_active).length,total:db.users.length,log:[...db.audit].reverse().slice(0,30)};
+  const users=window.__supabaseUsers||[];
+  const counts={};
+  for(const u of users) counts[u.role]=(counts[u.role]||0)+1;
+  return {
+    counts,
+    active:users.filter(u=>u.is_active).length,
+    total:users.length,
+    log:window.__supabaseAudit||[]
+  };
 }
-function dbCreateUser(data) {
-  const db=loadDB();
-  if(db.users.find(u=>u.username===data.username)) throw new Error("Username already exists");
-  const now=new Date().toISOString().replace("T"," ").substring(0,19);
-  const user={id:db._nextId++,role:data.role,username:data.username,password_hash:hash(data.password),full_name:data.full_name,email:data.email||"",phone:data.phone||"",department:data.department||"",programme:data.programme||"",batch:data.batch||"",designation:data.designation||"",is_active:1,is_super_admin:false,created_at:now,last_login:null};
-  db.users.push(user);
-  db.audit.push({id:db._nextId++,user_id:1,action:"CREATE_USER",detail:`Created ${data.role} ${data.username}`,ts:now});
-  saveDB(db); return user;
+async function fetchAdminUsers() {
+  const res=await fetch("/api/admin/users", {headers:authHeaders()});
+  if(res.status===401){ logoutAdmin(); return []; }
+  if(!res.ok) throw new Error("Could not load users from Supabase");
+  const data=await res.json();
+  window.__supabaseUsers=data.users||[];
+  return window.__supabaseUsers;
 }
-function dbUpdateUser(id,data) {
-  const db=loadDB();
-  const idx=db.users.findIndex(u=>u.id===id);
-  if(idx===-1) throw new Error("User not found");
-
-  const user=db.users[idx];
-
-  // The permanent Super Admin must always remain active.
-  // Backend authorization remains the real security layer.
-  const safeData={...data};
-  if(user.is_super_admin===true){
-    safeData.is_active=1;
-  }
-
-  if(safeData.username && safeData.username!==user.username && db.users.some(u=>u.username===safeData.username)){
-    throw new Error("Username already exists");
-  }
-
-  if(safeData.password){
-    safeData.password_hash=hash(safeData.password);
-  }
-
-  delete safeData.password;
-  delete safeData.is_super_admin; // Never promote/demote through the normal edit form.
-
-  db.users[idx]={...user,...safeData,is_super_admin:user.is_super_admin===true};
-
-  const now=new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({
-    id:db._nextId++,
-    user_id:1,
-    action:"UPDATE_USER",
-    detail:`Updated ${db.users[idx].role} ${db.users[idx].username}`,
-    ts:now
+async function dbCreateUser(data) {
+  const res=await fetch("/api/admin/users", {
+    method:"POST", headers:authHeaders(), body:JSON.stringify(data)
   });
-
-  saveDB(db);
-  return db.users[idx];
+  const result=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(result.detail||"Could not create user");
+  await fetchAdminUsers();
+  return result;
 }
-
-function dbDeleteUser(id) {
-  const db=loadDB();
-  const idx=db.users.findIndex(u=>u.id===id);
-  if(idx===-1) throw new Error("User not found");
-
-  const user=db.users[idx];
-
-  if(user.is_super_admin===true){
-    throw new Error("The Super Admin cannot be deleted");
-  }
-
-  db.users.splice(idx,1);
-
-  const now=new Date().toISOString().replace("T"," ").substring(0,19);
-  db.audit.push({
-    id:db._nextId++,
-    user_id:1,
-    action:"DELETE_USER",
-    detail:`Deleted ${user.role} ${user.username}`,
-    ts:now
+async function dbUpdateUser(id,data) {
+  const res=await fetch("/api/admin/users/"+id, {
+    method:"PUT", headers:authHeaders(), body:JSON.stringify(data)
   });
-
-  saveDB(db);
-  return user;
+  const result=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(result.detail||"Could not update user");
+  await fetchAdminUsers();
+  return result;
+}
+async function dbDeleteUser(id) {
+  const res=await fetch("/api/admin/users/"+id, {
+    method:"DELETE", headers:authHeaders()
+  });
+  const result=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(result.detail||"Could not delete user");
+  await fetchAdminUsers();
+  return result;
+}
+async function fetchAdminStats() {
+  const res=await fetch("/api/admin/stats", {headers:authHeaders()});
+  if(res.status===401){ logoutAdmin(); return null; }
+  if(!res.ok) throw new Error("Could not load dashboard statistics");
+  const data=await res.json();
+  window.__supabaseAudit=data.log||[];
+  return data;
 }
 function logAudit(action,detail) {
   const db=loadDB(); const ts=new Date().toISOString().replace("T"," ").substring(0,19);
