@@ -184,3 +184,27 @@ def session_records(sid: int, faculty: dict = Depends(require_faculty)):
         "present":  sum(1 for r in (records.data or []) if r["status"] == "present"),
         "absent":   sum(1 for r in (records.data or []) if r["status"] == "absent"),
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SHARED CLASS CONTENT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/announcements", summary="View announcements")
+def get_announcements(faculty: dict = Depends(require_faculty)):
+    return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+
+@router.get("/assignments", summary="View assignments")
+def get_assignments(faculty: dict = Depends(require_faculty)):
+    return sb.table("assignments").select("*").eq("is_active", True).order("due_date").execute().data or []
+
+@router.get("/materials", summary="View study materials")
+def get_materials(faculty: dict = Depends(require_faculty)):
+    return sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+
+@router.get("/attendance/sessions", summary="View your attendance sessions")
+def attendance_sessions(faculty: dict = Depends(require_faculty)):
+    q = sb.table("attendance_sessions").select(
+        "id, slot_id, faculty_id, date, opened_at, closed_at, is_open, timetable_slots(subject, programme, batch)"
+    ).eq("faculty_id", faculty["id"]).order("date", desc=True)
+    return q.execute().data or []
