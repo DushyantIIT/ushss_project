@@ -844,19 +844,5 @@ async function changeMyPassword(){
   }catch(e){toast(e.message,'err');}
 }
 </script>
-
-async function changeMyPassword(){
-  const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
-  if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
-  if(next.value.length<6){toast('New password must be at least 6 characters','err');return;}
-  if(next.value!==confirm.value){toast('New passwords do not match','err');return;}
-  try{
-    const r=await fetch('/api/change-password',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({current_password:current.value,new_password:next.value,confirm_password:confirm.value})});
-    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not change password');
-    current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
-  }catch(e){toast(e.message,'err');}
-}
-
-
 </body>
 </html>
