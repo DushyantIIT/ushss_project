@@ -382,7 +382,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           </select>
         </div>
         <div class="form-group" id="row-prog"><label class="form-label">Programme</label>
-          <select class="form-select" id="f-prog">
+          <select class="form-select" id="f-prog" onchange="populateBatchOptions();populateSemesterOptions(this.value);">
             <option value="">— Select —</option>
             <option>B.A. (Hons.) English</option>
             <option>B.A. (Hons.) Economics</option>
