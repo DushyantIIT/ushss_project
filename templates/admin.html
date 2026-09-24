@@ -1858,7 +1858,7 @@ function renderUserTable(role) {
         ${superBadge}
       </td>
       <td>${u.email?`<span style="font-size:12px">${u.email}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
-      ${hasStudentFields?`<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div></td>`:""}
+      ${hasStudentFields?`<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div><div style="font-size:11px;color:var(--gold);margin-top:2px">${u.semester?`Semester ${u.semester}`:"Semester —"}</div></td>`:""}
       ${hasFacultyFields?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
       ${role==="admin"?`<td style="font-size:12px">${isSuperAdmin?"Super Administrator":(u.designation||"Administrator")}</td>`:""}
       <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
