@@ -205,3 +205,34 @@ def attendance_history(
         "percentage": round((present / total * 100), 1) if total else 0,
         "records":    records,
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SHARED CLASS CONTENT
+# ═══════════════════════════════════════════════════════════════
+
+@router.get("/announcements", summary="View announcements for your class")
+def get_announcements(student: dict = Depends(require_student)):
+    res = sb.table("announcements").select("*").order("ts", desc=True).execute()
+    rows = res.data or []
+    target = (student.get("programme") or "").lower()
+    return [a for a in rows if str(a.get("target") or "").lower() in ("all", "student", "students", "") or
+            (target and target in str(a.get("target") or "").lower())]
+
+@router.get("/assignments", summary="View assignments for your class")
+def get_assignments(student: dict = Depends(require_student)):
+    q = sb.table("assignments").select("*").eq("is_active", True)
+    if student.get("programme"):
+        q = q.or_(f"programme.is.null,programme.eq.{student['programme']}")
+    if student.get("batch"):
+        q = q.or_(f"batch.is.null,batch.eq.{student['batch']}")
+    return q.order("due_date").execute().data or []
+
+@router.get("/materials", summary="View study materials for your class")
+def get_materials(student: dict = Depends(require_student)):
+    q = sb.table("study_materials").select("*").eq("is_active", True)
+    if student.get("programme"):
+        q = q.or_(f"programme.is.null,programme.eq.{student['programme']}")
+    if student.get("batch"):
+        q = q.or_(f"batch.is.null,batch.eq.{student['batch']}")
+    return q.order("uploaded_at", desc=True).execute().data or []
