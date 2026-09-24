@@ -1217,7 +1217,7 @@ async function submitPortalRegister() {
 
   const ENROLLMENT_ROLES = ["student", "cr"];
 
-  if (!name || !username || !email || !pwd || !pwd2) {
+  if (!name || !username || !email || !phone || !pwd || !pwd2) {
     err.textContent = "Please fill in all required fields.";
     err.style.display = "block";
     return;
