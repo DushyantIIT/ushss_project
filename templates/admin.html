@@ -2048,7 +2048,15 @@ window.addEventListener("keydown",e=>{
 
 /* INIT */
 loadAdminProfile();
-fetchPendingRequests().then(() => {
+Promise.all([
+  fetchAdminUsers(),
+  fetchAdminDashboardData(),
+  fetchPendingRequests()
+]).then(() => {
+  updateBadges();
+  showPage("dashboard");
+}).catch(e => {
+  console.error("Admin dashboard load failed:", e);
   showPage("dashboard");
 });
 
