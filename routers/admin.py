@@ -447,7 +447,10 @@ def list_pending_requests(
 def approve_request(uid: int, admin: dict = Depends(require_admin)):
     existing = (
         sb.table("users")
-        .select("id, username, role, status, email, full_name, email_verified, phone_verified")
+        .select(
+            "id, username, role, status, email, full_name, "
+            "email_verified, phone_verified, supabase_uid"
+        )
         .eq("id", uid)
         .single()
         .execute()
@@ -467,32 +470,36 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
     if target["role"] == "admin" and not admin.get("is_super_admin", False):
         raise HTTPException(403, "Only the Super Admin can approve Admin registrations.")
 
-    # Approval is the final gate. Keep the Supabase Auth identity in sync
-    # with the portal's verified email/phone flags so the approved user can
-    # sign in immediately.
-    auth_uid_res = (
-        sb.table("users")
-        .select("supabase_uid, email_verified, phone_verified")
-        .eq("id", uid)
-        .single()
-        .execute()
-    )
-    auth_profile = auth_uid_res.data or {}
-    auth_uid = auth_profile.get("supabase_uid")
-    if auth_uid:
-        try:
-            confirm_fields = {}
-            if auth_profile.get("email_verified"):
-                confirm_fields["email_confirm"] = True
-            if auth_profile.get("phone_verified"):
-                confirm_fields["phone_confirm"] = True
-            if confirm_fields:
-                sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
-        except Exception as e:
-            print(
-                f"APPROVAL AUTH SYNC WARNING: username={target['username']!r} "
-                f"type={type(e).__name__}"
-            )
+    # Approval is the final gate. The Supabase Auth identity must also be
+    # confirmed before the profile is marked approved. This makes the
+    # portal's verification state and Supabase Auth state agree.
+    auth_uid = target.get("supabase_uid")
+    if not auth_uid:
+        raise HTTPException(
+            400,
+            "This account has no linked Supabase Auth identity. "
+            "The registration must be repaired before approval."
+        )
+
+    try:
+        confirm_fields = {"email_confirm": True}
+        if target.get("phone_verified"):
+            confirm_fields["phone_confirm"] = True
+        sb.auth.admin.update_user_by_id(auth_uid, confirm_fields)
+        print(
+            f"APPROVAL AUTH SYNC: username={target['username']!r} "
+            f"email_confirm=True phone_confirm={bool(target.get('phone_verified'))}"
+        )
+    except Exception as e:
+        print(
+            f"APPROVAL AUTH SYNC FAILED: username={target['username']!r} "
+            f"type={type(e).__name__} detail={str(e)[:200]!r}"
+        )
+        raise HTTPException(
+            502,
+            "The Supabase Auth account could not be verified. "
+            "The registration was not approved; please try again."
+        )
 
     sb.table("users").update({
             "status":           "approved",
