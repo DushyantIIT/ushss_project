@@ -391,10 +391,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <option>M.A. Political Science</option><option>M.A. History</option><option>M.A. Philosophy</option><option>Ph.D.</option>
           </select>
         </div>
-        <div class="form-group" id="row-batch"><label class="form-label">Batch Year</label>
-          <select class="form-select" id="f-batch">
-            <option value="">— Select —</option><option>2021</option><option>2022</option><option>2023</option><option>2024</option><option>2025</option>
+        <div class="form-group" id="row-batch"><label class="form-label">Batch / Course Duration</label>
+          <select class="form-select" id="f-batch" onchange="validateBatchForProgramme()">
+            <option value="">— Select programme first —</option>
           </select>
+          <div id="batch-help" style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px"></div>
         </div>
         <div class="form-group" id="row-desig"><label class="form-label">Designation</label><input class="form-input" id="f-desig" placeholder="e.g. Professor"/></div>
         <div class="form-group"><label class="form-label">Password <span class="required" id="pwd-req">*</span></label><input class="form-input" id="f-pwd" type="password" placeholder="Min 8 chars"/></div>
@@ -1946,6 +1947,45 @@ function closeModal() {
   editingId=null;
 }
 function closeModal2(id) { document.getElementById(id).classList.remove("open"); }
+function getProgrammeDuration(programme){
+  const p=(programme||"").toLowerCase();
+  if(p.includes("b.a.") || p.includes("b.a ") || p.includes("ba english") || p.includes("ba economics")) return 4;
+  if(p.includes("m.a.") || p.includes("m.a ") || p.includes("ma english") || p.includes("ma economics")) return 2;
+  return null;
+}
+function populateBatchOptions(selected=""){
+  const programme=document.getElementById("f-prog").value;
+  const batch=document.getElementById("f-batch");
+  const help=document.getElementById("batch-help");
+  const duration=getProgrammeDuration(programme);
+  const currentYear=new Date().getFullYear();
+  batch.innerHTML="";
+  if(!duration){
+    batch.innerHTML='<option value="">— Select programme first —</option>';
+    help.textContent="";
+    return;
+  }
+  batch.innerHTML='<option value="">— Select batch —</option>';
+  for(let start=2021;start<=currentYear+1;start++){
+    const end=start+duration;
+    const value=`${start}-${end}`;
+    const option=document.createElement("option");
+    option.value=value; option.textContent=value; batch.appendChild(option);
+  }
+  if(selected && !Array.from(batch.options).some(o=>o.value===String(selected))){
+    const option=document.createElement("option");
+    option.value=selected; option.textContent=selected+" (current)"; batch.appendChild(option);
+  }
+  batch.value=selected||"";
+  help.textContent=duration===4 ? "B.A. programme: 4-year batch (e.g. 2025-2029)." : "M.A. programme: 2-year batch (e.g. 2025-2027).";
+}
+function validateBatchForProgramme(){
+  const duration=getProgrammeDuration(document.getElementById("f-prog").value);
+  const batch=document.getElementById("f-batch").value;
+  if(!batch||!duration) return true;
+  const m=batch.match(/^(\d{4})-(\d{4})$/);
+  return !!m && Number(m[2])-Number(m[1])===duration;
+}
 function onRoleChange() {
   const role=document.getElementById("f-role").value;
   const labels={student:"Enrollment No.",faculty:"Faculty ID",cr:"CR Roll No.",admin:"Admin ID"};
@@ -1955,6 +1995,7 @@ function onRoleChange() {
   document.getElementById("row-prog").style.display=showStu?"flex":"none";
   document.getElementById("row-batch").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
+  if(showStu) populateBatchOptions(document.getElementById("f-batch").value);
 }
 async function saveUser() {
   const role=document.getElementById("f-role").value;
@@ -1963,6 +2004,9 @@ async function saveUser() {
   const pwd=document.getElementById("f-pwd").value;
   if(!name){toast("Full name is required","error");return;}
   if(!editingId&&(!username||!pwd)){toast("Username and password required","error");return;}
+  if((role==="student"||role==="cr") && document.getElementById("f-prog").value && document.getElementById("f-batch").value && !validateBatchForProgramme()){
+    toast("Batch duration does not match the selected programme.","error"); return;
+  }
   const btn=document.getElementById("modal-save-btn");
   const wasEditing=!!editingId;
   try{
