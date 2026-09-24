@@ -366,6 +366,20 @@ def register(body: RegisterRequest):
             "Could not complete registration — your details could not be saved. Please try again.",
         )
 
+    # Send OTPs to both channels immediately after account creation.
+    try:
+        auth_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        auth_client.auth.sign_in_with_otp({"email": body.email, "options": {"should_create_user": False}})
+        auth_client.auth.sign_in_with_otp({"phone": phone})
+    except Exception as e:
+        print(f"REGISTER OTP ERROR for {body.username!r}: {e!r}")
+        try:
+            sb.table("users").delete().eq("id", new_user["id"]).execute()
+            sb.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            pass
+        raise HTTPException(502, "We could not send the verification OTPs. Please try again later.")
+
     try:
         sb.table("audit_log").insert({
             "user_id": new_user["id"],
