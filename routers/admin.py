@@ -79,6 +79,20 @@ class UserCreate(BaseModel):
     is_active:     bool = True
 
 
+def _validate_programme_batch(programme: Optional[str], batch: Optional[str], role: Optional[str] = None):
+    if role not in (None, "student", "cr"):
+        return
+    if not programme or not batch:
+        return
+    p=programme.lower()
+    duration = 4 if ("b.a." in p or "b.a " in p or "ba english" in p or "ba economics" in p) else 2 if ("m.a." in p or "m.a " in p or "ma english" in p or "ma economics" in p) else None
+    if duration is None:
+        return
+    import re
+    m=re.fullmatch(r"(\d{4})-(\d{4})", str(batch).strip())
+    if not m or int(m.group(2))-int(m.group(1)) != duration:
+        raise HTTPException(400, f"Batch must span exactly {duration} years for {programme}.")
+
 class UserUpdate(BaseModel):
     full_name:     Optional[str]      = None
     email:         Optional[EmailStr] = None
@@ -131,6 +145,7 @@ def get_user(uid: int, admin: dict = Depends(require_admin)):
 
 @router.post("/users", status_code=201, summary="Create a user")
 def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
+    _validate_programme_batch(body.programme, body.batch, body.role)
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
@@ -197,6 +212,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
+    _validate_programme_batch(body.programme, body.batch, None)
     existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
