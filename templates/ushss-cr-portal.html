@@ -838,6 +838,7 @@ function logoutCR() {
 </script>
 <!-- USHSS Real API Integration: loads real CR profile and classmates -->
 
+<script>
 async function changeMyPassword(){
   const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
   if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
@@ -849,7 +850,7 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
-<script>
+
 (async function loadCRProfile() {
   const token = localStorage.getItem('ushss_token');
   if (!token) {
