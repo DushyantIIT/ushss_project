@@ -476,19 +476,19 @@ tr:hover td{background:var(--gold-pale)}
       <div class="grid-2" style="max-width:900px">
         <div class="card">
           <div style="display:flex;align-items:center;gap:16px;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--border)">
-            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--maroon),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:white;font-weight:700">AS</div>
+            <div id="profile-initials" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--maroon),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:white;font-weight:700">—</div>
             <div>
-              <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--maroon-d)">Arjun Sharma</div>
-              <div style="font-size:12px;color:var(--gold);margin-top:2px">Student · M.A. English</div>
-              <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px">2301001 · Batch 2023</div>
+              <div id="profile-name" style="font-family:'Playfair Display',serif;font-size:18px;color:var(--maroon-d)">Loading…</div>
+              <div id="profile-role" style="font-size:12px;color:var(--gold);margin-top:2px">Student</div>
+              <div id="profile-enrollment" style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px">Loading…</div>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Arjun Sharma"/></div>
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="arjun.sharma@ipu.ac.in"/></div>
-          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="+91 98100 11001"/></div>
+          <div class="form-group"><label class="form-label">Full Name</label><input id="profile-full-name" class="form-input" value="" readonly/></div>
+          <div class="form-group"><label class="form-label">Email</label><input id="profile-email" class="form-input" value="" readonly/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input id="profile-phone" class="form-input" value="" readonly/></div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Programme</label><input class="form-input" value="M.A. English" readonly/></div>
-            <div class="form-group"><label class="form-label">Batch</label><input class="form-input" value="2023" readonly/></div>
+            <div class="form-group"><label class="form-label">Programme</label><input id="profile-programme" class="form-input" value="" readonly/></div>
+            <div class="form-group"><label class="form-label">Batch</label><input id="profile-batch" class="form-input" value="" readonly/></div>
           </div>
           <button class="btn btn-primary" onclick="toast('Profile updated','ok')">Save Changes</button>
         </div>
