@@ -117,8 +117,8 @@ def list_users(
     admin: dict = Depends(require_admin),
 ):
     q = sb.table("users").select("*,full_name")
-    if not admin.get("is_super_admin", False):
-        q = q.eq("is_super_admin", False)
+    # Admin management lists all accounts, including Super Admins.
+    # Protected-account permissions are enforced separately by update/delete endpoints.
     if role:      q = q.eq("role", role)
     if is_active is not None: q = q.eq("is_active", is_active)
     res = q.order("created_at", desc=True).execute()
@@ -137,8 +137,6 @@ def list_users(
 @router.get("/users/{uid}", summary="Get single user")
 def get_user(uid: int, admin: dict = Depends(require_admin)):
     q = sb.table("users").select("*").eq("id", uid)
-    if not admin.get("is_super_admin", False):
-        q = q.eq("is_super_admin", False)
     res = q.single().execute()
     if not res.data:
         raise HTTPException(404, "User not found")
