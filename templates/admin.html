@@ -832,12 +832,21 @@ function dbGetStats() {
   };
 }
 async function fetchAdminUsers() {
-  const res=await fetch("/api/admin/users", {headers:authHeaders()});
-  if(res.status===401){ logoutAdmin(); return []; }
-  if(!res.ok) throw new Error("Could not load users from Supabase");
-  const data=await res.json();
-  window.__supabaseUsers=data.users||[];
-  return window.__supabaseUsers;
+  let lastError = null;
+  for(let attempt=1; attempt<=3; attempt++){
+    try{
+      const res=await fetch("/api/admin/users", {headers:authHeaders()});
+      if(res.status===401){ logoutAdmin(); return []; }
+      if(!res.ok) throw new Error("Could not load users from Supabase");
+      const data=await res.json();
+      window.__supabaseUsers=data.users||[];
+      return window.__supabaseUsers;
+    }catch(e){
+      lastError=e;
+      if(attempt<3) await new Promise(resolve=>setTimeout(resolve,400*attempt));
+    }
+  }
+  throw lastError || new Error("Could not load users from Supabase");
 }
 async function dbCreateUser(data) {
   const res=await fetch("/api/admin/users", {
@@ -876,11 +885,18 @@ async function fetchAdminStats() {
   return data;
 }
 async function fetchAdminDashboardData() {
+  const safeJson = async (url, fallback) => {
+    try{
+      const r=await fetch(url,{headers:authHeaders()});
+      if(r.status===401){ logoutAdmin(); return fallback; }
+      return r.ok ? await r.json() : fallback;
+    }catch(e){ console.error("Admin API failed:",url,e); return fallback; }
+  };
   const [stats, timetable, attendance, announcements] = await Promise.all([
-    fetchAdminStats(),
-    fetch("/api/admin/timetable",{headers:authHeaders()}).then(r=>r.ok?r.json():[]),
-    fetch("/api/admin/attendance/sessions",{headers:authHeaders()}).then(r=>r.ok?r.json():[]),
-    fetch("/api/admin/announcements",{headers:authHeaders()}).then(r=>r.ok?r.json():[])
+    fetchAdminStats().catch(e=>{ console.error("Admin stats failed:",e); return {}; }),
+    safeJson("/api/admin/timetable",[]),
+    safeJson("/api/admin/attendance/sessions",[]),
+    safeJson("/api/admin/announcements",[])
   ]);
   window.__supabaseTimetable=timetable||[];
   window.__supabaseAttendance=attendance||[];
