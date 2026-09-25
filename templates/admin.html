@@ -2560,6 +2560,48 @@ async function stopSession(id){
   }catch(e){ toast(e.message||"Could not stop session","error"); }
 }
 
+
+function ttSelectProg(prog) {
+  ttCurrentProg=prog;
+  const secs=adminSectionNames(prog);
+  ttCurrentSection=secs[0]||"";
+  renderPage("timetable");
+}
+function ttSelectSection(sec) {
+  ttCurrentSection=sec;
+  renderPage("timetable");
+}
+function updateBadges() {
+  ["student","faculty","cr","admin"].forEach(role=>{
+    const el=document.getElementById("badge-"+role);
+    if(el) el.textContent=dbGetUsers({role}).length;
+  });
+  const pendingEl=document.getElementById("badge-pending");
+  if(pendingEl){pendingEl.textContent=pendingRequests.length;pendingEl.style.display=pendingRequests.length?"inline-block":"none";}
+  const annEl=document.getElementById("badge-ann");
+  if(annEl) annEl.textContent=Array.isArray(window.__supabaseAnnouncements)?window.__supabaseAnnouncements.length:0;
+  const liveEl=document.getElementById("live-nav-badge");
+  const live=Array.isArray(window.__supabaseAttendanceSessions)&&window.__supabaseAttendanceSessions.some(s=>s.is_open);
+  if(liveEl) liveEl.style.display=live?"inline-flex":"none";
+}
+function exportTimetable() {
+  if(!ttCurrentProg||!ttCurrentSection){toast("Select a timetable first","error");return;}
+  const rows=adminTimetableSlots().filter(s=>s.programme===ttCurrentProg&&(s.section||s.batch||"General")===ttCurrentSection);
+  let csv="Day,Time,Subject,Room,Faculty,Batch,Section\n";
+  rows.sort((a,b)=>(a.day_of_week+a.start_time).localeCompare(b.day_of_week+b.start_time)).forEach(s=>{
+    csv+=`"${s.day_of_week}","${s.start_time}-${s.end_time}","${s.subject}","${s.room||""}","${s.users?.full_name||""}","${s.batch||""}","${s.section||""}"\n`;
+  });
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download=`Timetable_${ttCurrentProg.replace(/\W+/g,"_")}_${ttCurrentSection.replace(/\W+/g,"_")}.csv`;a.click();toast("Timetable exported","success");
+}
+function exportAtt() {
+  let csv="Roll,Name,Date,Subject,Status,Marked At\n";
+  attendanceRecords().forEach(r=>{
+    const v=attendanceViewRecord(r);
+    csv+=`"${v.roll}","${v.userName}","${v.date}","${v.subject}","${v.status}","${v.marked_at}"\n`;
+  });
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="USHSS_Attendance.csv";a.click();toast("Attendance exported","success");
+}
+
 </script>
 
 </body>
