@@ -146,6 +146,9 @@ def get_user(uid: int, admin: dict = Depends(require_admin)):
 
 @router.post("/users", status_code=201, summary="Create a user")
 def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
+    # Class Representatives are existing students promoted by Admin; they cannot be created as new accounts.
+    if body.role == "cr":
+        raise HTTPException(400, "A Class Representative must be assigned from an existing Student account.")
     _validate_programme_batch(body.programme, body.batch, body.role)
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
