@@ -2187,7 +2187,8 @@ function updateBadges() {
     pendingEl.textContent = pendingRequests.length;
     pendingEl.style.display = pendingRequests.length ? "inline-block" : "none";
   }
-  const db=loadDB();
+  let db={announcements:[],liveSessions:[]};
+  try { db=loadDB(); } catch(e) { console.warn("Badge cache unavailable:",e); }
   const annEl=document.getElementById("badge-ann");
   if(annEl) annEl.textContent=(db.announcements||[]).length;
   const liveEl=document.getElementById("live-nav-badge");
