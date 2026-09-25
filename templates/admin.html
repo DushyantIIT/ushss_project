@@ -1124,9 +1124,6 @@ function renderPendingRequests() {
     </tr>`;
   }).join("") : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">✨</div><div>No pending registration requests</div><div style="font-size:11px;color:var(--muted);margin-top:4px">New student and faculty self-registrations will appear here for manual approval.</div></div></td></tr>`;
 
-  const addUserButton = role === "cr"
-    ? ""
-    : \`<button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role] || "User"}</button>\`;
 
   return `
     <div class="search-bar">
