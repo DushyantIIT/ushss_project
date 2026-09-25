@@ -299,10 +299,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-item active" onclick="showPage('dashboard')" data-page="dashboard"><span class="icon">🏛️</span> Dashboard</div>
 
     <div class="nav-section-title">User Management</div>
-    <div class="nav-item" onclick="showPage('student')" data-page="student"><span class="icon">🎓</span> Student<span class="nav-badge" id="badge-student">0</span></div>
-    <div class="nav-item" onclick="showPage('faculty')" data-page="faculty"><span class="icon">📚</span> Faculty<span class="nav-badge" id="badge-faculty">0</span></div>
-    <div class="nav-item" onclick="showPage('cr')" data-page="cr"><span class="icon">🤝</span> Class Reps<span class="nav-badge" id="badge-cr">0</span></div>
-    <div class="nav-item" onclick="showPage('admin')" data-page="admin"><span class="icon">🔑</span> Admins<span class="nav-badge" id="badge-admin">0</span></div>
+    <div class="nav-item" data-page="student"><span class="icon">🎓</span> Student<span class="nav-badge" id="badge-student">0</span></div>
+    <div class="nav-item" data-page="faculty"><span class="icon">📚</span> Faculty<span class="nav-badge" id="badge-faculty">0</span></div>
+    <div class="nav-item" data-page="cr"><span class="icon">🤝</span> Class Reps<span class="nav-badge" id="badge-cr">0</span></div>
+    <div class="nav-item" data-page="admin"><span class="icon">🔑</span> Admins<span class="nav-badge" id="badge-admin">0</span></div>
     <div class="nav-item" onclick="showPage('pending-requests')" data-page="pending-requests"><span class="icon">⏳</span> Pending Registrations<span class="nav-badge" id="badge-pending" style="display:none;background:var(--amber);color:#fff">0</span></div>
 
     <div class="nav-section-title">Academic Control</div>
@@ -1157,6 +1157,13 @@ const pageTitles={
   schema:["Database Schema","USHSS / Admin / System / Schema"],
 };
 
+document.addEventListener("click", function(e){
+  const nav=e.target.closest(".nav-item[data-page], .stat-card[data-page]");
+  if(!nav) return;
+  const page=nav.dataset.page;
+  if(page) showPage(page);
+});
+
 function showPage(page) {
   currentPage=page;
   document.querySelectorAll(".nav-item").forEach(el=>el.classList.toggle("active",el.dataset.page===page));
@@ -1187,7 +1194,7 @@ function renderDashboard() {
   const rc={student:"#4A7FC0",faculty:"#8B6FC0",cr:"#3DAA72",admin:"#C9A84C"};
   const ri={student:"🎓",faculty:"📚",cr:"🤝",admin:"🔑"};
   const cards=["student","faculty","cr","admin"].map(r=>`
-    <div class="stat-card" onclick="showPage('${r}')" style="cursor:pointer">
+    <div class="stat-card" data-page="${r}" style="cursor:pointer">
       <div class="stat-icon" style="background:${rc[r]}22">${ri[r]}</div>
       <div>
         <div class="stat-num">${s.counts[r]||0}</div>
