@@ -240,13 +240,15 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
     _validate_programme_batch(effective_programme, effective_batch, target.get("role"))
 
     if "role" in updates:
-        # Only the Super Admin may change a user's role (e.g. promote to Admin).
-        # Never trust this from the frontend beyond routing here — it's
-        # re-checked server-side against the acting admin's DB row.
-        if not admin.get("is_super_admin", False):
-            raise HTTPException(403, "Only the Super Admin can change a user's role.")
-        if updates["role"] not in VALID_ROLES:
+        # Admins may assign/remove the Class Representative role for students.
+        # Other role changes remain restricted to the Super Admin.
+        new_role = updates["role"]
+        current_role = target.get("role")
+        if new_role not in VALID_ROLES:
             raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
+        if not admin.get("is_super_admin", False):
+            if not ({current_role, new_role} <= {"student", "cr"}):
+                raise HTTPException(403, "Only the Super Admin can make this role change.")
 
     new_password = updates.pop("password", None)
     if new_password:
