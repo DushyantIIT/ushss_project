@@ -659,7 +659,6 @@ class TimetableCreate(BaseModel):
     end_time:    str    # HH:MM
     programme:   str
     batch:       str
-    section:     Optional[str] = None
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
@@ -672,7 +671,6 @@ class TimetableUpdate(BaseModel):
     end_time:    Optional[str] = None
     programme:   Optional[str] = None
     batch:       Optional[str] = None
-    section:     Optional[str] = None
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
@@ -898,3 +896,207 @@ def update_event(eid: int, body: EventBody, admin: dict = Depends(require_admin)
     res = sb.table("events").update(d).eq("id", eid).execute()
     _audit(admin["id"], "UPDATE_EVENT", f"Updated event id={eid}")
     return res.data[0]
+
+
+@router.delete("/events/{eid}", summary="Delete event")
+def delete_event(eid: int, admin: dict = Depends(require_admin)):
+    existing = sb.table("events").select("id").eq("id", eid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "Event not found")
+    sb.table("events").delete().eq("id", eid).execute()
+    _audit(admin["id"], "DELETE_EVENT", f"Deleted event id={eid}")
+    return {"message": "Event deleted"}
+
+
+# 
+#  NEWS
+# 
+
+class NewsBody(BaseModel):
+    title:          str
+    excerpt:        Optional[str]      = None
+    body:           Optional[str]      = None
+    tag:            Optional[str]      = None
+    image_url:      Optional[str]      = None
+    published:      bool               = True
+    is_featured:    bool               = False
+    published_date: Optional[DateType] = None
+    venue:          Optional[str]      = None
+
+
+@router.get("/news", summary="List all news items")
+def list_news(admin: dict = Depends(require_admin)):
+    return sb.table("news_items").select("*").order("published_date", desc=True).execute().data or []
+
+
+@router.post("/news", status_code=201, summary="Create news item")
+def create_news(body: NewsBody, admin: dict = Depends(require_admin)):
+    d = body.model_dump()
+    if d.get("published_date"): d["published_date"] = str(d["published_date"])
+    res = sb.table("news_items").insert(d).execute()
+    _audit(admin["id"], "CREATE_NEWS", f"Created news '{body.title}'")
+    return res.data[0]
+
+
+@router.put("/news/{nid}", summary="Update news item")
+def update_news(nid: int, body: NewsBody, admin: dict = Depends(require_admin)):
+    existing = sb.table("news_items").select("id").eq("id", nid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "News item not found")
+    d = body.model_dump(exclude_none=True)
+    if "published_date" in d: d["published_date"] = str(d["published_date"])
+    res = sb.table("news_items").update(d).eq("id", nid).execute()
+    _audit(admin["id"], "UPDATE_NEWS", f"Updated news id={nid}")
+    return res.data[0]
+
+
+@router.delete("/news/{nid}", summary="Delete news item")
+def delete_news(nid: int, admin: dict = Depends(require_admin)):
+    existing = sb.table("news_items").select("id").eq("id", nid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "News item not found")
+    sb.table("news_items").delete().eq("id", nid).execute()
+    _audit(admin["id"], "DELETE_NEWS", f"Deleted news id={nid}")
+    return {"message": "News item deleted"}
+
+
+# 
+#  ANNOUNCEMENTS
+# 
+
+class AnnouncementBody(BaseModel):
+    title: str
+    body: Optional[str] = None
+    target: Optional[str] = None
+    priority: Optional[str] = None
+    pinUntil: Optional[datetime] = None
+
+@router.get("/announcements", summary="List announcements")
+def list_announcements(admin: dict = Depends(require_admin)):
+    return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+
+@router.post("/announcements", status_code=201, summary="Create announcement")
+def create_announcement(body: AnnouncementBody, admin: dict = Depends(require_admin)):
+    d=body.model_dump()
+    d["ts"]=datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+    if d.get("pinUntil"): d["pinUntil"]=d["pinUntil"].replace(tzinfo=None).isoformat()
+    res=sb.table("announcements").insert(d).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_POST", f"Created announcement '{body.title}'")
+    return res.data[0]
+
+@router.put("/announcements/{aid}", summary="Update announcement")
+def update_announcement(aid:int, body:AnnouncementBody, admin:dict=Depends(require_admin)):
+    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    if not existing.data: raise HTTPException(404,"Announcement not found")
+    d=body.model_dump()
+    if d.get("pinUntil"): d["pinUntil"]=d["pinUntil"].replace(tzinfo=None).isoformat()
+    res=sb.table("announcements").update(d).eq("id",aid).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_UPDATE", f"Updated announcement id={aid}")
+    return res.data[0]
+
+@router.delete("/announcements/{aid}", summary="Delete announcement")
+def delete_announcement(aid:int, admin:dict=Depends(require_admin)):
+    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    if not existing.data: raise HTTPException(404,"Announcement not found")
+    sb.table("announcements").delete().eq("id",aid).execute()
+    _audit(admin["id"], "ANNOUNCEMENT_DELETE", f"Deleted announcement id={aid}")
+    return {"message":"Announcement deleted"}
+
+
+# 
+#  FACULTY DIRECTORY
+# 
+
+class FacultyDirBody(BaseModel):
+    name:           str
+    designation:    str
+    department:     Optional[str] = None
+    specialisation: Optional[str] = None
+    email:          Optional[str] = None
+    phone:          Optional[str] = None
+    photo_url:      Optional[str] = None
+    initials:       Optional[str] = None
+    bio:            Optional[str] = None
+    sort_order:     int           = 100
+    is_active:      bool          = True
+
+
+@router.get("/faculty-directory", summary="List faculty directory")
+def list_faculty_dir(admin: dict = Depends(require_admin)):
+    return sb.table("faculty_directory").select("*").order("sort_order").execute().data or []
+
+
+@router.post("/faculty-directory", status_code=201, summary="Add faculty to directory")
+def create_faculty_dir(body: FacultyDirBody, admin: dict = Depends(require_admin)):
+    res = sb.table("faculty_directory").insert(body.model_dump()).execute()
+    _audit(admin["id"], "CREATE_FACULTY_DIR", f"Added '{body.name}' to directory")
+    return res.data[0]
+
+
+@router.put("/faculty-directory/{fid}", summary="Update faculty directory entry")
+def update_faculty_dir(fid: int, body: FacultyDirBody, admin: dict = Depends(require_admin)):
+    existing = sb.table("faculty_directory").select("id").eq("id", fid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "Faculty entry not found")
+    res = sb.table("faculty_directory").update(body.model_dump()).eq("id", fid).execute()
+    _audit(admin["id"], "UPDATE_FACULTY_DIR", f"Updated faculty dir id={fid}")
+    return res.data[0]
+
+
+@router.delete("/faculty-directory/{fid}", summary="Remove from faculty directory")
+def delete_faculty_dir(fid: int, admin: dict = Depends(require_admin)):
+    existing = sb.table("faculty_directory").select("id").eq("id", fid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "Faculty entry not found")
+    sb.table("faculty_directory").delete().eq("id", fid).execute()
+    _audit(admin["id"], "DELETE_FACULTY_DIR", f"Deleted faculty dir id={fid}")
+    return {"message": "Faculty entry deleted"}
+
+
+# 
+#  STATS / AUDIT / MESSAGES
+# 
+
+@router.get("/stats", summary="Dashboard statistics")
+def stats(admin: dict = Depends(require_admin)):
+    users = sb.table("users").select("role, is_active").execute().data or []
+    counts = {}
+    for u in users:
+        counts[u["role"]] = counts.get(u["role"], 0) + 1
+    active = sum(1 for u in users if u["is_active"])
+
+    recent = sb.table("users").select("*").not_.is_("last_login", "null") \
+               .order("last_login", desc=True).limit(10).execute().data or []
+    log    = sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute().data or []
+
+    timetable_count = len(sb.table("timetable_slots").select("id").execute().data or [])
+    attendance_sessions = sb.table("attendance_sessions").select("id,is_open").execute().data or []
+    attendance_records = sb.table("attendance_records").select("id").execute().data or []
+    announcements = sb.table("announcements").select("id,title,body,ts,target,priority").order("ts", desc=True).limit(10).execute().data or []
+
+    return {"counts": counts, "total": len(users), "active": active,
+            "recent_logins": recent, "log": log,
+            "timetable_count": timetable_count,
+            "attendance_sessions": attendance_sessions,
+            "attendance_records_count": len(attendance_records),
+            "announcements": announcements}
+
+
+@router.get("/audit", summary="Full audit log")
+def audit_log(admin: dict = Depends(require_admin)):
+    return sb.table("audit_log").select("*, users(username, full_name)") \
+             .order("ts", desc=True).limit(200).execute().data or []
+
+
+@router.get("/messages", summary="Contact messages")
+def list_messages(admin: dict = Depends(require_admin)):
+    return sb.table("contact_messages").select("*").order("submitted_at", desc=True).execute().data or []
+
+
+@router.patch("/messages/{mid}/read", summary="Mark message as read")
+def mark_read(mid: int, admin: dict = Depends(require_admin)):
+    existing = sb.table("contact_messages").select("id").eq("id", mid).single().execute()
+    if not existing.data:
+        raise HTTPException(404, "Message not found")
+    sb.table("contact_messages").update({"is_read": True}).eq("id", mid).execute()
+    return {"message": "Marked as read"}
