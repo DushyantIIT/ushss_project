@@ -2147,17 +2147,23 @@ window.addEventListener("keydown",e=>{
 
 /* INIT */
 loadAdminProfile();
-Promise.all([
-  fetchAdminUsers(),
-  fetchAdminDashboardData(),
-  fetchPendingRequests()
-]).then(() => {
+async function initAdminDashboard(){
+  loadAdminProfile();
+  // Load each data source independently so one temporary Supabase/API failure
+  // cannot freeze the entire Admin dashboard.
+  const safe = async (label, fn, fallback) => {
+    try { return await fn(); }
+    catch(e) { console.error("Admin "+label+" load failed:", e); return fallback; }
+  };
+  await Promise.all([
+    safe("users", () => fetchAdminUsers(), []),
+    safe("dashboard data", () => fetchAdminDashboardData(), {}),
+    safe("pending requests", () => fetchPendingRequests(), [])
+  ]);
   updateBadges();
   showPage("dashboard");
-}).catch(e => {
-  console.error("Admin dashboard load failed:", e);
-  showPage("dashboard");
-});
+}
+initAdminDashboard();
 
 // Periodic background refresh for pending registrations
 setInterval(() => {
