@@ -659,6 +659,7 @@ class TimetableCreate(BaseModel):
     end_time:    str    # HH:MM
     programme:   str
     batch:       str
+    section:     Optional[str] = None
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
@@ -897,6 +898,3 @@ def update_event(eid: int, body: EventBody, admin: dict = Depends(require_admin)
     res = sb.table("events").update(d).eq("id", eid).execute()
     _audit(admin["id"], "UPDATE_EVENT", f"Updated event id={eid}")
     return res.data[0]
-
-
-@router.delete("/events/{eid}", summary="Delete event")
