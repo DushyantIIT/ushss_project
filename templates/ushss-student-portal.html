@@ -185,6 +185,15 @@ tr:hover td{background:var(--gold-pale)}
 @keyframes tin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
 @media(max-width:900px){.sidebar{display:none}.stats-row{grid-template-columns:1fr 1fr}.grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}}
+
+/* ✦ Dashboard visual refresh */
+.dash-welcome{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--maroon-deep),#7f2929 58%,#9b5c38);border-radius:12px;padding:24px 28px;color:#fff;margin-bottom:16px;box-shadow:0 12px 28px rgba(74,14,14,.16)}
+.dash-welcome:after{content:'✦';position:absolute;right:30px;top:-18px;font:700 120px/1 'Playfair Display',serif;color:rgba(255,255,255,.08);transform:rotate(12deg)}
+.dash-welcome .eyebrow{font:600 10px var(--mono);letter-spacing:1.8px;text-transform:uppercase;color:var(--gold-light);margin-bottom:7px}
+.dash-welcome h2{font:700 25px 'Playfair Display',serif;margin:0 0 5px;position:relative;z-index:1}.dash-welcome p{font-size:12px;color:rgba(255,255,255,.72);position:relative;z-index:1}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.quick-card{border:1px solid var(--border);background:var(--white);border-radius:10px;padding:14px;cursor:pointer;transition:.2s;position:relative;overflow:hidden}.quick-card:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 10px 22px rgba(107,26,26,.09)}.quick-card .qico{font-size:21px;margin-bottom:9px}.quick-card strong{display:block;font-size:12px;color:var(--ink-mid);margin-bottom:3px}.quick-card span{font-size:10px;color:var(--muted)}
+.snapshot{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.snapshot-card{padding:14px 16px;border-radius:10px;background:linear-gradient(180deg,var(--white),var(--cream-dark));border:1px solid var(--border)}.snapshot-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono)}.snapshot-value{font:600 17px 'Playfair Display',serif;color:var(--maroon-deep);margin-top:5px}
+@media(max-width:700px){.quick-grid{grid-template-columns:1fr 1fr}.snapshot{grid-template-columns:1fr}}
 </style>
 </head>
 <script>
@@ -264,6 +273,22 @@ tr:hover td{background:var(--gold-pale)}
 
     <!-- DASHBOARD -->
     <div class="page active" id="pg-dashboard">
+      <div class="dash-welcome">
+        <div class="eyebrow">USHSS • Student Portal</div>
+        <h2>Welcome back, <span id="dash-welcome-name">Student</span> ✨</h2>
+        <p id="dash-welcome-sub">Stay on top of your classes, attendance and academic work.</p>
+      </div>
+      <div class="quick-grid">
+        <div class="quick-card" onclick="goPage('attendance',document.querySelector('[onclick*=attendance]'))"><div class="qico">✅</div><strong>Mark Attendance</strong><span>Join a live class</span></div>
+        <div class="quick-card" onclick="goPage('assignments',this)"><div class="qico">📝</div><strong>Assignments</strong><span>Check what is due</span></div>
+        <div class="quick-card" onclick="goPage('materials',this)"><div class="qico">📚</div><strong>Study Materials</strong><span>Notes & resources</span></div>
+        <div class="quick-card" onclick="goPage('timetable',this)"><div class="qico">🗓️</div><strong>My Timetable</strong><span>Plan your day</span></div>
+      </div>
+      <div class="snapshot">
+        <div class="snapshot-card"><div class="snapshot-label">Programme</div><div class="snapshot-value" id="dash-programme">—</div></div>
+        <div class="snapshot-card"><div class="snapshot-label">Semester</div><div class="snapshot-value" id="dash-semester">—</div></div>
+        <div class="snapshot-card"><div class="snapshot-label">Batch</div><div class="snapshot-value" id="dash-batch">—</div></div>
+      </div>
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(107,26,26,.08)">📊</div>
@@ -778,6 +803,11 @@ async function loadPortalData(){
   setText('profile-initials', initials || '—');
   setText('sb-student-name', profileName);
   setText('sb-student-meta', (profile.programme||'Student') + (profile.batch ? ' · '+profile.batch : ''));
+  setText('dash-welcome-name', profileName.split(/\s+/)[0] || profileName);
+  setText('dash-welcome-sub', [profile.programme, profile.batch, profile.semester ? 'Semester '+profile.semester : ''].filter(Boolean).join(' · ') || 'Stay on top of your classes, attendance and academic work.');
+  setText('dash-programme', profile.programme || '—');
+  setText('dash-semester', profile.semester ? 'Semester '+profile.semester : '—');
+  setText('dash-batch', profile.batch || '—');
   setText('profile-name', profileName);
   setText('profile-role', profile.role ? profile.role.charAt(0).toUpperCase()+profile.role.slice(1) : 'Student');
   setText('profile-enrollment', profile.enrollment_no || profile.username);
