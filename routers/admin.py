@@ -74,6 +74,7 @@ class UserCreate(BaseModel):
     designation:   Optional[str] = None
     enrollment_no: Optional[str] = None
     department:    Optional[str] = None
+    domain:        Optional[str] = None
     programme:     Optional[str] = None
     batch:         Optional[str] = None
     semester:      Optional[str] = None
@@ -193,6 +194,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         "designation":   body.designation,
         "enrollment_no": body.enrollment_no,
         "department":    body.department,
+        "domain":         body.domain,
         "programme":     body.programme,
         "batch":         body.batch,
         "semester":      body.semester,
@@ -216,7 +218,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid,programme,batch").eq("id", uid).single().execute())
+    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid,programme,batch,domain").eq("id", uid).single().execute())
     if not existing.data:
         raise HTTPException(
             404,
