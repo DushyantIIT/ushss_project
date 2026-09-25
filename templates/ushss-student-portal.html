@@ -244,14 +244,6 @@ tr:hover td{background:var(--gold-pale)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
-    <div class="sb-att-mini">
-      <div class="sb-att-label">Attendance</div>
-      <div style="display:flex;align-items:flex-end;gap:6px;margin-top:4px">
-        <div class="sb-att-val">82%</div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:5px">12/15 sessions</div>
-      </div>
-      <div class="progress"><div class="progress-fill progress-green" style="width:82%"></div></div>
-    </div>
     <div class="sb-logout" onclick="logoutStudent()"><span style="font-size:14px">🚪</span> Sign Out</div>
   </div>
 </aside>
@@ -295,7 +287,7 @@ tr:hover td{background:var(--gold-pale)}
           <div>
             <div class="stat-num" id="dash-att-pct">0%</div>
             <div class="stat-lbl">Attendance</div>
-            <div style="font-size:11px;margin-top:5px;color:var(--green)">✓ Above 75%</div>
+            
           </div>
         </div>
         <div class="stat-card">
@@ -326,35 +318,6 @@ tr:hover td{background:var(--gold-pale)}
 
       <div class="grid-60-40" style="margin-bottom:16px">
         <div>
-          <div class="card" style="margin-bottom:16px">
-            <div class="card-title">Attendance Overview</div>
-            <div class="divider"></div>
-            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-              <div style="position:relative;width:100px;height:100px;flex-shrink:0">
-                <svg viewBox="0 0 100 100" style="transform:rotate(-90deg);width:100px;height:100px">
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" stroke-width="10"/>
-                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--maroon)" stroke-width="10" stroke-dasharray="251" stroke-dashoffset="45" stroke-linecap="round"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-                  <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--maroon-d)">82%</div>
-                  <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">ATTEND</div>
-                </div>
-              </div>
-              <div style="flex:1">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-                  <div style="background:var(--green-bg);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--green-light)">
-                    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--green)">12</div>
-                    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Present</div>
-                  </div>
-                  <div style="background:var(--red-bg);border-radius:8px;padding:10px;text-align:center;border:1px solid rgba(192,57,43,.15)">
-                    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--red)">3</div>
-                    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Absent</div>
-                  </div>
-                </div>
-                <div style="font-size:12px;color:var(--muted)">Minimum required: <strong style="color:var(--maroon)">75%</strong>. You need <strong style="color:var(--green)">0 more</strong> absences to stay safe.</div>
-              </div>
-            </div>
-          </div>
           <div class="card">
             <div class="card-title" style="margin-bottom:14px">Recent Announcements</div>
             <div id="dash-ann"></div>
