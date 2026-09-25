@@ -1875,6 +1875,9 @@ function renderUserTable(role) {
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
+  const addUserButton = role === "cr"
+    ? ""
+    : `<button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role] || "User"}</button>`;
 
   const rows=filtered.length?filtered.map(u=>{
     const isSuperAdmin=u.is_super_admin===true;
