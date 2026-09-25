@@ -13,7 +13,7 @@ from app.seed import DEMO_USERS
 
 router = APIRouter(tags=["Auth"])
 VALID_ROLES = ("student", "faculty", "cr", "admin")
-SELF_REGISTER_ROLES = ("student", "faculty", "cr")
+SELF_REGISTER_ROLES = ("student", "faculty")
 ENROLLMENT_REQUIRED_ROLES = ("student", "cr")
 ROLE_REDIRECTS = {"admin": "/dashboard/admin", "faculty": "/dashboard/faculty", "cr": "/dashboard/cr", "student": "/dashboard/student"}
 
@@ -126,6 +126,8 @@ class RegisterResponse(BaseModel):
 @router.post("/register", status_code=201, response_model=RegisterResponse, dependencies=[Depends(rate_limit("register", max_calls=5, window_seconds=600))])
 def register(body:RegisterRequest):
     if body.role not in SELF_REGISTER_ROLES: raise HTTPException(400,f"Self-registration is only allowed for: {SELF_REGISTER_ROLES}")
+    if body.role == "faculty" and not body.domain:
+        raise HTTPException(400,"Faculty domain is required")
     if body.role in ENROLLMENT_REQUIRED_ROLES and not body.enrollment_no: raise HTTPException(400,"Enrollment number is required for this role")
     if sb.table("users").select("id").eq("username",body.username).eq("role",body.role).execute().data: raise HTTPException(409,"Username already exists for this role")
     if sb.table("users").select("id").eq("email",body.email).execute().data: raise HTTPException(409,"Email address is already registered")
@@ -143,7 +145,7 @@ def register(body:RegisterRequest):
         print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
         raise HTTPException(502,"Could not create the authentication account. Please try again.")
     if not supabase_uid: raise HTTPException(502,"Authentication account was not created. Please try again.")
-    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"programme":body.programme,"batch":body.batch,"semester":body.semester,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid}
+    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"domain":body.domain,"programme":body.programme,"batch":body.batch,"semester":body.semester,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid}
     try:
         res=sb.table("users").insert(row).execute()
         if not res.data: raise RuntimeError("Insert returned no row")
