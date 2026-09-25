@@ -76,6 +76,7 @@ class UserCreate(BaseModel):
     department:    Optional[str] = None
     programme:     Optional[str] = None
     batch:         Optional[str] = None
+    semester:      Optional[str] = None
     is_active:     bool = True
 
 
@@ -196,6 +197,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         "department":    body.department,
         "programme":     body.programme,
         "batch":         body.batch,
+        "semester":      body.semester,
         "is_active":     body.is_active,
         "supabase_uid":  supabase_uid,
     }
@@ -210,7 +212,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
             pass
         raise HTTPException(502, "Could not complete user creation. Please try again.")
 
-    _audit(["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
+    _audit(admin["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
     return res.data[0]
 
 
