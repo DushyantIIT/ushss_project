@@ -685,8 +685,27 @@ const DB_KEY = "ushss_db_v4";
 
 function loadDB() {
   const raw = localStorage.getItem(DB_KEY);
-  if (raw) return JSON.parse(raw);
-  return initDB();
+  if (!raw) return initDB();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") throw new Error("Invalid dashboard storage");
+    // Recover old/corrupt browser data without blocking the dashboard.
+    parsed.users = Array.isArray(parsed.users) ? parsed.users : [];
+    parsed.audit = Array.isArray(parsed.audit) ? parsed.audit : [];
+    parsed.timetables = parsed.timetables && typeof parsed.timetables === "object" ? parsed.timetables : {};
+    parsed.timetableMeta = Array.isArray(parsed.timetableMeta) ? parsed.timetableMeta : [];
+    parsed.attendance = Array.isArray(parsed.attendance) ? parsed.attendance : [];
+    parsed.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : [];
+    parsed.liveSessions = Array.isArray(parsed.liveSessions) ? parsed.liveSessions : [];
+    parsed._nextId = Number(parsed._nextId) || 100;
+    parsed._attId = Number(parsed._attId) || 1;
+    parsed._annId = Number(parsed._annId) || 1;
+    return parsed;
+  } catch (e) {
+    console.warn("Invalid admin dashboard storage; rebuilding local cache:", e);
+    try { localStorage.removeItem(DB_KEY); } catch (_) {}
+    return initDB();
+  }
 }
 function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function hash(s) { let h=0; for(const c of s) h=(Math.imul(31,h)+c.charCodeAt(0))|0; return "hashed_"+Math.abs(h); }
@@ -943,44 +962,38 @@ function logoutAdmin() {
 async function loadAdminProfile() {
   const token = getAdminToken();
   if (!token) {
-    window.location.href = "/";
-    return;
+    window.location.replace("/");
+    return false;
   }
-  
-  // First: check locally stored user object (fast, no network request needed)
+
+  // Never trust a stale localStorage user object for authorization.
+  // The server-side admin endpoint is the source of truth for the role.
   try {
+    const res = await fetch("/api/admin/users?is_active=true", { headers: authHeaders() });
+    if (res.status === 401 || res.status === 403) {
+      logoutAdmin();
+      return false;
+    }
+    if (!res.ok) {
+      console.warn("Admin profile validation returned", res.status);
+      return true;
+    }
+
     const rawUser = localStorage.getItem("ushss_user");
     if (rawUser) {
       const u = JSON.parse(rawUser);
-      if (u.role && u.role !== "admin") {
-        // Logged in as a non-admin role — send them to their correct dashboard
-        const roleUrls = { student: "/dashboard/student", faculty: "/dashboard/faculty", cr: "/dashboard/cr" };
-        window.location.href = roleUrls[u.role] || "/";
-        return;
-      }
-      // Populate the sidebar with the stored info immediately (no flicker)
-      const nameEl  = document.getElementById("sb-admin-name");
-      const roleEl  = document.getElementById("sb-admin-role");
+      const nameEl = document.getElementById("sb-admin-name");
+      const roleEl = document.getElementById("sb-admin-role");
       const avatarEl = document.getElementById("sb-admin-avatar");
-      if (nameEl)   nameEl.textContent = u.full_name || u.username;
-      if (roleEl)   roleEl.textContent = `${u.role} · ${u.username}` + (u.is_super_admin ? " (Super Admin)" : "");
-      if (avatarEl) avatarEl.textContent = (u.full_name || u.username).split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+      if (nameEl) nameEl.textContent = u.full_name || u.username || "Administrator";
+      if (roleEl) roleEl.textContent = `${u.role || "admin"} · ${u.username || ""}${u.is_super_admin ? " (Super Admin)" : ""}`;
+      if (avatarEl) avatarEl.textContent = (u.full_name || u.username || "AD").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
     }
+    return true;
   } catch (e) {
-    console.warn("Error parsing stored user:", e);
-  }
-
-  // Background: validate token against server — only log out on 401 (expired/invalid)
-  try {
-    const res = await fetch("/api/admin/users?is_active=true", { headers: authHeaders() });
-    if (res.status === 401) {
-      // Token truly expired or invalid — force re-login
-      logoutAdmin();
-    }
-    // 403 = valid token but insufficient role → already handled above via localStorage
-  } catch (e) {
-    // Network error — keep the user on the page, don't log out
+    // A temporary network failure must not destroy an otherwise valid session.
     console.warn("Profile validation network error:", e);
+    return true;
   }
 }
 
@@ -1181,16 +1194,21 @@ function showPage(page) {
 }
 
 function renderPage(page) {
-  updateBadges();
   const c=document.getElementById("content");
-  if(page==="dashboard") c.innerHTML=renderDashboard();
-  else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
-  else if(page==="timetable") c.innerHTML=renderTimetable();
-  else if(page==="attendance") c.innerHTML=renderAttendance();
-  else if(page==="announcements") c.innerHTML=renderAnnouncements();
-  else if(page==="audit") c.innerHTML=renderAudit();
-  else if(page==="schema") c.innerHTML=renderSchema();
-  else c.innerHTML=renderUserTable(page);
+  try {
+    updateBadges();
+    if(page==="dashboard") c.innerHTML=renderDashboard();
+    else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
+    else if(page==="timetable") c.innerHTML=renderTimetable();
+    else if(page==="attendance") c.innerHTML=renderAttendance();
+    else if(page==="announcements") c.innerHTML=renderAnnouncements();
+    else if(page==="audit") c.innerHTML=renderAudit();
+    else if(page==="schema") c.innerHTML=renderSchema();
+    else c.innerHTML=renderUserTable(page);
+  } catch (e) {
+    console.error("Admin page render failed:", page, e);
+    c.innerHTML = `<div class="card"><div class="card-title">This tab could not be loaded</div><div class="card-sub" style="margin-top:8px">The dashboard recovered from a browser-cache or data error. Please click the tab again.</div><div style="margin-top:14px"><button class="btn btn-primary" onclick="renderPage('${page}')">↻ Reload Tab</button></div></div>`;
+  }
 }
 
 /* ══════════════════════════════════════════
