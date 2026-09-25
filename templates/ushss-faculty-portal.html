@@ -202,6 +202,14 @@ tr:hover td{background:rgba(255,255,255,.01)}
   .stats-row{grid-template-columns:1fr 1fr}
   .grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}
 }
+
+/* ✦ Dashboard visual refresh */
+.fac-welcome{position:relative;overflow:hidden;background:linear-gradient(135deg,#24191a,#5e2525 58%,#80603a);border-radius:12px;padding:24px 28px;color:#fff;margin-bottom:16px;box-shadow:0 12px 28px rgba(30,18,18,.18)}
+.fac-welcome:after{content:'◈';position:absolute;right:26px;top:-25px;font:700 130px/1 'Playfair Display',serif;color:rgba(255,255,255,.07);transform:rotate(-10deg)}
+.fac-welcome .eyebrow{font:600 10px var(--mono);letter-spacing:1.8px;text-transform:uppercase;color:var(--gold-light);margin-bottom:7px}.fac-welcome h2{font:700 25px 'Playfair Display',serif;margin:0 0 5px;position:relative;z-index:1}.fac-welcome p{font-size:12px;color:rgba(255,255,255,.72);position:relative;z-index:1}
+.fac-quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.fac-quick{border:1px solid var(--border);background:var(--white);border-radius:10px;padding:14px;cursor:pointer;transition:.2s}.fac-quick:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 10px 22px rgba(107,26,26,.09)}.fac-quick .qico{font-size:21px;margin-bottom:9px}.fac-quick strong{display:block;font-size:12px;color:var(--text);margin-bottom:3px}.fac-quick span{font-size:10px;color:var(--muted)}
+.fac-insights{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.fac-insight{padding:15px;border-radius:10px;border:1px solid var(--border);background:linear-gradient(180deg,var(--white),var(--cream-dark))}.fac-insight-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-family:var(--mono)}.fac-insight-value{font:600 18px 'Playfair Display',serif;color:var(--maroon-deep);margin-top:5px}.fac-insight-note{font-size:10px;color:var(--muted);margin-top:3px}
+@media(max-width:700px){.fac-quick-grid{grid-template-columns:1fr 1fr}.fac-insights{grid-template-columns:1fr}}
 </style>
 </head>
 <script>
@@ -270,6 +278,22 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
     <!-- DASHBOARD PAGE -->
     <div class="page active" id="pg-dashboard">
+      <div class="fac-welcome">
+        <div class="eyebrow">USHSS • Faculty Portal</div>
+        <h2>Good morning, <span id="dash-faculty-name">Faculty</span> 👋</h2>
+        <p id="dash-faculty-sub">Your teaching dashboard — classes, attendance and students in one place.</p>
+      </div>
+      <div class="fac-quick-grid">
+        <div class="fac-quick" onclick="goPage('attendance',document.querySelector('[onclick*=attendance]'))"><div class="qico">▶️</div><strong>Start Attendance</strong><span>Open a live session</span></div>
+        <div class="fac-quick" onclick="goPage('students',this)"><div class="qico">🎓</div><strong>My Students</strong><span>View your roster</span></div>
+        <div class="fac-quick" onclick="goPage('announcements',this)"><div class="qico">📢</div><strong>Announcement</strong><span>Share an update</span></div>
+        <div class="fac-quick" onclick="goPage('history',this)"><div class="qico">📊</div><strong>Attendance History</strong><span>Review your records</span></div>
+      </div>
+      <div class="fac-insights">
+        <div class="fac-insight"><div class="fac-insight-label">Teaching Status</div><div class="fac-insight-value">Ready to teach</div><div class="fac-insight-note">Start a session whenever your class begins.</div></div>
+        <div class="fac-insight"><div class="fac-insight-label">Student Support</div><div class="fac-insight-value">Monitor attendance</div><div class="fac-insight-note">Keep an eye on students below the required level.</div></div>
+        <div class="fac-insight"><div class="fac-insight-label">Communication</div><div class="fac-insight-value">Stay connected</div><div class="fac-insight-note">Post announcements for your classes.</div></div>
+      </div>
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-icon" style="background:rgba(139,32,32,.2)">🎓</div>
@@ -933,6 +957,10 @@ async function changeMyPassword(){
     }
     const u = await res.json();
 
+    const dashName = document.getElementById('dash-faculty-name');
+    const dashSub = document.getElementById('dash-faculty-sub');
+    if (dashName) dashName.textContent = (u.full_name || u.username || 'Faculty').split(/\s+/)[0];
+    if (dashSub) dashSub.textContent = [u.designation, u.department, u.domain].filter(Boolean).join(' · ') || 'Your teaching dashboard — classes, attendance and students in one place.';
     const nameEl   = document.getElementById('sb-name');
     const initEl   = document.getElementById('sb-init');
     const subEl    = document.querySelector('.sb-psub');
