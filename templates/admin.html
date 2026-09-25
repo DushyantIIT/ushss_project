@@ -284,6 +284,270 @@ tr:hover td{background:rgba(255,255,255,.02)}
     window.location.replace("/");
   }
 })();
+
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN RELIABILITY / API-SOURCE-OF-TRUTH OVERRIDES
+   Keep Admin academic data on the same API/Supabase tables used
+   by Student and Faculty portals. localStorage is only UI state.
+══════════════════════════════════════════════════════════════ */
+
+async function adminApiJson(url, options={}) {
+  const res = await fetch(url, { ...options, headers:{...authHeaders(), ...(options.headers||{})} });
+  if (res.status === 401) { logoutAdmin(); throw new Error("Session expired"); }
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(data?.detail || data?.message || ("Request failed ("+res.status+")"));
+  return data;
+}
+
+async function fetchAdminDashboardData() {
+  const results = await Promise.allSettled([
+    fetchAdminStats(),
+    adminApiJson("/api/admin/timetable"),
+    adminApiJson("/api/admin/attendance/sessions"),
+    adminApiJson("/api/admin/attendance/report"),
+    adminApiJson("/api/admin/announcements"),
+    adminApiJson("/api/admin/audit")
+  ]);
+  const value = (i, fallback) => results[i].status === "fulfilled" ? results[i].value : fallback;
+  window.__supabaseTimetable = Array.isArray(value(1, [])) ? value(1, []) : [];
+  window.__supabaseAttendanceSessions = Array.isArray(value(2, [])) ? value(2, []) : [];
+  window.__supabaseAttendanceReport = value(3, {records:[]}) || {records:[]};
+  window.__supabaseAnnouncements = Array.isArray(value(4, [])) ? value(4, []) : [];
+  window.__supabaseAudit = Array.isArray(value(5, [])) ? value(5, []) : (window.__supabaseAudit || []);
+  adminAnnouncements = window.__supabaseAnnouncements;
+  return {
+    stats: value(0, {}),
+    timetable: window.__supabaseTimetable,
+    attendance: window.__supabaseAttendanceSessions,
+    attendanceReport: window.__supabaseAttendanceReport,
+    announcements: window.__supabaseAnnouncements
+  };
+}
+
+function adminTimetableSlots() {
+  return Array.isArray(window.__supabaseTimetable) ? window.__supabaseTimetable : [];
+}
+function adminSectionNames(prog) {
+  const vals = adminTimetableSlots().filter(s=>s.programme===prog).map(s=>s.section || s.batch || "General");
+  return [...new Set(vals)];
+}
+function adminTimePair(i) {
+  return [
+    ["09:00","10:00"],["10:00","11:00"],["11:00","12:00"],["12:00","13:00"],
+    ["13:30","14:30"],["14:30","15:30"],["15:30","16:30"],["16:30","17:30"]
+  ][i];
+}
+function adminDayName(key) {
+  return ({mon:"Monday",tue:"Tuesday",wed:"Wednesday",thu:"Thursday",fri:"Friday"})[key] || key;
+}
+function adminSlotFor(prog, section, day, timeIdx) {
+  const pair=adminTimePair(timeIdx), dayName=adminDayName(day);
+  return adminTimetableSlots().find(s =>
+    s.programme===prog &&
+    (s.section || s.batch || "General")===section &&
+    String(s.day_of_week).toLowerCase()===dayName.toLowerCase() &&
+    String(s.start_time).slice(0,5)===pair[0] &&
+    String(s.end_time).slice(0,5)===pair[1]
+  ) || null;
+}
+
+function renderTimetable() {
+  const slots=adminTimetableSlots();
+  const progs=[...new Set(slots.map(s=>s.programme).filter(Boolean))];
+  if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
+  const sections=ttCurrentProg ? adminSectionNames(ttCurrentProg) : [];
+  if(ttCurrentProg && (!ttCurrentSection || !sections.includes(ttCurrentSection))) ttCurrentSection=sections[0]||"";
+  const meta=(p)=>slots.find(s=>s.programme===p);
+  const progTabs=progs.map(p=>{
+    const active=p===ttCurrentProg, m=meta(p), secCount=adminSectionNames(p).length;
+    return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProg('${escAttr(p)}')">
+      <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${p}</div>
+      <div class="tt-tab-sub">${secCount} section${secCount!==1?"s":""}</div>
+    </div>`;
+  }).join("");
+  const addTab=`<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable"><div class="tt-tab-add-icon">+</div></div>`;
+  let sectionBar="";
+  if(ttCurrentProg){
+    sectionBar=`<div class="tt-section-bar">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">SECTIONS:</span>
+      ${sections.map(s=>`<div class="tt-section-tab ${s===ttCurrentSection?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</div>`).join("")}
+      <div class="tt-section-add" onclick="openNewTimetableModal('${escAttr(ttCurrentProg)}')"><span>+</span> Add Section</div>
+      ${ttCurrentSection?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Section</button>`:""}
+    </div>`;
+  }
+  let gridHTML="";
+  if(ttCurrentProg && ttCurrentSection){
+    const accent=TT_ACCENT_COLORS[progs.indexOf(ttCurrentProg)%TT_ACCENT_COLORS.length];
+    const rows=TT_TIMES.map((_,i)=>{
+      let html=`<div class="tt-time">${TT_TIMES[i]}</div>`;
+      for(const d of TT_DAYS){
+        const s=adminSlotFor(ttCurrentProg,ttCurrentSection,d.key,i);
+        if(!s) html+=`<div class="tt-cell" onclick="openTTEdit('${d.key}',${i})"><div class="tt-cell-empty">+</div></div>`;
+        else html+=`<div class="tt-cell has-class" style="border-left:3px solid ${accent}" onclick="openTTEdit('${d.key}',${i})">
+          <div class="tt-cell-subject">${s.subject}</div>
+          ${s.room?`<div class="tt-cell-room">📍 ${s.room}</div>`:""}
+          ${s.users?.full_name?`<div class="tt-cell-teacher">👤 ${s.users.full_name}</div>`:""}
+          <div class="tt-edit-btn">✎</div>
+        </div>`;
+      }
+      return html;
+    }).join("");
+    gridHTML=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+      <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--cream)">${ttCurrentProg}</span>
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">/ ${ttCurrentSection}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.filter(s=>s.programme===ttCurrentProg&&(s.section||s.batch||"General")===ttCurrentSection).length} slots</span>
+      <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
+      <div class="tt-grid" style="min-width:700px"><div class="tt-head" style="background:transparent;border-color:transparent"></div>${TT_DAYS.map(d=>`<div class="tt-head">${d.label}</div>`).join("")}${rows}</div>
+    </div>`;
+  } else {
+    gridHTML=`<div class="tt-empty-state"><div class="tt-empty-icon">🗓️</div><div class="tt-empty-title">No timetable slots yet</div><div class="tt-empty-sub">Create a programme/section, then add classes to its cells.</div><button class="btn btn-primary btn-lg" onclick="openNewTimetableModal()">➕ Create Timetable</button></div>`;
+  }
+  return `<div class="sec-head"><div><div class="sec-label">Academic Schedule</div><div class="sec-title">Timetable Manager</div></div><span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.length} database slots</span></div>
+    <div class="tt-tab-bar">${progTabs}${addTab}</div>${sectionBar}${gridHTML}`;
+}
+
+function openTTEdit(day,timeIdx){
+  if(!ttCurrentProg||!ttCurrentSection) return toast("Create/select a timetable first","error");
+  ttEditing={day,timeIdx};
+  const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx);
+  document.getElementById("tt-slot-info").innerHTML=`<span style="color:var(--gold)">${adminDayName(day)}</span> · ${TT_TIMES[timeIdx]} · <span style="color:var(--text)">${ttCurrentProg} / ${ttCurrentSection}</span>`;
+  document.getElementById("tt-modal-title").textContent=cell?"Edit Class Slot":"Add Class to Slot";
+  document.getElementById("tt-subject").value=cell?.subject||"";
+  document.getElementById("tt-room").value=cell?.room||"";
+  const facultyName=cell?.users?.full_name||"";
+  document.getElementById("tt-faculty").value=facultyName;
+  document.getElementById("tt-notes").value="";
+  document.getElementById("tt-modal").classList.add("open");
+}
+
+async function saveTTCell(){
+  const {day,timeIdx}=ttEditing;
+  const subject=document.getElementById("tt-subject").value;
+  const pair=adminTimePair(timeIdx);
+  const existing=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx);
+  try{
+    if(!subject){
+      if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"DELETE"});
+    }else{
+      const facText=document.getElementById("tt-faculty").value.trim().toLowerCase();
+      const faculty=(dbGetUsers({role:"faculty"}).find(u=>(u.full_name||"").toLowerCase()===facText || (u.username||"").toLowerCase()===facText));
+      const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,batch:existing?.batch||document.getElementById("tt-new-batch")?.value||"",section:ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_id:faculty?.id||existing?.faculty_id||null};
+      if(!payload.batch) payload.batch="General";
+      if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      else await adminApiJson("/api/admin/timetable",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    }
+    await fetchAdminDashboardData();
+    closeTTModal(); renderPage("timetable"); toast(subject?"Slot saved":"Slot cleared","success");
+  }catch(e){ toast(e.message||"Could not save timetable slot","error"); }
+}
+
+function createNewTimetable(){
+  const prog=document.getElementById("tt-new-prog").value;
+  const sec=(document.getElementById("tt-new-sec-custom").value.trim()||document.getElementById("tt-new-sec-preset").value).trim();
+  if(!prog||!sec||sec==="custom") return toast("Programme and section are required","error");
+  ttCurrentProg=prog; ttCurrentSection=sec;
+  closeModal2("tt-new-modal"); renderPage("timetable");
+  toast("Timetable ready — add classes to the cells","success");
+}
+
+function deleteTimetable(prog,sec){
+  deleteCallback=async()=>{
+    try{
+      const targets=adminTimetableSlots().filter(s=>s.programme===prog&&(s.section||s.batch||"General")===sec);
+      for(const s of targets) await adminApiJson("/api/admin/timetable/"+s.id,{method:"DELETE"});
+      if(ttCurrentProg===prog && ttCurrentSection===sec){ ttCurrentSection=""; const p=adminTimetableSlots().filter(s=>s.programme!==prog)[0]?.programme||""; ttCurrentProg=p; }
+      await fetchAdminDashboardData(); closeConfirm(); renderPage("timetable"); toast("Timetable section deleted","success");
+    }catch(e){ toast(e.message||"Could not delete timetable","error"); }
+  };
+  document.getElementById("confirm-title").textContent="Delete Timetable?";
+  document.getElementById("confirm-msg").textContent=`Delete all database slots for "${prog} / ${sec}"?`;
+  document.getElementById("confirm-ok-btn").textContent="Delete Timetable";
+  document.getElementById("confirm-overlay").classList.add("open");
+}
+
+function attendanceRecords(){
+  return Array.isArray(window.__supabaseAttendanceReport?.records) ? window.__supabaseAttendanceReport.records : [];
+}
+function attendanceViewRecord(r){
+  const sess=r.attendance_sessions||{}, slot=sess.timetable_slots||{}, user=r.users||{};
+  return {id:r.id,date:sess.date||"",roll:user.enrollment_no||"",subject:slot.subject||"—",faculty:(sess.users||{}).full_name||"—",status:r.status,marked_at:r.marked_at||"",programme:slot.programme||"",batch:slot.batch||"",userName:user.full_name||user.enrollment_no||"—"};
+}
+
+function renderAttendance(){
+  const sessions=Array.isArray(window.__supabaseAttendanceSessions)?window.__supabaseAttendanceSessions:[];
+  const all=attendanceRecords();
+  const subjects=[...new Set(all.map(r=>attendanceViewRecord(r).subject))].filter(Boolean);
+  const dates=[...new Set(all.map(r=>attendanceViewRecord(r).date))].sort().reverse();
+  const records=all.map(attendanceViewRecord).filter(r=>{
+    if(attFilters.date&&r.date!==attFilters.date) return false;
+    if(attFilters.subject&&r.subject!==attFilters.subject) return false;
+    const q=(attFilters.roll||"").toLowerCase();
+    if(q&&!r.roll.toLowerCase().includes(q)&&!r.userName.toLowerCase().includes(q)) return false;
+    if(attFilters.status&&r.status!==attFilters.status) return false;
+    return true;
+  });
+  const pct=records.length?Math.round(records.filter(r=>r.status==="present").length/records.length*100):0;
+  const rows=records.length?records.map(r=>`<tr><td class="mono" style="color:var(--muted);font-size:11px">${r.date}</td>
+    <td><div style="font-weight:600;color:var(--text);font-size:12px">${r.userName}</div><div class="mono" style="font-size:10px;color:var(--muted)">${r.roll||"—"}</div></td>
+    <td style="font-size:12px">${r.subject}</td><td style="font-size:12px;color:var(--muted)">${r.faculty}</td>
+    <td><span class="badge ${r.status==="present"?"badge-active":"badge-inactive"}">${String(r.status).toUpperCase()}</span></td>
+    <td class="mono" style="font-size:10px;color:var(--muted)">${r.marked_at||"—"}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="openAttEdit(${r.id})">✎ Edit</button></td></tr>`).join(""):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div>No attendance records match the filters</div></div></td></tr>`;
+  const active=sessions.filter(s=>s.is_open);
+  return `<div class="sec-head"><div><div class="sec-label">Academic Records</div><div class="sec-title">Attendance Editor</div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-success" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host New Session</button><button class="btn btn-primary btn-sm" onclick="exportAtt()">⬇ Export CSV</button></div></div>
+    ${active.length?active.map(s=>`<div class="live-host-card" style="margin-bottom:12px"><div class="live-pulse"><div class="live-dot"></div> LIVE SESSION ACTIVE</div>
+      <div style="display:flex;gap:24px;align-items:flex-end"><div><div class="live-timer">LIVE</div><div class="live-timer-lbl">${s.date}</div></div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--cream)">${s.timetable_slots?.programme||""} · ${s.timetable_slots?.subject||""}</div><div style="font-size:12px;color:rgba(245,241,232,.6)">${s.timetable_slots?.batch||""} · ${s.timetable_slots?.room||""}</div></div>
+      <button class="btn btn-amber btn-sm" onclick="stopSession(${s.id})">⏹ Stop Session</button></div></div>`).join(""):""}
+    <div class="att-filter-bar"><div style="font-size:11px;color:var(--muted);font-family:var(--mono)">FILTER:</div>
+      <select class="filter-select" onchange="attFilters.date=this.value;renderPage('attendance')"><option value="">All Dates</option>${dates.map(d=>`<option value="${d}" ${attFilters.date===d?"selected":""}>${d}</option>`).join("")}</select>
+      <select class="filter-select" onchange="attFilters.subject=this.value;renderPage('attendance')"><option value="">All Subjects</option>${subjects.map(s=>`<option value="${s}" ${attFilters.subject===s?"selected":""}>${s}</option>`).join("")}</select>
+      <select class="filter-select" onchange="attFilters.status=this.value;renderPage('attendance')"><option value="">All Status</option><option value="present" ${attFilters.status==="present"?"selected":""}>Present</option><option value="absent" ${attFilters.status==="absent"?"selected":""}>Absent</option></select>
+      <input class="form-input" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px" placeholder="Search roll / name…" value="${attFilters.roll}" oninput="attFilters.roll=this.value;renderPage('attendance')"/>
+      <button class="btn btn-ghost btn-sm" onclick="attFilters={date:'',subject:'',roll:'',status:''};renderPage('attendance')">✕ Clear</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)">${records.length} records · ${pct}% present</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Faculty</th><th>Status</th><th>Marked</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function openAttEdit(id){
+  const r=attendanceRecords().find(x=>Number(x.id)===Number(id)); if(!r) return toast("Attendance record not found","error");
+  const v=attendanceViewRecord(r); attEditingId=id;
+  document.getElementById("att-edit-info").innerHTML=`<strong>${v.userName}</strong> (${v.roll||"—"})<br/>${v.date} · ${v.subject}`;
+  const sel=document.getElementById("att-edit-status"); sel.innerHTML='<option value="present">Present</option><option value="absent">Absent</option>'; sel.value=v.status;
+  document.getElementById("att-edit-note").value="";
+  document.getElementById("att-edit-modal").classList.add("open");
+}
+
+async function saveAttEdit(){
+  const id=attEditingId, status=document.getElementById("att-edit-status").value;
+  try{
+    await adminApiJson("/api/admin/attendance/records/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})});
+    await fetchAdminDashboardData(); closeModal2("att-edit-modal"); renderPage("attendance"); toast("Attendance record updated","success");
+  }catch(e){ toast(e.message||"Could not update attendance","error"); }
+}
+
+async function startLiveSession(){
+  const prog=document.getElementById("live-prog").value, subj=document.getElementById("live-subj").value;
+  const slot=adminTimetableSlots().find(s=>s.programme===prog&&s.subject===subj);
+  if(!slot) return toast("Create this subject in the Timetable Manager first","error");
+  try{
+    await adminApiJson("/api/faculty/attendance/open",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slot_id:slot.id,date:new Date().toISOString().slice(0,10)})});
+    closeModal2("live-modal"); await fetchAdminDashboardData(); renderPage("attendance"); toast("Attendance session started","success");
+  }catch(e){ toast(e.message||"Could not start attendance session","error"); }
+}
+
+async function stopSession(id){
+  try{
+    await adminApiJson("/api/faculty/attendance/"+id+"/close",{method:"PATCH"});
+    await fetchAdminDashboardData(); renderPage("attendance"); toast("Session stopped","success");
+  }catch(e){ toast(e.message||"Could not stop session","error"); }
+}
+
 </script>
 <body>
 
