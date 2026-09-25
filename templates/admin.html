@@ -1846,7 +1846,10 @@ function renderUserTable(role) {
       actions = `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
                  <span class="protected-account">🛡 Protected</span>`;
     } else {
-      actions = `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
+      const crAction = role==="student"
+        ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${u.id}, '${safeName}')">🤝 Assign CR</button>`
+        : "";
+      actions = `${crAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
                  <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${safeName}')" title="Delete user">🗑</button>`;
     }
 
@@ -1881,7 +1884,7 @@ function renderUserTable(role) {
         <option value="rejected" ${statusFilter==="rejected"?"selected":""}>Rejected</option>
         <option value="0" ${statusFilter==="0"?"selected":""}>Inactive</option>
       </select>
-      <button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role]}</button>
+${addUserButton}
       <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
     <div class="table-wrap">
@@ -2013,6 +2016,17 @@ function onRoleChange() {
   document.getElementById("row-semester").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
   if(showStu){ populateBatchOptions(document.getElementById("f-batch").value); populateSemesterOptions(document.getElementById("f-prog").value, document.getElementById("f-semester").value); }
+}
+async function assignStudentAsCR(id,name){
+  const user=(window.__supabaseUsers||[]).find(u=>Number(u.id)===Number(id));
+  if(!user || user.role!=="student"){toast("Only an existing student can be assigned as CR","error");return;}
+  if(!confirm(`Assign "${name}" as Class Representative? This will use the existing student account.`)) return;
+  try{
+    await dbUpdateUser(id,{role:"cr",designation:"Class Representative"});
+    toast(`${name} is now a Class Representative`,"success");
+    updateBadges();
+    renderPage("student");
+  }catch(e){toast(e.message||"Could not assign student as CR","error");}
 }
 async function saveUser() {
   const role=document.getElementById("f-role").value;
