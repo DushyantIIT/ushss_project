@@ -1676,7 +1676,9 @@ function renderAttendance() {
   let records=db.attendance.filter(a=>{
     if(attFilters.date && a.date!==attFilters.date) return false;
     if(attFilters.subject && a.subject!==attFilters.subject) return false;
-    const user = dbGetUsers().find(u=>u.username===a.roll);\n    const userName = (user?.full_name || "").toLowerCase();\n    if(attFilters.roll && !a.roll.includes(attFilters.roll) && !userName.includes(attFilters.roll.toLowerCase())) return false;
+    const user = dbGetUsers().find(u=>u.username===a.roll);
+    const userName = (user?.full_name || "").toLowerCase();
+    if(attFilters.roll && !a.roll.includes(attFilters.roll) && !userName.includes(attFilters.roll.toLowerCase())) return false;
     if(attFilters.status && a.status!==attFilters.status) return false;
     return true;
   });
