@@ -62,11 +62,13 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
+CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+# Same-origin deployment needs no CORS headers. If origins are configured,
+# credentials are allowed only for those explicit origins (never "*").
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=CORS_ORIGINS or [],
+    allow_credentials=bool(CORS_ORIGINS),
     allow_methods=["*"],
     allow_headers=["*"],
 )
