@@ -118,7 +118,7 @@ def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_sch
     return {"success":True,"message":"Password changed successfully."}
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=1); password: str = Field(..., min_length=6); role: str = Field(default="student"); full_name: str = Field(..., min_length=1); email: EmailStr; phone: str; enrollment_no: Optional[str]=None; department: Optional[str]=None; programme: Optional[str]=None; batch: Optional[str]=None; semester: Optional[str]=None; designation: Optional[str]=None
+    username: str = Field(..., min_length=1); password: str = Field(..., min_length=6); role: str = Field(default="student"); full_name: str = Field(..., min_length=1); email: EmailStr; phone: str; enrollment_no: Optional[str]=None; department: Optional[str]=None; domain: Optional[str]=None; programme: Optional[str]=None; batch: Optional[str]=None; semester: Optional[str]=None; designation: Optional[str]=None
     model_config={"str_strip_whitespace":True}
 class RegisterResponse(BaseModel):
     success: bool; message: str; token: str; redirect_url: str="/waiting"
