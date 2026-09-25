@@ -836,8 +836,9 @@ function initDB() {
    CRUD HELPERS
 ══════════════════════════════════════════ */
 function dbGetUsers(f={}) {
-  let u=[...(window.__supabaseUsers||[])];
-  if(f.role) u=u.filter(x=>x.role===f.role);
+  const source = Array.isArray(window.__supabaseUsers) ? window.__supabaseUsers : [];
+  let u=[...source];
+  if(f.role) u=u.filter(x=>x && x.role===f.role);
   if(f.search){
     const q=f.search.toLowerCase();
     u=u.filter(x=>(x.full_name||"").toLowerCase().includes(q) ||
@@ -1196,8 +1197,9 @@ function showPage(page) {
 
 function renderPage(page) {
   const c=document.getElementById("content");
+  if(!c) return;
   try {
-    updateBadges();
+    try { updateBadges(); } catch(e) { console.warn("Admin badge refresh failed:", e); }
     if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") c.innerHTML=renderTimetable();
@@ -1216,7 +1218,15 @@ function renderPage(page) {
    DASHBOARD
 ══════════════════════════════════════════ */
 function renderDashboard() {
-  const s=window.__supabaseStats||{counts:{},log:[],timetable_count:0,attendance_sessions:[],attendance_records_count:0,announcements:[]};
+  const raw=window.__supabaseStats||{};
+  const s={
+    counts: raw.counts && typeof raw.counts==="object" ? raw.counts : {},
+    log: Array.isArray(raw.log) ? raw.log : [],
+    timetable_count: Number(raw.timetable_count||0),
+    attendance_sessions: Array.isArray(raw.attendance_sessions) ? raw.attendance_sessions : [],
+    attendance_records_count: Number(raw.attendance_records_count||0),
+    announcements: Array.isArray(raw.announcements) ? raw.announcements : []
+  };
   const rc={student:"#4A7FC0",faculty:"#8B6FC0",cr:"#3DAA72",admin:"#C9A84C"};
   const ri={student:"🎓",faculty:"📚",cr:"🤝",admin:"🔑"};
   const cards=["student","faculty","cr","admin"].map(r=>`
@@ -1958,6 +1968,48 @@ ${addUserButton}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+
+/* ══════════════════════════════════════════
+   SYSTEM PAGES
+══════════════════════════════════════════ */
+function renderAudit() {
+  const rows = (Array.isArray(window.__supabaseAudit) ? window.__supabaseAudit : []).map((a,i) => `
+    <tr>
+      <td class="mono" style="color:var(--muted)">${a.id ?? i+1}</td>
+      <td><span class="badge badge-blue">${a.action || "—"}</span></td>
+      <td style="font-size:12px">${a.detail || "—"}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${a.ts || a.created_at || "—"}</td>
+    </tr>`).join("");
+  return `
+    <div class="sec-head">
+      <div><div class="sec-label">System</div><div class="sec-title">Audit Log</div></div>
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${Array.isArray(window.__supabaseAudit) ? window.__supabaseAudit.length : 0} entries</span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Action</th><th>Details</th><th>Timestamp</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📋</div><div>No audit entries</div></div></td></tr>`}</tbody>
+    </table></div>`;
+}
+
+function renderSchema() {
+  const fields = [
+    ["users","id","bigint"],["users","username","text"],["users","role","text"],["users","full_name","text"],
+    ["users","email","text"],["users","is_active","boolean"],["users","phone","text"],["users","enrollment_no","text"],
+    ["users","department","text"],["users","programme","text"],["users","batch","text"],["users","designation","text"],
+    ["users","semester","text"],["users","domain","text"],["users","status","text"],["users","is_super_admin","boolean"],
+    ["users","supabase_uid","uuid"],["users","approved_by","bigint"],["users","approved_at","timestamptz"],
+    ["users","rejection_reason","text"],["users","email_verified","boolean"],["users","phone_verified","boolean"]
+  ];
+  return `
+    <div class="sec-head">
+      <div><div class="sec-label">System</div><div class="sec-title">Database Schema</div></div>
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">public.users</span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Table</th><th>Column</th><th>Type</th></tr></thead>
+      <tbody>${fields.map(f=>`<tr><td class="mono">${f[0]}</td><td class="mono">${f[1]}</td><td><span class="badge badge-teal">${f[2]}</span></td></tr>`).join("")}</tbody>
+    </table></div>`;
 }
 
 /* ══════════════════════════════════════════
