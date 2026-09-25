@@ -381,6 +381,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <option>Sociology</option><option>History</option><option>Philosophy</option><option>Administration</option>
           </select>
         </div>
+        <div class="form-group" id="row-domain"><label class="form-label">Faculty Domain</label>
+          <select class="form-select" id="f-domain">
+            <option value="">— Select —</option><option>English</option><option>Economics</option>
+            <option>History</option><option>Political Science</option><option>Psychology</option>
+            <option>Sociology</option><option>Hindi</option><option>Philosophy</option>
+          </select>
+        </div>
         <div class="form-group" id="row-prog"><label class="form-label">Programme</label>
           <select class="form-select" id="f-prog" onchange="populateBatchOptions();populateSemesterOptions(this.value);">
             <option value="">— Select —</option>
@@ -1936,8 +1943,9 @@ function openCreateModal(role="student") {
   document.getElementById("modal-save-btn").textContent="Create User";
   document.getElementById("pwd-req").style.display="inline";
   document.getElementById("f-role").value=role;
-  ["f-username","f-name","f-email","f-phone","f-desig","f-pwd"].forEach(id=>document.getElementById(id).value="");
+  ["f-username","f-name","f-email","f-phone","f-desig","f-domain","f-pwd"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("f-dept").value="";
+  document.getElementById("f-domain").value="";
   document.getElementById("f-prog").value="";
   document.getElementById("f-batch").value="";
   document.getElementById("f-semester").innerHTML='<option value="">— Select Semester —</option>';
@@ -1959,6 +1967,7 @@ function openEditModal(id) {
   document.getElementById("f-email").value=user.email||"";
   document.getElementById("f-phone").value=user.phone||"";
   document.getElementById("f-dept").value=user.department||"";
+  document.getElementById("f-domain").value=user.domain||"";
   document.getElementById("f-prog").value=user.programme||"";
   document.getElementById("f-batch").value=user.batch||"";
   const semesterSelect=document.getElementById("f-semester");
@@ -2036,6 +2045,7 @@ function onRoleChange() {
   document.getElementById("label-username").innerHTML=`${labels[role]||"Username"} <span class="required">*</span>`;
   const showStu=role==="student"||role==="cr";
   const showDesig=role==="faculty"||role==="admin"||role==="cr";
+  document.getElementById("row-domain").style.display=role==="faculty"?"flex":"none";
   document.getElementById("row-prog").style.display=showStu?"flex":"none";
   document.getElementById("row-batch").style.display=showStu?"flex":"none";
   document.getElementById("row-semester").style.display=showStu?"flex":"none";
@@ -2066,7 +2076,7 @@ async function saveUser() {
   const btn=document.getElementById("modal-save-btn");
   const wasEditing=!!editingId;
   try{
-    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,semester:document.getElementById("f-semester").value||undefined,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
+    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,domain:document.getElementById("f-domain").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,semester:document.getElementById("f-semester").value||undefined,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
     btn.disabled=true;
     btn.textContent=wasEditing?"Saving...":"Creating...";
     if(wasEditing) await dbUpdateUser(editingId,data);
