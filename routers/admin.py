@@ -672,6 +672,7 @@ class TimetableUpdate(BaseModel):
     end_time:    Optional[str] = None
     programme:   Optional[str] = None
     batch:       Optional[str] = None
+    section:     Optional[str] = None
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
