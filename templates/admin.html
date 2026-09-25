@@ -1859,8 +1859,10 @@ function renderUserTable(role) {
         <button class="btn btn-danger btn-sm" onclick="openRejectRequestModal(${u.id}, '${safeName}')">✕ Reject</button>
         <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏</button>`;
     } else if (isSuperAdmin) {
-      actions = `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-                 <span class="protected-account">🛡 Protected</span>`;
+      const currentUser=JSON.parse(localStorage.getItem("ushss_user")||"{}");
+      actions = currentUser.is_super_admin
+        ? `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>\n           <span class="protected-account">🛡 Protected</span>`
+        : `<span class="protected-account">🛡 Protected</span>`;
     } else {
       const crAction = role==="student"
         ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${u.id}, '${safeName}')">🤝 Assign CR</button>`
