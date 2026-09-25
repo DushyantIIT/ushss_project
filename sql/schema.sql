@@ -134,6 +134,7 @@ create table if not exists timetable_slots (
   room        text,
   programme   text not null,
   batch       text not null,
+  section     text,
   department  text,
   faculty_id  bigint references users(id) on delete set null,
   created_at  timestamptz not null default now()
