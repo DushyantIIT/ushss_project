@@ -40,7 +40,7 @@ def get_public_events():
         res = (
             sb.table("events")
             .select("*")
-            .order("event_date", desc=True)
+            .order("event_date", desc=False).limit(20)
             .execute()
         )
         return res.data or []
@@ -90,5 +90,4 @@ def submit_contact_form(body: ContactFormRequest):
         return {"success": True, "message": "Thank you! Your message has been sent successfully."}
     except Exception as e:
         print("CONTACT FORM ERROR:", e)
-        # Even if DB table fails, acknowledge user submission gracefully
-        return {"success": True, "message": "Thank you! Your message has been received."}
+        raise HTTPException(503, "We could not save your message right now. Please try again.")
