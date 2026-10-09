@@ -752,7 +752,7 @@ function toast(msg,type='ok'){const el=document.createElement('div');el.classNam
 async function loadPortalData(){
   const token=localStorage.getItem('ushss_token'); if(!token)return;
   const headers={'Authorization':'Bearer '+token};
-  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutStudent();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
+  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){throw new Error('API rejected the current session; keeping the saved session while refresh retries.');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
   const results=await Promise.allSettled([
     get('/api/student/profile'),get('/api/student/announcements'),get('/api/student/assignments'),
     get('/api/student/materials'),get('/api/student/attendance/history'),get('/api/student/timetable'),
@@ -848,10 +848,10 @@ async function changeMyPassword(){
     const active=document.activeElement;
     if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
     syncing=true;
-    try { await loadPortalData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
+    try { await loadPortalData(); }
     catch(e) { console.debug('Student live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>

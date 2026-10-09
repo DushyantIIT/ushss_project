@@ -539,7 +539,7 @@ function goPage(id,el){
 async function loadCRData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
   const headers={'Authorization':'Bearer '+token};
-  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutCR();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
+  const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){throw new Error('API rejected the current session; keeping the saved session while refresh retries.');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
   const [profile,classmates,anns,assignments,materials,openSessions]=await Promise.all([
     get('/api/cr/profile'),get('/api/cr/classmates'),get('/api/cr/announcements'),get('/api/cr/assignments'),get('/api/cr/materials'),get('/api/student/attendance/open')
   ]);
@@ -934,10 +934,10 @@ async function changeMyPassword(){
     const active=document.activeElement;
     if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
     syncing=true;
-    try { await loadCRData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
+    try { await loadCRData(); }
     catch(e) { console.debug('CR live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>

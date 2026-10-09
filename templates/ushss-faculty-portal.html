@@ -618,7 +618,7 @@ async function loadFacultyData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
   const headers={'Authorization':'Bearer '+token};
   const r=await fetch('/api/faculty/dashboard',{headers});
-  if(r.status===401){logoutFaculty();throw new Error('Session expired');}
+  if(r.status===401){throw new Error('API rejected the current session; keeping the saved session while refresh retries.');}
   if(!r.ok)throw new Error('Failed to load faculty dashboard from Supabase');
   const data=await r.json();
   facultyProfile=await (await fetch('/api/faculty/profile',{headers})).json();
@@ -962,10 +962,10 @@ async function changeMyPassword(){
     const active=document.activeElement;
     if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
     syncing=true;
-    try { await loadFacultyData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
+    try { await loadFacultyData(); }
     catch(e) { console.debug('Faculty live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>
