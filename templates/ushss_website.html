@@ -1120,9 +1120,9 @@ function updateRegistrationBatch() {
 
   if (!duration) return;
 
-  // Keep the last few intake years available, with the full start-end year.
-  const firstYear = Math.max(2021, currentYear - 3);
-  for (let start = firstYear; start <= currentYear + 1; start++) {
+  // Show the current intake and prior cohorts across the programme duration.
+  const firstYear = currentYear - duration + 1;
+  for (let start = firstYear; start <= currentYear; start++) {
     const end = start + duration;
     const value = start + "-" + end;
     batch.innerHTML += '<option value="' + value + '">' + value + '</option>';
