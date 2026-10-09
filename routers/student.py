@@ -149,6 +149,8 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     if campus_lat and campus_lon:
         if body.latitude is None or body.longitude is None:
             raise HTTPException(400, "Location permission is required to mark attendance.")
+        if not (-90 <= body.latitude <= 90 and -180 <= body.longitude <= 180):
+            raise HTTPException(400, "Invalid location coordinates.")
         try:
             lat0, lon0 = float(campus_lat), float(campus_lon)
             radius = max(50.0, float(os.getenv("CAMPUS_RADIUS_METERS", "500")))
