@@ -2239,7 +2239,7 @@ function createNewTimetable(){
   if(!prog||!course||!batch||!semester||!sec) {
     return toast("Please select Programme, Course, Batch, Semester and Section","error");
   }
-  const group = course + " · Sem " + semester + " · Section " + sec;
+  const group = course + " · " + batch + " · Sem " + semester + " · Section " + sec;
   const alreadyExists=adminSectionNames(prog).includes(group);
   if(!alreadyExists) ttRememberDraftGroup(prog,group,batch);
   ttCurrentProg=prog; ttCurrentSection=group;
