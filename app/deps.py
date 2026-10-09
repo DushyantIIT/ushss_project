@@ -34,24 +34,31 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         raise exc
 
     try:
+        # Use a list query instead of .single(): distinguish "no matching
+        # account" from a database/network failure. Only the former means
+        # the token's user is no longer valid.
         res = (
             sb.table("users")
             .select("*")
             .eq("id", user_id)
             .eq("is_active", True)
-            .single()
+            .limit(1)
             .execute()
         )
-    except Exception:
-        # .single() raises (rather than returning empty) when no row
-        # matches — e.g. a deleted/deactivated account with a still-valid
-        # token. Treat that the same as "not found".
-        raise exc
+    except Exception as error:
+        # A temporary Supabase/database failure is a service problem, not an
+        # invalid token. Returning 503 prevents clients from wiping sessions.
+        print(f"AUTH USER LOOKUP FAILED: {type(error).__name__}: {str(error)[:180]}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service temporarily unavailable. Please retry.",
+            headers={"Retry-After": "3"},
+        )
 
     if not res.data:
         raise exc
 
-    user = res.data
+    user = res.data[0]
 
     # Registration/approval workflow: a token exists (e.g. the short-lived
     # one issued at self-registration for polling /registration-status)
