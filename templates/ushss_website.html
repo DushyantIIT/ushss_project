@@ -428,6 +428,10 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
             <option value="">— Select —</option>
           </select>
         </div>
+        <div id="reg-row-section">
+          <label class="portal-label">Section <span style="color:#e3c881">*</span></label>
+          <input class="portal-input" id="reg-section" type="text" maxlength="20" placeholder="e.g. A, B, or C"/>
+        </div>
         <div id="reg-row-semester">
           <label class="portal-label">Semester <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-semester">
@@ -1195,7 +1199,9 @@ function onRegRoleChange() {
   document.getElementById("reg-row-domain").style.display = isFaculty ? "" : "none";
   document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-semester").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-row-section").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-semester").required = !isFaculty;
+  document.getElementById("reg-section").required = !isFaculty;
   document.getElementById("reg-row-desig").style.display = isFaculty ? "" : "none";
 
   const label = document.getElementById("reg-username-label");
@@ -1236,6 +1242,7 @@ async function submitPortalRegister() {
   const domain    = document.getElementById("reg-domain").value;
   const batch     = document.getElementById("reg-batch").value;
   const semester  = document.getElementById("reg-semester").value;
+  const section   = document.getElementById("reg-section").value.trim();
   const desig     = document.getElementById("reg-desig").value.trim();
   const pwd       = document.getElementById("reg-pwd").value;
   const pwd2      = document.getElementById("reg-pwd2").value;
@@ -1261,6 +1268,11 @@ async function submitPortalRegister() {
   }
   if (role !== "faculty" && !semester) {
     err.textContent = "Please select your semester.";
+    err.style.display = "block";
+    return;
+  }
+  if (role !== "faculty" && !section) {
+    err.textContent = "Please enter your section.";
     err.style.display = "block";
     return;
   }
@@ -1311,6 +1323,7 @@ async function submitPortalRegister() {
         programme: role === "faculty" ? null : (prog || null),
         batch: role === "faculty" ? null : (batch || null),
         semester: role === "faculty" ? null : (semester || null),
+        section: role === "faculty" ? null : (section || null),
         designation: role === "faculty" ? (desig || null) : null
       })
     });
