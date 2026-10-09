@@ -658,9 +658,9 @@ class TimetableCreate(BaseModel):
     start_time:  str    # HH:MM
     end_time:    str    # HH:MM
     programme:   str
-    course:      str
+    course:      Optional[str] = None
     batch:       str
-    semester:    str
+    semester:    Optional[str] = None
     section:     Optional[str] = None
     room:        Optional[str] = None
     department:  Optional[str] = None
