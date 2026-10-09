@@ -621,9 +621,11 @@ function renderLiveSessions(){
   `).join('');
 }
 
+let activeSessionId=null;
 function openMarkView(sessId){
-  const sess=DB.liveSessions.find(s=>s.id===sessId);
+  const sess=DB.liveSessions.find(s=>String(s.id)===String(sessId));
   if(!sess)return;
+  activeSessionId=sessId;
   document.getElementById('att-sessions-list').style.display='none';
   document.getElementById('mark-view').style.display='block';
   document.getElementById('mark-class-info').textContent=`${sess.cls}  ·  ${sess.topic}`;
@@ -640,7 +642,7 @@ function getLocation(){
       userLat=pos.coords.latitude;
       userLng=pos.coords.longitude;
       locOk=true;
-      document.getElementById('loc-status').innerHTML=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}<br><span style="color:var(--green)">Within campus radius ✓</span>`;
+      document.getElementById('loc-status').innerHTML=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}<br><span style="color:var(--green)">Location captured; attendance eligibility is checked by the server</span>`;
       const btn=document.getElementById('mark-btn');
       if(btn){btn.disabled=false;btn.textContent='✅ Mark Present';}
     },
@@ -653,20 +655,19 @@ function getLocation(){
   );
 }
 
-function markAttendance(){
+async function markAttendance(){
   const btn=document.getElementById('mark-btn');
-  btn.disabled=true;
-  btn.textContent='Submitting…';
-  setTimeout(()=>{
+  const sess=DB.liveSessions.find(s=>String(s.id)===String(activeSessionId));
+  if(!sess){toast('Select an active attendance session first','err');return;}
+  btn.disabled=true;btn.textContent='Submitting…';
+  try{
+    const payload={session_id:Number(sess.id)};
+    const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Attendance could not be saved');
     document.getElementById('mark-status-badge').className='att-mark-status marked';
     document.getElementById('mark-status-badge').innerHTML='<span>✅</span> Attendance Marked';
-    btn.style.display='none';
-    const res=document.getElementById('mark-result');
-    res.style.display='block';
-    res.style.color='var(--green)';
-    res.innerHTML=`✅ Attendance marked at ${new Date().toLocaleTimeString()}<br>Location: ${locOk?`${userLat.toFixed(4)}, ${userLng.toFixed(4)}`:'Not available (flagged)'}`;
-    toast('Attendance marked successfully!','ok');
-  },1200);
+    btn.style.display='none';const res=document.getElementById('mark-result');res.style.display='block';res.style.color='var(--green)';res.textContent=d.message||'Attendance was saved.';toast('Attendance saved successfully','ok');
+  }catch(e){toast(e.message||'Attendance could not be saved','err');btn.disabled=false;btn.textContent='Try Again';}
 }
 
 /* ANNOUNCEMENTS */
@@ -702,7 +703,10 @@ async function postAnn(){
     closeModal('ann-modal'); renderAnn(); document.getElementById('ann-t').value=''; document.getElementById('ann-b').value=''; toast('Announcement posted!','ok');
   }catch(e){toast(e.message,'err');}
 }
-function deleteAnn(id){DB.announcements=DB.announcements.filter(a=>a.id!==id);renderAnn();toast('Deleted','ok');}
+async function deleteAnn(id){
+  try { const r=await fetch('/api/cr/announcements/'+encodeURIComponent(id),{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token')}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not delete announcement'); DB.announcements=DB.announcements.filter(a=>String(a.id)!==String(id)); renderAnn(); toast('Announcement deleted','ok'); }
+  catch(e){toast(e.message||'Could not delete announcement','err');}
+}
 
 /* ASSIGNMENTS */
 function renderAssignments(){
@@ -735,7 +739,10 @@ async function postAssignment(){
     document.getElementById('asgn-t').value=''; document.getElementById('asgn-b').value=''; asgnFileName=null; document.getElementById('asgn-file-preview').innerHTML=''; toast('Assignment posted!','ok');
   }catch(e){toast(e.message,'err');}
 }
-function deleteAsgn(id){DB.assignments=DB.assignments.filter(a=>a.id!==id);renderAssignments();toast('Deleted','ok');}
+async function deleteAsgn(id){
+  try { const r=await fetch('/api/cr/assignments/'+encodeURIComponent(id),{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token')}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not delete assignment'); DB.assignments=DB.assignments.filter(a=>String(a.id)!==String(id)); renderAssignments(); toast('Assignment deleted','ok'); }
+  catch(e){toast(e.message||'Could not delete assignment','err');}
+}
 let asgnFileName=null;
 function handleAsgnFile(inp){
   if(!inp.files[0])return;
@@ -785,7 +792,10 @@ async function uploadMaterial(){
     document.getElementById('mat-t').value=''; matFileName=null; document.getElementById('mat-file-preview').innerHTML=''; toast('Material saved!','ok');
   }catch(e){toast(e.message,'err');}
 }
-function deleteMat(id){DB.materials=DB.materials.filter(m=>m.id!==id);renderMaterials();toast('Deleted','ok');}
+async function deleteMat(id){
+  try { const r=await fetch('/api/cr/materials/'+encodeURIComponent(id),{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token')}}); const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not delete material'); DB.materials=DB.materials.filter(m=>String(m.id)!==String(id)); renderMaterials(); toast('Material deleted','ok'); }
+  catch(e){toast(e.message||'Could not delete material','err');}
+}
 
 /* CLASSMATES */
 function renderClassmates(arr){
@@ -898,9 +908,9 @@ async function changeMyPassword(){
       const cmRes = await fetch('/api/cr/classmates', { headers });
       if (cmRes.ok) {
         const classmates = await cmRes.json();
-        const tbody = document.getElementById('classmates-tbody');
-        if (tbody && classmates.length) {
-          tbody.innerHTML = classmates.map((s, i) => `
+        const tbody = document.getElementById('classmate-body');
+        if (tbody && Array.isArray(classmates.students)) {
+          tbody.innerHTML = classmates.students.map((s, i) => `
             <tr>
               <td>${i + 1}</td>
               <td>${s.full_name}</td>
