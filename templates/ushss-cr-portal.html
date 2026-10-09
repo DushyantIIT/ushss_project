@@ -937,7 +937,7 @@ async function changeMyPassword(){
     try { await loadCRData(); }
     catch(e) { console.debug('CR live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>
