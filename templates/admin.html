@@ -1330,13 +1330,13 @@ function ttGetSections(prog) {
 
 
 
-function ttSelectProg(prog) {
+function legacy_ttSelectProg(prog) {
   ttCurrentProg = prog;
   const secs = ttGetSections(prog);
   ttCurrentSection = secs.length > 0 ? secs[0] : "";
   renderPage("timetable");
 }
-function ttSelectSection(sec) {
+function legacy_ttSelectSection(sec) {
   ttCurrentSection = sec;
   renderPage("timetable");
 }
@@ -1367,7 +1367,7 @@ function checkTTExists() {
   const exists = db.timetableMeta?.some(m => m.prog === prog && m.section === sec);
   document.getElementById("tt-new-exists-warn").style.display = exists ? "block" : "none";
 }
-function createNewTimetable() {
+function legacy_createNewTimetable() {
   const prog  = document.getElementById("tt-new-prog").value;
   const sec   = (document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value).trim();
   const batch = document.getElementById("tt-new-batch").value;
@@ -1404,7 +1404,7 @@ function createNewTimetable() {
   renderPage("timetable");
 }
 
-function deleteTimetable(prog, sec) {
+function legacy_deleteTimetable(prog, sec) {
   deleteCallback = () => {
     const db = loadDB();
     const k = ttKey(prog, sec);
@@ -1430,7 +1430,7 @@ function deleteTimetable(prog, sec) {
 }
 
 /* ── Cell edit ──────────────────────────── */
-function openTTEdit(day, timeIdx) {
+function legacy_openTTEdit(day, timeIdx) {
   if (timeIdx < 0 || timeIdx >= TT_TIMES.length) return;
   ttEditing = {day, timeIdx};
   const db = loadDB();
@@ -1457,7 +1457,7 @@ function clearTTCell() {
   closeTTModal(); renderPage("timetable");
   toast("Slot cleared", "success");
 }
-function exportTimetable() {
+function legacy_exportTimetable() {
   if (!ttCurrentProg || !ttCurrentSection) { toast("Select a timetable first","error"); return; }
   const db = loadDB();
   const k  = ttKey(ttCurrentProg, ttCurrentSection);
@@ -1486,7 +1486,7 @@ let attEditingId=null;
 
 
 
-function openAttEdit(id) {
+function legacy_openAttEdit(id) {
   attEditingId=id;
   const db=loadDB();
   const rec=db.attendance.find(a=>a.id===id);
@@ -1497,7 +1497,7 @@ function openAttEdit(id) {
   document.getElementById("att-edit-note").value=rec.note||"";
   document.getElementById("att-edit-modal").classList.add("open");
 }
-function saveAttEdit() {
+function legacy_saveAttEdit() {
   const db=loadDB();
   const idx=db.attendance.findIndex(a=>a.id===attEditingId);
   if(idx===-1) return;
@@ -1512,7 +1512,7 @@ function saveAttEdit() {
   closeModal2("att-edit-modal"); renderPage("attendance");
   toast("Attendance record updated","success");
 }
-function exportAtt() {
+function legacy_exportAtt() {
   const db=loadDB();
   let csv="Roll,Name,Date,Subject,Faculty,Status,Note\n";
   for(const r of db.attendance){
@@ -1541,7 +1541,7 @@ function startTimerInterval(id,dur) {
     if(s.timeLeft===0){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);toast("Session timer ended","success");renderPage("attendance");}
   },1000);
 }
-function stopSession(id) {
+function legacy_stopSession(id) {
   const db=loadDB();
   const s=db.liveSessions?.find(x=>x.id===id);
   if(s){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);}
@@ -1954,7 +1954,7 @@ function toast(msg,type="success") {
 }
 
 /* BADGES */
-function updateBadges() {
+function legacy_updateBadges() {
   ["student","faculty","cr","admin"].forEach(role=>{
     const n=dbGetUsers({role}).length;
     const el=document.getElementById(`badge-${role}`);
@@ -2055,6 +2055,25 @@ async function fetchAdminDashboardData() {
   };
 }
 
+const TT_DRAFT_GROUPS_KEY = "ushss_admin_timetable_draft_groups_v1";
+function ttDraftGroups() {
+  try {
+    const rows = JSON.parse(localStorage.getItem(TT_DRAFT_GROUPS_KEY) || "[]");
+    return Array.isArray(rows) ? rows.filter(x => x && x.programme && x.group) : [];
+  } catch (_) { return []; }
+}
+function saveTTDraftGroups(rows) {
+  try { localStorage.setItem(TT_DRAFT_GROUPS_KEY, JSON.stringify(rows)); }
+  catch (_) { toast("Could not save empty timetable draft in this browser", "error"); }
+}
+function ttRememberDraftGroup(programme, group, batch) {
+  const rows = ttDraftGroups().filter(x => !(x.programme === programme && x.group === group));
+  rows.push({programme, group, batch: batch || "General"});
+  saveTTDraftGroups(rows);
+}
+function ttForgetDraftGroup(programme, group) {
+  saveTTDraftGroups(ttDraftGroups().filter(x => !(x.programme === programme && x.group === group)));
+}
 function adminTimetableSlots() {
   return Array.isArray(window.__supabaseTimetable) ? window.__supabaseTimetable : [];
 }
@@ -2086,17 +2105,18 @@ function renderTimetable() {
   const slots=adminTimetableSlots();
   const progs=[...new Set(slots.map(s=>s.programme).filter(Boolean))];
   if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
-  const allGroups=ttCurrentProg ? adminSectionNames(ttCurrentProg) : [];
+  const savedDraftGroups = ttDraftGroups().filter(x=>x.programme===ttCurrentProg).map(x=>x.group);
+  const allGroups=ttCurrentProg ? [...new Set([...adminSectionNames(ttCurrentProg),...savedDraftGroups])] : [];
   const semesters=allGroups.filter(x=>/^semester\s+(i{1,3}|iv|v|vi|vii|viii|[1-8])$/i.test(x.trim()));
   const sections=allGroups.filter(x=>!semesters.includes(x));
   const groups=[...semesters,...sections];
-  if(ttCurrentProg && (!ttCurrentSection || !groups.includes(ttCurrentSection))) ttCurrentSection=groups[0]||"";
+  if(ttCurrentProg && groups.length && (!ttCurrentSection || !groups.includes(ttCurrentSection))) ttCurrentSection=groups[0]||"";
   const meta=(p)=>slots.find(s=>s.programme===p);
   const progTabs=progs.map(p=>{
     const active=p===ttCurrentProg, m=meta(p), secCount=adminSectionNames(p).length;
     return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProg('${escAttr(p)}')">
       <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${p}</div>
-      <div class="tt-tab-sub">${secCount} section${secCount!==1?"s":""}</div>
+      <div class="tt-tab-sub">${secCount} group${secCount!==1?"s":""}</div>
     </div>`;
   }).join("");
   const addTab=`<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable"><div class="tt-tab-add-icon">+</div></div>`;
@@ -2178,6 +2198,7 @@ async function saveTTCell(){
       else await adminApiJson("/api/admin/timetable",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     }
     await fetchAdminDashboardData();
+    if(subject) ttForgetDraftGroup(ttCurrentProg,ttCurrentSection);
     closeTTModal(); renderPage("timetable"); toast(subject?"Slot saved":"Slot cleared","success");
   }catch(e){ toast(e.message||"Could not save timetable slot","error"); }
 }
@@ -2185,10 +2206,13 @@ async function saveTTCell(){
 function createNewTimetable(){
   const prog=document.getElementById("tt-new-prog").value;
   const sec=(document.getElementById("tt-new-sec-custom").value.trim()||document.getElementById("tt-new-sec-preset").value).trim();
+  const batch=document.getElementById("tt-new-batch")?.value?.trim()||"General";
   if(!prog||!sec||sec==="custom") return toast("Programme and section are required","error");
+  const alreadyExists=adminSectionNames(prog).includes(sec);
+  if(!alreadyExists) ttRememberDraftGroup(prog,sec,batch);
   ttCurrentProg=prog; ttCurrentSection=sec;
   closeModal2("tt-new-modal"); renderPage("timetable");
-  toast("Timetable ready — add classes to the cells","success");
+  toast(alreadyExists?"Opening existing timetable":"Timetable created — add classes to save it to the server","success");
 }
 
 function deleteTimetable(prog,sec){
@@ -2196,6 +2220,7 @@ function deleteTimetable(prog,sec){
     try{
       const targets=adminTimetableSlots().filter(s=>s.programme===prog&&(s.section||s.batch||"General")===sec);
       for(const s of targets) await adminApiJson("/api/admin/timetable/"+s.id,{method:"DELETE"});
+      ttForgetDraftGroup(prog,sec);
       if(ttCurrentProg===prog && ttCurrentSection===sec){ ttCurrentSection=""; const p=adminTimetableSlots().filter(s=>s.programme!==prog)[0]?.programme||""; ttCurrentProg=p; }
       await fetchAdminDashboardData(); closeConfirm(); renderPage("timetable"); toast("Timetable section deleted","success");
     }catch(e){ toast(e.message||"Could not delete timetable","error"); }
