@@ -838,6 +838,22 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
+
+// Live data sync: refresh API-backed portal data without reloading the page.
+// Pause while a form field is being edited so background sync cannot overwrite input.
+(function startStudentLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try { await loadPortalData(); initDashboard(); }
+    catch(e) { console.debug('Student live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 </body>
 </html>
