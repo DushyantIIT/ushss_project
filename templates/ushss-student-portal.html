@@ -578,18 +578,18 @@ function initAttPage(){
     navigator.geolocation.getCurrentPosition(
       pos=>{
         userLat=pos.coords.latitude;userLng=pos.coords.longitude;locOk=true;
-        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Location captured; campus verification is performed by the server when configured</span>`;
-        const btn=document.getElementById('mark-btn');
-        btn.disabled=false;btn.textContent='✅ Mark Myself Present';
-        document.getElementById('live-indicator').textContent='🔴 Session Live';
+        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Location captured; the server verifies the campus radius</span>`;
+        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='✅ Mark Myself Present';document.getElementById('live-indicator').textContent='🔴 Session Live';
       },
       err=>{
-        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Campus-restricted attendance may require location permission</span>`;
-        const btn=document.getElementById('mark-btn');
-        btn.disabled=false;btn.textContent='⚠ Mark Present (No Location)';
+        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Location is required for campus-restricted attendance</span>`;
+        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='⚠ Retry attendance';
       },
       {enableHighAccuracy:true,timeout:10000}
     );
+  } else if(!navigator.geolocation) {
+    const info=document.getElementById('loc-text');if(info)info.textContent='This browser does not support location. Use a browser with location access to mark attendance.';
+    const btn=document.getElementById('mark-btn');if(btn){btn.disabled=true;btn.textContent='Location required';}
   }
   renderAttLog();
 }
