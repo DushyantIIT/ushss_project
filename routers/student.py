@@ -274,4 +274,14 @@ def get_materials(student: dict = Depends(require_student)):
         batch_ok = not batch or not row.get("batch") or row.get("batch") == batch
         return programme_ok and batch_ok
 
-    return [row for row in rows if visible(row)]
+    visible_rows = [row for row in rows if visible(row)]
+    for row in visible_rows:
+        path = row.get("file_url")
+        if path and not str(path).startswith("http"):
+            try:
+                signed = sb.storage.from_("ushss-study-materials").create_signed_url(str(path), 3600)
+                row["file_url"] = signed.get("signedURL") or signed.get("signedUrl") or ""
+            except Exception as exc:
+                print(f"STUDENT MATERIAL SIGNED URL WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+                row["file_url"] = ""
+    return visible_rows
