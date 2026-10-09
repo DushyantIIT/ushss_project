@@ -578,13 +578,13 @@ function initAttPage(){
     navigator.geolocation.getCurrentPosition(
       pos=>{
         userLat=pos.coords.latitude;userLng=pos.coords.longitude;locOk=true;
-        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Within campus ✓</span>`;
+        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Location captured; campus verification is performed by the server when configured</span>`;
         const btn=document.getElementById('mark-btn');
         btn.disabled=false;btn.textContent='✅ Mark Myself Present';
         document.getElementById('live-indicator').textContent='🔴 Session Live';
       },
       err=>{
-        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Will mark without location</span>`;
+        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Campus-restricted attendance may require location permission</span>`;
         const btn=document.getElementById('mark-btn');
         btn.disabled=false;btn.textContent='⚠ Mark Present (No Location)';
       },
@@ -597,7 +597,7 @@ function initAttPage(){
 async function markMyAttendance(){
   if(!activeSessionId){toast('No active attendance session','err');return;}
   const btn=document.getElementById('mark-btn');btn.disabled=true;btn.textContent='Submitting…';
-  try{const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSessionId})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');toast(d.message||'Attendance marked!','ok');btn.style.display='none';document.getElementById('mark-success').style.display='block';await loadPortalData();renderAttLog();}catch(e){toast(e.message,'err');btn.disabled=false;btn.textContent='Mark Myself Present';}
+  try{const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSessionId,...(locOk?{latitude:userLat,longitude:userLng}:{})})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');toast(d.message||'Attendance marked!','ok');btn.style.display='none';document.getElementById('mark-success').style.display='block';await loadPortalData();renderAttLog();}catch(e){toast(e.message,'err');btn.disabled=false;btn.textContent='Mark Myself Present';}
 }
 function renderAttLog(){
   const el=document.getElementById('att-log');
@@ -678,7 +678,7 @@ function renderMaterials(arr){
         <span class="badge badge-gold">${m.size}</span>
       </div>
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · by ${m.by}</div>
-      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" onclick="toast('Downloading…','ok')">⬇ Download PDF</button>
+      \${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
     </div>
   `).join(''):`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No materials yet</div></div>`;
 }
@@ -786,7 +786,7 @@ async function loadPortalData(){
   setValue('profile-batch', profile.batch);
   DB.announcements=(anns||[]).map(a=>({id:a.id,title:a.title,body:a.body||'',type:a.priority==='urgent'?'urgent':a.priority==='important'?'reminder':'info',from:a.target||'USHSS',ts:a.ts||'',read:false}));
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
-  DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',by:m.uploaded_by||''}));
+  DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',file_url:m.file_url||'',by:m.uploaded_by||''}));
   DB.attLog=(history.records||[]).map(r=>{const session=r.attendance_sessions||{}, s=session.timetable_slots||{}, faculty=session.users||{}; return {id:r.id,date:session.date||'',subject:s.subject||'',topic:'',teacher:faculty.full_name||'—',status:r.status,loc:s.room||'—'};});
   attendanceSummary=history; DB.timetable=buildTimetable(timetable||[]);
   DB.liveSessions=(openSessions||[]).map(s=>({id:s.id,cls:(s.timetable_slots||{}).subject||'Class',topic:'',teacher:(s.users||{}).full_name||'',endsIn:0,slot_id:s.slot_id}));
