@@ -58,12 +58,22 @@ function getToken() {
   return localStorage.getItem("ushss_pending_token");
 }
 
+let statusCheckInProgress = false;
+let statusPollTimer = null;
+
 async function checkStatus() {
+  if (statusCheckInProgress) return;
   const token = getToken();
   const badge = document.getElementById("status-badge");
   const who = document.getElementById("who");
   const loading = document.getElementById("loading");
-  if (!token) return;
+  if (!token) {
+    const msg=document.getElementById("verification-message");
+    msg.textContent="Your approval session is missing. Please sign in again to check your registration status.";
+    msg.style.display="block";
+    return;
+  }
+  statusCheckInProgress = true;
   try {
     loading.style.display = "block";
     const res = await fetch("/api/registration-status", {headers:{Authorization:"Bearer "+token}});
@@ -90,7 +100,10 @@ async function checkStatus() {
     const msg=document.getElementById("verification-message");
     msg.textContent=e.message||"Could not check verification status.";
     msg.style.display="block";
-  } finally { loading.style.display="none"; }
+  } finally {
+    loading.style.display="none";
+    statusCheckInProgress = false;
+  }
 }
 
 
@@ -99,7 +112,16 @@ function logout() {
   window.location.href = "/";
 }
 
+// Automatically check approval status while this page is open. Once an
+// admin approves the account, checkStatus() stores the session and redirects
+// the user to the dashboard for their assigned role.
 checkStatus();
+statusPollTimer = setInterval(() => {
+  if (!document.hidden && getToken()) checkStatus();
+}, 2000);
+window.addEventListener("beforeunload", () => {
+  if (statusPollTimer) clearInterval(statusPollTimer);
+});
 </script>
 </body>
 </html>
