@@ -753,11 +753,16 @@ async function loadPortalData(){
   const token=localStorage.getItem('ushss_token'); if(!token)return;
   const headers={'Authorization':'Bearer '+token};
   const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutStudent();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
-  const [profile,anns,assignments,materials,history,timetable,openSessions]=await Promise.all([
+  const results=await Promise.allSettled([
     get('/api/student/profile'),get('/api/student/announcements'),get('/api/student/assignments'),
     get('/api/student/materials'),get('/api/student/attendance/history'),get('/api/student/timetable'),
     get('/api/student/attendance/open')
   ]);
+  if(results[0].status==='rejected') throw results[0].reason;
+  const value=(i,fallback)=>results[i].status==='fulfilled'?results[i].value:fallback;
+  const profile=value(0,null),anns=value(1,[]),assignments=value(2,[]),materials=value(3,[]),
+        history=value(4,{records:[],percentage:0,present:0,absent:0}),timetable=value(5,[]),openSessions=value(6,[]);
+  if(results.slice(1).some(r=>r.status==='rejected')) toast('Some sections could not load. Refresh or contact support if this continues.','err');
   portalProfile=profile;
   const profileName = profile.full_name || profile.username || '—';
   const initials = profileName.split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
