@@ -934,7 +934,7 @@ async function changeMyPassword(){
     const active=document.activeElement;
     if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
     syncing=true;
-    try { await loadCRData(); initDashboard(); }
+    try { await loadCRData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
     catch(e) { console.debug('CR live sync will retry:',e); }
     finally { syncing=false; }
   },10000);
