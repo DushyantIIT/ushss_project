@@ -925,6 +925,21 @@ async function changeMyPassword(){
 
   } catch(e) { console.warn('USHSS API: CR profile load failed', e); }
 })();
+
+/* Live data sync: keep CR dashboard data fresh without reloading the page. */
+(function startCRLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try { await loadCRData(); initDashboard(); }
+    catch(e) { console.debug('CR live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 
 </body>
