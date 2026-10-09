@@ -479,10 +479,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="modal" style="max-width:480px">
     <div class="modal-header"><h2>➕ New Timetable</h2><button class="btn btn-ghost btn-sm" onclick="closeModal2('tt-new-modal')">✕</button></div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Create a new timetable slot for a specific programme and section. You can add multiple sections per programme (e.g. Section A, Section B).</p>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Create a timetable for a specific programme, course, batch, semester and section. All five details are required.</p>
       <div class="form-group">
         <label class="form-label">Programme <span class="required">*</span></label>
-        <select class="form-select" id="tt-new-prog">
+        <select class="form-select" id="tt-new-prog" required onchange="updateTTAcademicOptions()">
           <option value="">— Select Programme —</option>
           <option value="B.A. (Hons.) English">B.A. (Hons.) English</option>
           <option value="B.A. (Hons.) Economics">B.A. (Hons.) Economics</option>
@@ -496,9 +496,27 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <option value="Ph.D.">Ph.D. Research</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">Course <span class="required">*</span></label>
+        <input class="form-input" id="tt-new-course" placeholder="e.g. English / Economics / Literary Theory" required />
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Section / Group</label>
+          <label class="form-label">Batch <span class="required">*</span></label>
+          <select class="form-select" id="tt-new-batch" required>
+            <option value="">— Select Batch —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Semester <span class="required">*</span></label>
+          <select class="form-select" id="tt-new-semester" required>
+            <option value="">— Select Semester —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Section <span class="required">*</span></label>
           <select class="form-select" id="tt-new-sec-preset" onchange="onSectionPreset()">
             <option value="">— Choose Preset —</option>
             <option value="Section A">Section A</option>
@@ -521,14 +539,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <input class="form-input" id="tt-new-sec-custom" placeholder="e.g. Morning Batch"/>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Batch / Year</label>
-        <select class="form-select" id="tt-new-batch">
-          <option value="">— Optional —</option>
-          <option>2021–25</option><option>2022–26</option><option>2023–27</option><option>2024–28</option>
-          <option>2023–25</option><option>2024–26</option><option>2025–27</option>
-        </select>
-      </div>
+      
       <div id="tt-new-exists-warn" style="display:none;padding:9px 12px;background:var(--amber-bg);border:1px solid rgba(212,160,23,.35);border-radius:var(--radius);font-size:12px;color:var(--amber);margin-top:4px">⚠ A timetable already exists for this combination. Creating it will open the existing one.</div>
     </div>
     <div class="modal-footer">
@@ -1342,10 +1353,36 @@ function legacy_ttSelectSection(sec) {
 }
 
 /* ── New Timetable Modal ──────────────────── */
+function updateTTAcademicOptions() {
+  const prog = document.getElementById("tt-new-prog").value;
+  const batch = document.getElementById("tt-new-batch");
+  const semester = document.getElementById("tt-new-semester");
+  const duration = /^B\.A\./i.test(prog) ? 4 : /^M\.A\./i.test(prog) ? 2 : 0;
+  batch.innerHTML = '<option value="">— Select Batch —</option>';
+  semester.innerHTML = '<option value="">— Select Semester —</option>';
+  const year = new Date().getFullYear();
+  if (duration) {
+    for (let start = Math.max(2021, year - 4); start <= year + 1; start++) {
+      const value = start + "-" + (start + duration);
+      batch.add(new Option(value, value));
+    }
+    const maxSem = duration * 2;
+    for (let i = 1; i <= maxSem; i++) semester.add(new Option("Semester " + i, String(i)));
+  } else if (prog === "Ph.D.") {
+    batch.add(new Option("Research Batch", "Research Batch"));
+    semester.add(new Option("Research", "Research"));
+  }
+  checkTTExists();
+}
+
 function openNewTimetableModal(presetProg) {
   if (presetProg) document.getElementById("tt-new-prog").value = presetProg;
   document.getElementById("tt-new-sec-preset").value = "";
   document.getElementById("tt-new-sec-custom").value = "";
+  document.getElementById("tt-new-course").value = "";
+  updateTTAcademicOptions();
+  document.getElementById("tt-new-batch").value = "";
+  document.getElementById("tt-new-semester").value = "";
   document.getElementById("tt-new-exists-warn").style.display = "none";
   document.getElementById("tt-new-modal").classList.add("open");
 }
@@ -1368,36 +1405,37 @@ function checkTTExists() {
   document.getElementById("tt-new-exists-warn").style.display = exists ? "block" : "none";
 }
 function legacy_createNewTimetable() {
-  const prog  = document.getElementById("tt-new-prog").value;
-  const sec   = (document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value).trim();
-  const batch = document.getElementById("tt-new-batch").value;
-  if (!prog) { toast("Please select a programme","error"); return; }
-  if (!sec || sec === "custom") { toast("Please enter a section name","error"); return; }
-
+  const prog = document.getElementById("tt-new-prog").value.trim();
+  const course = document.getElementById("tt-new-course").value.trim();
+  const batch = document.getElementById("tt-new-batch").value.trim();
+  const semester = document.getElementById("tt-new-semester").value.trim();
+  const section = (document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value).trim();
+  if (!prog || !course || !batch || !semester || !section || section === "custom") {
+    toast("Please select Programme, Course, Batch, Semester and Section.", "error"); return;
+  }
+  // Keep distinct academic combinations separate even when section labels repeat.
+  const sec = `${section} · ${course} · Sem ${semester}`;
   const db = loadDB();
   if (!db.timetableMeta) db.timetableMeta = [];
   if (!db.timetables) db.timetables = {};
-
-  const existing = db.timetableMeta.findIndex(m => m.prog === prog && m.section === sec);
+  const existing = db.timetableMeta.findIndex(m => m.prog === prog && m.course === course && m.batch === batch && String(m.semester) === String(semester) && m.sectionLabel === section);
   const k = ttKey(prog, sec);
-
   if (existing === -1) {
-    // Assign next available accent colour
     const usedAccents = db.timetableMeta.map(m=>m.accentIdx);
     let accent = 0;
     for (let i = 0; i < TT_ACCENT_COLORS.length; i++) {
       if (!usedAccents.includes(i)) { accent = i; break; }
     }
     const now = new Date().toISOString().replace("T"," ").substring(0,19);
-    db.timetableMeta.push({prog, section:sec, batch, accentIdx:accent, createdAt:now});
+    db.timetableMeta.push({prog, course, batch, semester, section:sec, sectionLabel:section, accentIdx:accent, createdAt:now});
     db.timetables[k] = {};
-    logAudit("TIMETABLE_CREATE", `${prog} / ${sec}`);
+    logAudit("TIMETABLE_CREATE", `${prog} / ${course} / ${batch} / Semester ${semester} / ${section}`);
     saveDB(db);
-    toast(`Timetable created: ${prog} / ${sec}`, "success");
+    toast("Timetable created successfully.", "success");
   } else {
+    ttCurrentProg = prog; ttCurrentSection = db.timetableMeta[existing].section;
     toast("Switching to existing timetable", "info");
   }
-
   ttCurrentProg = prog;
   ttCurrentSection = sec;
   closeModal2("tt-new-modal");
