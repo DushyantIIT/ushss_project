@@ -143,8 +143,8 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
 
     # Enforce the campus geofence on the server whenever configured in Render.
     # Do not trust a browser-side "within campus" label.
-    campus_lat = os.getenv("CAMPUS_LATITUDE")
-    campus_lon = os.getenv("CAMPUS_LONGITUDE")
+    campus_lat = os.getenv("CAMPUS_LATITUDE", "28.595016")
+    campus_lon = os.getenv("CAMPUS_LONGITUDE", "77.018942")
     location_verified = False
     if campus_lat and campus_lon:
         if body.latitude is None or body.longitude is None:
