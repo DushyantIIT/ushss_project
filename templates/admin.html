@@ -2103,7 +2103,7 @@ function adminSlotFor(prog, section, day, timeIdx) {
 
 function renderTimetable() {
   const slots=adminTimetableSlots();
-  const progs=[...new Set(slots.map(s=>s.programme).filter(Boolean))];
+  const progs=[...new Set([...slots.map(s=>s.programme).filter(Boolean),...ttDraftGroups().map(x=>x.programme)])];
   if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
   const savedDraftGroups = ttDraftGroups().filter(x=>x.programme===ttCurrentProg).map(x=>x.group);
   const allGroups=ttCurrentProg ? [...new Set([...adminSectionNames(ttCurrentProg),...savedDraftGroups])] : [];
