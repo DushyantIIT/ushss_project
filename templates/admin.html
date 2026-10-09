@@ -484,15 +484,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <label class="form-label">Programme <span class="required">*</span></label>
         <select class="form-select" id="tt-new-prog" required onchange="updateTTAcademicOptions()">
           <option value="">— Select Programme —</option>
-          <option value="B.A. (Hons.) English">B.A. (Hons.) English</option>
-          <option value="M.A. English">M.A. English</option>
-          <option value="B.A. (Hons.) Economics">B.A. (Hons.) Economics</option>
-          <option value="M.A. Economics">M.A. Economics</option>
+          <option value="B.A.">B.A.</option>
+          <option value="M.A.">M.A.</option>
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">Course <span class="required">*</span></label>
-        <input class="form-input" id="tt-new-course" placeholder="e.g. English / Economics / Literary Theory" required />
+        <select class="form-select" id="tt-new-course" required>
+          <option value="">— Select Course —</option>
+          <option value="English">English</option>
+          <option value="Economics">Economics</option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group">
