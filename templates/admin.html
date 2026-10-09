@@ -2356,6 +2356,28 @@ function exportAtt() {
   const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="USHSS_Attendance.csv";a.click();toast("Attendance exported","success");
 }
 
+
+/* Live admin data sync: update API-backed dashboard data without a full-page reload. */
+(function startAdminLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try {
+      await Promise.allSettled([
+        fetchAdminUsers(),
+        fetchAdminDashboardData(),
+        fetchPendingRequests(pendingRoleFilter)
+      ]);
+      updateBadges();
+      if (typeof renderPage === 'function' && currentPage) renderPage(currentPage);
+    } catch(e) { console.debug('Admin live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 
 </body>
