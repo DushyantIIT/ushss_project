@@ -1086,9 +1086,29 @@ def stats(admin: dict = Depends(require_admin)):
 
 @router.get("/audit", summary="Full audit log")
 def audit_log(admin: dict = Depends(require_admin)):
-    return sb.table("audit_log").select("*, users(username, full_name)") \
-             .order("ts", desc=True).limit(200).execute().data or []
+    """Return audit entries without relying on an optional PostgREST FK relationship.
 
+    Some production schemas do not declare audit_log.user_id as a foreign key
+    to users.id. A nested select (users(username, full_name)) then fails with
+    PostgREST PGRST200 and breaks the audit panel. Fetch the two tables
+    independently and enrich entries in Python instead.
+    """
+    entries = (
+        sb.table("audit_log")
+        .select("*")
+        .order("ts", desc=True)
+        .limit(200)
+        .execute()
+        .data or []
+    )
+    users = sb.table("users").select("id, username, full_name").execute().data or []
+    users_by_id = {str(user["id"]): user for user in users if user.get("id") is not None}
+
+    for entry in entries:
+        user_id = entry.get("user_id")
+        entry["users"] = users_by_id.get(str(user_id)) if user_id is not None else None
+
+    return entries
 
 @router.get("/messages", summary="Contact messages")
 def list_messages(admin: dict = Depends(require_admin)):
