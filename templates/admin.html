@@ -2401,7 +2401,7 @@ function exportAtt() {
       // focus, scroll position, and any in-progress interaction.
     } catch(e) { console.debug('Admin live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>
