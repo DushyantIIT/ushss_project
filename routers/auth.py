@@ -124,7 +124,7 @@ def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_sch
     return {"success":True,"message":"Password changed successfully."}
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=1); password: str = Field(..., min_length=6); role: str = Field(default="student"); full_name: str = Field(..., min_length=1); email: EmailStr; phone: str; enrollment_no: Optional[str]=None; department: Optional[str]=None; domain: Optional[str]=None; programme: Optional[str]=None; batch: Optional[str]=None; semester: Optional[str]=None; designation: Optional[str]=None
+    username: str = Field(..., min_length=1); password: str = Field(..., min_length=6); role: str = Field(default="student"); full_name: str = Field(..., min_length=1); email: EmailStr; phone: str; enrollment_no: Optional[str]=None; department: Optional[str]=None; domain: Optional[str]=None; programme: Optional[str]=None; batch: Optional[str]=None; semester: Optional[str]=None; section: Optional[str]=None; designation: Optional[str]=None
     model_config={"str_strip_whitespace":True}
 class RegisterResponse(BaseModel):
     success: bool; message: str; token: str; redirect_url: str="/waiting"
@@ -135,6 +135,7 @@ def register(body:RegisterRequest):
     if body.role == "faculty" and not body.domain:
         raise HTTPException(400,"Faculty domain is required")
     if body.role in ENROLLMENT_REQUIRED_ROLES and not body.enrollment_no: raise HTTPException(400,"Enrollment number is required for this role")
+    if body.role == "student" and not (body.section or "").strip(): raise HTTPException(400,"Section is required for student registration")
     if sb.table("users").select("id").eq("username",body.username).eq("role",body.role).execute().data: raise HTTPException(409,"Username already exists for this role")
     if sb.table("users").select("id").eq("email",body.email).execute().data: raise HTTPException(409,"Email address is already registered")
     phone=body.phone.strip()
@@ -151,7 +152,7 @@ def register(body:RegisterRequest):
         print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
         raise HTTPException(502,"Could not create the authentication account. Please try again.")
     if not supabase_uid: raise HTTPException(502,"Authentication account was not created. Please try again.")
-    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"domain":body.domain,"programme":body.programme,"batch":body.batch,"semester":body.semester,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid}
+    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"domain":body.domain,"programme":body.programme,"batch":body.batch,"semester":body.semester,"section":(body.section or "").strip() or None,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid}
     try:
         res=sb.table("users").insert(row).execute()
         if not res.data: raise RuntimeError("Insert returned no row")
