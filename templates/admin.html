@@ -2115,8 +2115,8 @@ function renderTimetable() {
   const progTabs=progs.map(p=>{
     const active=p===ttCurrentProg, m=meta(p);
     const names=[...new Set([...adminSectionNames(p),...ttDraftGroups().filter(x=>x.programme===p).map(x=>x.group)])];
-    const semCount=names.filter(x=>/^semester\\s+/i.test(x.trim())).length;
-    const groupCount=names.filter(x=>!/^semester\\s+/i.test(x.trim())).length;
+    const semCount=names.filter(x=>/^semester\s+/i.test(x.trim())).length;
+    const groupCount=names.filter(x=>!/^semester\s+/i.test(x.trim())).length;
     const countLabel=[semCount?semCount+" semester"+(semCount!==1?"s":""):"",groupCount?groupCount+" group"+(groupCount!==1?"s":""):""].filter(Boolean).join(" · ")||"No groups yet";
     return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProg('${escAttr(p)}')">
       <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${p}</div>
