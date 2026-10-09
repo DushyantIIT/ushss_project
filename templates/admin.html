@@ -1343,7 +1343,7 @@ function updateTTAcademicOptions() {
   const prog = document.getElementById("tt-new-prog").value;
   const batch = document.getElementById("tt-new-batch");
   const semester = document.getElementById("tt-new-semester");
-  const duration = prog === "BA" ? 4 : prog === "MA" ? 2 : 0;
+  const duration = prog === "B.A." ? 4 : prog === "M.A." ? 2 : 0;
   batch.innerHTML = '<option value="">— Select Batch —</option>';
   semester.innerHTML = '<option value="">— Select Semester —</option>';
   const year = new Date().getFullYear();
