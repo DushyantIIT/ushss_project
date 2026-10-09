@@ -730,7 +730,8 @@ function updateLiveCounts() {
 }
 
 function renderStudentList(filter = '') {
-  const students = DB.students.filter(s => s.active && (!filter || s.name.toLowerCase().includes(filter) || s.roll.includes(filter)));
+  const slot = DB.timetable.find(s => Number(s.id) === Number(activeAttendanceSlotId));
+  const students = DB.students.filter(s => s.active && (!slot || (s.prog === slot.programme && s.batch === slot.batch)) && (!filter || s.name.toLowerCase().includes(filter) || s.roll.includes(filter)));
   const colors = ['#8B2020','#2B5BA8','#2D7A4A','#7A5B2D','#5A2B7A'];
   document.getElementById('student-list-att').innerHTML = students.map((s,i) => `
     <div class="stu-row">
