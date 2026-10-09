@@ -957,9 +957,13 @@ async function loadAdminProfile() {
   // The server-side admin endpoint is the source of truth for the role.
   try {
     const res = await fetch("/api/admin/users?is_active=true", { headers: authHeaders() });
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       logoutAdmin();
       return false;
+    }
+    if (res.status === 403) {
+      console.warn("Admin profile endpoint denied access; preserving the current session.");
+      return true;
     }
     if (!res.ok) {
       console.warn("Admin profile validation returned", res.status);
@@ -2025,14 +2029,7 @@ async function initAdminDashboard(){
 }
 initAdminDashboard();
 
-// Periodic background refresh for pending registrations
-setInterval(() => {
-  fetchPendingRequests(pendingRoleFilter).then(() => {
-    if (currentPage === "pending-requests" || currentPage === "dashboard") {
-      renderPage(currentPage);
-    }
-  });
-}, 10000);
+// Pending requests are refreshed by the single coordinated live-sync loop below.
 
 const _db=loadDB();
 (_db.liveSessions||[]).filter(s=>s.active).forEach(s=>{
@@ -2400,7 +2397,8 @@ function exportAtt() {
         fetchPendingRequests(pendingRoleFilter)
       ]);
       updateBadges();
-      if (typeof renderPage === 'function' && currentPage) renderPage(currentPage);
+      // Do not rebuild the active page during background sync: preserve form values,
+      // focus, scroll position, and any in-progress interaction.
     } catch(e) { console.debug('Admin live sync will retry:',e); }
     finally { syncing=false; }
   },10000);
