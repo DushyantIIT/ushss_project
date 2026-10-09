@@ -613,6 +613,20 @@ function goPage(id, el) {
   if (id === 'history') renderFullHistory();
 }
 
+function getCleanInitials(str) {
+  if (!str || str === '—') return '--';
+  const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (!words.length) return '--';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+}
+function getCleanFirstName(str) {
+  if (!str || str === '—') return 'Faculty';
+  const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+  return clean.split(/\s+/)[0] || str;
+}
+
 /* SUPABASE DATA */
 async function loadFacultyData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
@@ -623,7 +637,7 @@ async function loadFacultyData(){
   const data=await r.json();
   facultyProfile=await (await fetch('/api/faculty/profile',{headers})).json();
   const profileName=facultyProfile.full_name||facultyProfile.username||'Faculty';
-  const initials=profileName.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const initials=getCleanInitials(profileName);
   const nameEl=document.getElementById('sb-name'); if(nameEl)nameEl.textContent=profileName;
   const roleEl=document.getElementById('sb-role'); if(roleEl)roleEl.textContent=(facultyProfile.designation||facultyProfile.role||'Faculty')+(facultyProfile.department?' · '+facultyProfile.department:'');
   const initEl=document.getElementById('sb-init'); if(initEl)initEl.textContent=initials;
@@ -654,7 +668,7 @@ function initDashboard() {
   const low=DB.students.filter(s=>s.att<75 && s.att>0).sort((a,b)=>a.att-b.att);
   document.getElementById('low-att-list').innerHTML=low.length?low.map(s=>`
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="width:28px;height:28px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--red);font-weight:700;flex-shrink:0">${s.name.charAt(0)}</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--red);font-weight:700;flex-shrink:0">${getCleanInitials(s.name)}</div>
       <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">${s.name}</div><div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${s.roll}</div></div>
       <div style="text-align:right"><div style="font-size:14px;font-weight:700;color:var(--red)">${s.att}%</div><div class="progress" style="width:60px"><div class="progress-fill progress-red" style="width:${s.att}%"></div></div></div>
     </div>`).join(''):`<div class="empty"><div class="empty-icon">🎉</div><div>No low-attendance records available.</div></div>`;
@@ -735,7 +749,7 @@ function renderStudentList(filter = '') {
   const colors = ['#8B2020','#2B5BA8','#2D7A4A','#7A5B2D','#5A2B7A'];
   document.getElementById('student-list-att').innerHTML = students.map((s,i) => `
     <div class="stu-row">
-      <div class="stu-init" style="background:${colors[i%5]}22;color:${colors[i%5]}">${s.name.split(' ').map(n=>n[0]).join('')}</div>
+      <div class="stu-init" style="background:${colors[i%5]}22;color:${colors[i%5]}">${getCleanInitials(s.name)}</div>
       <div><div class="stu-name">${s.name}</div><div class="stu-roll">${s.roll} · ${s.prog}</div></div>
       <div class="stu-status">
         <button class="att-btn ${attStatus[s.roll]==='present'?'present':''}" onclick="toggleAtt('${s.roll}','present')" title="Mark Present">✓</button>
@@ -929,15 +943,14 @@ function logoutFaculty() {
 
     const dashName = document.getElementById('dash-faculty-name');
     const dashSub = document.getElementById('dash-faculty-sub');
-    if (dashName) dashName.textContent = (u.full_name || u.username || 'Faculty').split(/\s+/)[0];
+    if (dashName) dashName.textContent = getCleanFirstName(u.full_name || u.username);
     if (dashSub) dashSub.textContent = [u.designation, u.department, u.domain].filter(Boolean).join(' · ') || 'Your teaching dashboard — classes, attendance and students in one place.';
     const nameEl   = document.getElementById('sb-name');
     const initEl   = document.getElementById('sb-init');
     const subEl    = document.querySelector('.sb-psub');
 
     if (nameEl) nameEl.textContent = u.full_name || u.username;
-    if (initEl) initEl.textContent = (u.full_name || u.username)
-                  .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    if (initEl) initEl.textContent = getCleanInitials(u.full_name || u.username);
     if (subEl)  subEl.textContent  = [u.designation, u.department].filter(Boolean).join(' · ');
 
   } catch(e) { console.warn('USHSS API: faculty profile load failed', e); }

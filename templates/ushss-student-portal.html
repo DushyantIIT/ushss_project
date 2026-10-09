@@ -765,13 +765,28 @@ async function loadPortalData(){
   if(results.slice(1).some(r=>r.status==='rejected')) toast('Some sections could not load. Refresh or contact support if this continues.','err');
   portalProfile=profile;
   const profileName = profile.full_name || profile.username || '—';
-  const initials = profileName.split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
+  function getCleanInitials(str) {
+    if (!str || str === '—') return '--';
+    const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+    const words = clean.split(/\s+/).filter(Boolean);
+    if (!words.length) return '--';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+  }
+  function getCleanFirstName(str) {
+    if (!str || str === '—') return 'Student';
+    const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+    return clean.split(/\s+/)[0] || str;
+  }
+  const initials = getCleanInitials(profileName);
   const setValue=(id,value)=>{const el=document.getElementById(id);if(el)el.value=value??'';};
   const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value??'—';};
-  setText('profile-initials', initials || '—');
+  setText('profile-initials', initials || '--');
+  const sbAv = document.querySelector('.sb-avatar');
+  if (sbAv) sbAv.textContent = initials || '--';
   setText('sb-student-name', profileName);
   setText('sb-student-meta', (profile.programme||'Student') + (profile.batch ? ' · '+profile.batch : ''));
-  setText('dash-welcome-name', profileName.split(/\s+/)[0] || profileName);
+  setText('dash-welcome-name', getCleanFirstName(profileName));
   setText('dash-welcome-sub', [profile.programme, profile.batch, profile.semester ? 'Semester '+profile.semester : ''].filter(Boolean).join(' · ') || 'Stay on top of your classes, attendance and academic work.');
   setText('dash-programme', profile.programme || '—');
   setText('dash-semester', profile.semester ? 'Semester '+profile.semester : '—');

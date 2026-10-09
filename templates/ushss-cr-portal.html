@@ -898,10 +898,18 @@ async function changeMyPassword(){
     const roleEl   = document.querySelector('.sb-prole');
     const avatarEl = document.querySelector('.sb-avatar');
 
+    function getCleanInitials(str) {
+      if (!str || str === '—') return '--';
+      const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+      const words = clean.split(/\s+/).filter(Boolean);
+      if (!words.length) return '--';
+      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+      return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+    }
+
     if (nameEl)   nameEl.textContent   = u.full_name || u.username;
     if (roleEl)   roleEl.textContent   = ['CR', u.programme, u.batch].filter(Boolean).join(' · ');
-    if (avatarEl) avatarEl.textContent = (u.full_name || u.username)
-                    .split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    if (avatarEl) avatarEl.textContent = getCleanInitials(u.full_name || u.username);
 
     // Load real classmates from DB and update the classmates table if it exists
     try {

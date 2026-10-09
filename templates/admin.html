@@ -973,12 +973,20 @@ async function loadAdminProfile() {
     const rawUser = localStorage.getItem("ushss_user");
     if (rawUser) {
       const u = JSON.parse(rawUser);
+      function getCleanInitials(str) {
+        if (!str || str === '—') return 'AD';
+        const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+        const words = clean.split(/\s+/).filter(Boolean);
+        if (!words.length) return 'AD';
+        if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+        return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+      }
       const nameEl = document.getElementById("sb-admin-name");
       const roleEl = document.getElementById("sb-admin-role");
       const avatarEl = document.getElementById("sb-admin-avatar");
       if (nameEl) nameEl.textContent = u.full_name || u.username || "Administrator";
       if (roleEl) roleEl.textContent = `${u.role || "admin"} · ${u.username || ""}${u.is_super_admin ? " (Super Admin)" : ""}`;
-      if (avatarEl) avatarEl.textContent = (u.full_name || u.username || "AD").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+      if (avatarEl) avatarEl.textContent = getCleanInitials(u.full_name || u.username || "AD");
     }
     return true;
   } catch (e) {
