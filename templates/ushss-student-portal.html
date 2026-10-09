@@ -851,7 +851,7 @@ async function changeMyPassword(){
     try { await loadPortalData(); }
     catch(e) { console.debug('Student live sync will retry:',e); }
     finally { syncing=false; }
-  },10000);
+  },600);
 })();
 
 </script>
