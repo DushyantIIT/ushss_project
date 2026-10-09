@@ -33,7 +33,7 @@ class LoginResponse(BaseModel):
 def login(body: LoginRequest):
     if body.role is not None and body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
-    pending_query = sb.table("users").select("*").eq("username", body.username).eq("status", "pending")
+    pending_query = sb.table("users").select("*").eq("enrollment_no", body.username).eq("status", "pending")
     if body.role is not None:
         pending_query = pending_query.eq("role", body.role)
     pending_res = pending_query.limit(1).execute()
