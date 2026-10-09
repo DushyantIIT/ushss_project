@@ -953,6 +953,21 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
+
+/* Live data sync: fetch fresh faculty data every 10 seconds without page reload. */
+(function startFacultyLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try { await loadFacultyData(); initDashboard(); }
+    catch(e) { console.debug('Faculty live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 
 </body>
