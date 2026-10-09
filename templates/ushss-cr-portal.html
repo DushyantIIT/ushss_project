@@ -642,7 +642,7 @@ function getLocation(){
       userLat=pos.coords.latitude;
       userLng=pos.coords.longitude;
       locOk=true;
-      document.getElementById('loc-status').innerHTML=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}<br><span style="color:var(--green)">Location captured; attendance eligibility is checked by the server</span>`;
+      document.getElementById('loc-status').innerHTML=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}<br><span style="color:var(--green)">Location captured; server validates the session and class</span>`;
       const btn=document.getElementById('mark-btn');
       if(btn){btn.disabled=false;btn.textContent='✅ Mark Present';}
     },
@@ -661,7 +661,7 @@ async function markAttendance(){
   if(!sess){toast('Select an active attendance session first','err');return;}
   btn.disabled=true;btn.textContent='Submitting…';
   try{
-    const payload={session_id:Number(sess.id)};
+    const payload={session_id:Number(sess.id),...(locOk?{latitude:userLat,longitude:userLng}:{})};
     const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Attendance could not be saved');
     document.getElementById('mark-status-badge').className='att-mark-status marked';
