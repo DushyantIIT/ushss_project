@@ -10,6 +10,11 @@ CLASS REPRESENTATIVE rights (extends student rights):
 
 from datetime import datetime, timezone
 from typing import Optional
+import base64
+import os
+import re
+from uuid import uuid4
+import mimetypes
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.db import sb
@@ -167,13 +172,85 @@ def create_material(body: MaterialBody, cr: dict = Depends(require_student)):
     res = sb.table("study_materials").insert(row).execute()
     return res.data[0]
 
+
+
+class UploadMaterialBody(BaseModel):
+    title: str
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    file_name: str
+    file_data: str
+    content_type: Optional[str] = None
+
+
+@router.post("/materials/upload", status_code=201, summary="Upload a material file to Supabase Storage")
+def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_student)):
+    _require_cr(cr)
+    try:
+        encoded = body.file_data.split(",", 1)[1] if body.file_data.startswith("data:") and "," in body.file_data else body.file_data
+        content = base64.b64decode(encoded, validate=True)
+    except Exception:
+        raise HTTPException(400, "The uploaded file data is invalid")
+    if not content:
+        raise HTTPException(400, "The uploaded file is empty")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Files must be 10 MB or smaller")
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(body.file_name))[:160] or "material.bin"
+    content_type = body.content_type or mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+    bucket = "ushss-study-materials"
+    try:
+        try:
+            sb.storage.create_bucket(bucket, options={"public": True, "file_size_limit": 10 * 1024 * 1024})
+        except Exception:
+            pass
+        storage_path = f"{cr['id']}/{uuid4().hex}_{safe_name}"
+        storage = sb.storage.from_(bucket)
+        storage.upload(storage_path, content, file_options={"content-type": content_type, "upsert": "false"})
+        file_url = storage.get_public_url(storage_path)
+    except Exception as exc:
+        print(f"CR MATERIAL STORAGE ERROR: {type(exc).__name__}: {str(exc)[:200]}")
+        raise HTTPException(503, "File storage is unavailable. Please check the Supabase Storage bucket configuration.")
+    row = {
+        "title": body.title.strip(),
+        "description": (body.description or "").strip(),
+        "subject": body.subject,
+        "file_name": safe_name,
+        "file_url": file_url,
+        "size": f"{len(content) / (1024 * 1024):.2f} MB",
+        "programme": cr.get("programme"),
+        "batch": cr.get("batch"),
+        "uploaded_by": cr["id"],
+        "is_active": True,
+    }
+    try:
+        result = sb.table("study_materials").insert(row).execute()
+        if not result.data:
+            raise RuntimeError("Material metadata insert returned no row")
+        return result.data[0]
+    except Exception as exc:
+        try:
+            sb.storage.from_(bucket).remove([storage_path])
+        except Exception:
+            pass
+        print(f"CR MATERIAL METADATA ERROR: {type(exc).__name__}: {str(exc)[:200]}")
+        raise HTTPException(503, "The file was uploaded but its record could not be saved.")
+
+
 @router.delete("/materials/{mid}", summary="Delete a class study material")
 def delete_material(mid: int, cr: dict = Depends(require_student)):
     _require_cr(cr)
-    existing = sb.table("study_materials").select("id,uploaded_by").eq("id", mid).single().execute()
+    existing = sb.table("study_materials").select("id,uploaded_by,file_url").eq("id", mid).single().execute()
     if not existing.data:
         raise HTTPException(404, "Study material not found")
     if cr["role"] != "admin" and existing.data.get("uploaded_by") != cr["id"]:
         raise HTTPException(403, "You can only delete materials you uploaded")
+    file_url = str(existing.data.get("file_url") or "")
+    marker = "/storage/v1/object/public/ushss-study-materials/"
+    if marker in file_url:
+        storage_path = file_url.split(marker, 1)[1].split("?", 1)[0]
+        try:
+            sb.storage.from_("ushss-study-materials").remove([storage_path])
+        except Exception as exc:
+            print(f"CR MATERIAL FILE DELETE WARNING: {type(exc).__name__}: {str(exc)[:160]}")
     sb.table("study_materials").delete().eq("id", mid).execute()
     return {"message": "Study material deleted"}
