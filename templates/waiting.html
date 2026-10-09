@@ -46,6 +46,7 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
   <div class="status-badge" id="status-badge">Status: Pending</div>
   <p id="who" style="display:none"></p>
   <div class="loading" id="loading">Checking status…</div>
+  <p id="verification-message" role="alert" aria-live="polite" style="display:none;color:#b42318;margin-top:.75rem"></p>
   <div class="actions">
     <button type="button" onclick="checkStatus()">Refresh Status</button>
     <button class="primary" type="button" onclick="logout()">Logout</button>
@@ -92,22 +93,6 @@ async function checkStatus() {
   } finally { loading.style.display="none"; }
 }
 
-async function resendOtps() {
-  const token=getToken();
-  if(!token) return;
-  try {
-    const res=await fetch("/api/registration/send-otp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token})});
-    const data=await res.json();
-    if(!res.ok) throw new Error(data.detail||"Could not resend OTPs");
-    const msg=document.getElementById("verification-message");
-    msg.textContent="New OTPs have been sent to your unverified email/mobile.";
-    msg.style.display="block";
-  } catch(e) {
-    const msg=document.getElementById("verification-message");
-    msg.textContent=e.message||"Could not resend OTPs.";
-    msg.style.display="block";
-  }
-}
 
 function logout() {
   localStorage.removeItem("ushss_pending_token");

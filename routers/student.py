@@ -14,6 +14,8 @@ STUDENT / CR rights:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
+import math
+import os
 
 from app.db import sb
 from app.deps import require_student
@@ -109,6 +111,8 @@ def open_sessions(student: dict = Depends(require_student)):
 
 class MarkAttendanceBody(BaseModel):
     session_id: int
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 @router.post("/attendance/mark", status_code=201, summary="Mark yourself present in an open session")
@@ -137,6 +141,31 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     if slot_prog != student.get("programme") or slot_batch != student.get("batch"):
         raise HTTPException(403, "This session is not for your class.")
 
+    # Enforce the campus geofence on the server whenever configured in Render.
+    # Do not trust a browser-side "within campus" label.
+    campus_lat = os.getenv("CAMPUS_LATITUDE", "28.595016")
+    campus_lon = os.getenv("CAMPUS_LONGITUDE", "77.018942")
+    location_verified = False
+    if campus_lat and campus_lon:
+        if body.latitude is None or body.longitude is None:
+            raise HTTPException(400, "Location permission is required to mark attendance.")
+        if not (-90 <= body.latitude <= 90 and -180 <= body.longitude <= 180):
+            raise HTTPException(400, "Invalid location coordinates.")
+        try:
+            lat0, lon0 = float(campus_lat), float(campus_lon)
+            radius = max(50.0, float(os.getenv("CAMPUS_RADIUS_METERS", "500")))
+        except ValueError:
+            raise HTTPException(503, "Campus attendance location is misconfigured. Contact the administrator.")
+        earth_radius = 6371000.0
+        p1, p2 = math.radians(lat0), math.radians(body.latitude)
+        dp = math.radians(body.latitude - lat0)
+        dl = math.radians(body.longitude - lon0)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        distance = 2 * earth_radius * math.asin(min(1.0, math.sqrt(a)))
+        if distance > radius:
+            raise HTTPException(403, f"You appear to be outside the campus attendance radius ({int(distance)} m from campus).")
+        location_verified = True
+
     # 3. Check if already marked
     existing = sb.table("attendance_records") \
                  .select("id, status") \
@@ -161,6 +190,7 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     subject = (sess.get("timetable_slots") or {}).get("subject", "")
     return {
         "message": f"Attendance marked as PRESENT for '{subject}'.",
+        "location_verified": location_verified,
         "record":  res.data[0],
     }
 
@@ -246,4 +276,14 @@ def get_materials(student: dict = Depends(require_student)):
         batch_ok = not batch or not row.get("batch") or row.get("batch") == batch
         return programme_ok and batch_ok
 
-    return [row for row in rows if visible(row)]
+    visible_rows = [row for row in rows if visible(row)]
+    for row in visible_rows:
+        path = row.get("file_url")
+        if path and not str(path).startswith("http"):
+            try:
+                signed = sb.storage.from_("ushss-study-materials").create_signed_url(str(path), 3600)
+                row["file_url"] = signed.get("signedURL") or signed.get("signedUrl") or ""
+            except Exception as exc:
+                print(f"STUDENT MATERIAL SIGNED URL WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+                row["file_url"] = ""
+    return visible_rows

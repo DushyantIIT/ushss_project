@@ -578,18 +578,18 @@ function initAttPage(){
     navigator.geolocation.getCurrentPosition(
       pos=>{
         userLat=pos.coords.latitude;userLng=pos.coords.longitude;locOk=true;
-        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Within campus ✓</span>`;
-        const btn=document.getElementById('mark-btn');
-        btn.disabled=false;btn.textContent='✅ Mark Myself Present';
-        document.getElementById('live-indicator').textContent='🔴 Session Live';
+        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Location captured; the server verifies the campus radius</span>`;
+        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='✅ Mark Myself Present';document.getElementById('live-indicator').textContent='🔴 Session Live';
       },
       err=>{
-        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Will mark without location</span>`;
-        const btn=document.getElementById('mark-btn');
-        btn.disabled=false;btn.textContent='⚠ Mark Present (No Location)';
+        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Location is required for campus-restricted attendance</span>`;
+        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='⚠ Retry attendance';
       },
       {enableHighAccuracy:true,timeout:10000}
     );
+  } else if(!navigator.geolocation) {
+    const info=document.getElementById('loc-text');if(info)info.textContent='This browser does not support location. Use a browser with location access to mark attendance.';
+    const btn=document.getElementById('mark-btn');if(btn){btn.disabled=true;btn.textContent='Location required';}
   }
   renderAttLog();
 }
@@ -597,7 +597,7 @@ function initAttPage(){
 async function markMyAttendance(){
   if(!activeSessionId){toast('No active attendance session','err');return;}
   const btn=document.getElementById('mark-btn');btn.disabled=true;btn.textContent='Submitting…';
-  try{const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSessionId})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');toast(d.message||'Attendance marked!','ok');btn.style.display='none';document.getElementById('mark-success').style.display='block';await loadPortalData();renderAttLog();}catch(e){toast(e.message,'err');btn.disabled=false;btn.textContent='Mark Myself Present';}
+  try{const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSessionId,...(locOk?{latitude:userLat,longitude:userLng}:{})})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');toast(d.message||'Attendance marked!','ok');btn.style.display='none';document.getElementById('mark-success').style.display='block';await loadPortalData();renderAttLog();}catch(e){toast(e.message,'err');btn.disabled=false;btn.textContent='Mark Myself Present';}
 }
 function renderAttLog(){
   const el=document.getElementById('att-log');
@@ -678,7 +678,7 @@ function renderMaterials(arr){
         <span class="badge badge-gold">${m.size}</span>
       </div>
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · by ${m.by}</div>
-      <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" onclick="toast('Downloading…','ok')">⬇ Download PDF</button>
+      ${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
     </div>
   `).join(''):`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No materials yet</div></div>`;
 }
@@ -753,11 +753,16 @@ async function loadPortalData(){
   const token=localStorage.getItem('ushss_token'); if(!token)return;
   const headers={'Authorization':'Bearer '+token};
   const get=async p=>{const r=await fetch(p,{headers});if(r.status===401){logoutStudent();throw new Error('Session expired');}if(!r.ok)throw new Error('Failed to load '+p);return r.json();};
-  const [profile,anns,assignments,materials,history,timetable,openSessions]=await Promise.all([
+  const results=await Promise.allSettled([
     get('/api/student/profile'),get('/api/student/announcements'),get('/api/student/assignments'),
     get('/api/student/materials'),get('/api/student/attendance/history'),get('/api/student/timetable'),
     get('/api/student/attendance/open')
   ]);
+  if(results[0].status==='rejected') throw results[0].reason;
+  const value=(i,fallback)=>results[i].status==='fulfilled'?results[i].value:fallback;
+  const profile=value(0,null),anns=value(1,[]),assignments=value(2,[]),materials=value(3,[]),
+        history=value(4,{records:[],percentage:0,present:0,absent:0}),timetable=value(5,[]),openSessions=value(6,[]);
+  if(results.slice(1).some(r=>r.status==='rejected')) toast('Some sections could not load. Refresh or contact support if this continues.','err');
   portalProfile=profile;
   const profileName = profile.full_name || profile.username || '—';
   const initials = profileName.split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
@@ -781,7 +786,7 @@ async function loadPortalData(){
   setValue('profile-batch', profile.batch);
   DB.announcements=(anns||[]).map(a=>({id:a.id,title:a.title,body:a.body||'',type:a.priority==='urgent'?'urgent':a.priority==='important'?'reminder':'info',from:a.target||'USHSS',ts:a.ts||'',read:false}));
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
-  DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',by:m.uploaded_by||''}));
+  DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',file_url:m.file_url||'',by:m.uploaded_by||''}));
   DB.attLog=(history.records||[]).map(r=>{const session=r.attendance_sessions||{}, s=session.timetable_slots||{}, faculty=session.users||{}; return {id:r.id,date:session.date||'',subject:s.subject||'',topic:'',teacher:faculty.full_name||'—',status:r.status,loc:s.room||'—'};});
   attendanceSummary=history; DB.timetable=buildTimetable(timetable||[]);
   DB.liveSessions=(openSessions||[]).map(s=>({id:s.id,cls:(s.timetable_slots||{}).subject||'Class',topic:'',teacher:(s.users||{}).full_name||'',endsIn:0,slot_id:s.slot_id}));
@@ -833,6 +838,22 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
+
+// Live data sync: refresh API-backed portal data without reloading the page.
+// Pause while a form field is being edited so background sync cannot overwrite input.
+(function startStudentLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try { await loadPortalData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
+    catch(e) { console.debug('Student live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 </body>
 </html>

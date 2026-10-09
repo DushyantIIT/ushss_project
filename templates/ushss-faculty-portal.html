@@ -408,7 +408,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
           <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap">
             <div>
               <div class="att-timer" id="timer-display">15:00</div>
-              <div class="att-timer-sub">Time Remaining</div>
+              <div class="att-timer-sub" id="att-timer-sub">Time Remaining</div>
             </div>
             <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:6px">
               <div><div class="att-count" id="live-present">0</div><div class="att-count-lbl">Present</div></div>
@@ -588,6 +588,7 @@ let attStatus = {}; // roll -> 'present'|'absent'|null
 let timerInterval = null;
 let timerLeft = 0;
 let sessionActive = false;
+let activeAttendanceSlotId = null;
 
 /* ═══ NAVIGATION ═══ */
 const pages = {
@@ -632,7 +633,7 @@ async function loadFacultyData(){
   DB.timetable=data.timetable||[];
   updateFacultyStats();
   const course=document.getElementById('att-course');
-  if(course&&DB.timetable.length){course.innerHTML=[...new Set(DB.timetable.map(s=>s.programme+' — '+s.batch))].map(x=>'<option>'+x+'</option>').join('');}
+  if(course&&DB.timetable.length){course.replaceChildren();DB.timetable.forEach(s=>{const o=document.createElement('option');o.value=String(s.id);o.textContent=(s.subject||'Class')+' — '+(s.programme||'')+' '+(s.batch||'')+' · '+(s.day_of_week||'')+' '+String(s.start_time||'').slice(0,5);course.appendChild(o);});}
 }
 function updateFacultyStats(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
@@ -673,42 +674,21 @@ function initDashboard() {
 }
 /* ═══ ATTENDANCE ═══ */
 function startAttendance() {
-  const course = document.getElementById('att-course').value;
-  const topic  = document.getElementById('att-topic').value || 'General Class';
-  const dur    = parseInt(document.getElementById('att-duration').value);
-
-  // Init status
-  attStatus = {};
-  DB.students.filter(s => s.active).forEach(s => attStatus[s.roll] = null);
-
-  document.getElementById('live-class-info').textContent = `${course}  ·  ${topic}`;
-  document.getElementById('live-total-c').textContent = Object.keys(attStatus).length;
-
-  document.getElementById('att-start-view').style.display = 'none';
-  document.getElementById('att-live-view').style.display = 'block';
-  document.getElementById('att-history-mini').style.display = 'none';
-  document.getElementById('live-badge').style.display = 'inline-flex';
-  document.getElementById('live-indicator').textContent = '🔴 LIVE';
-  sessionActive = true;
-
-  renderStudentList();
-  updateLiveCounts();
-
-  if (dur > 0) {
-    timerLeft = dur;
-    updateTimerDisplay();
-    timerInterval = setInterval(() => {
-      timerLeft--;
-      updateTimerDisplay();
-      if (timerLeft <= 0) {
-        clearInterval(timerInterval);
-        toast('⏰ Timer ended! Save attendance.', 'ok');
-      }
-    }, 1000);
-  } else {
-    document.getElementById('timer-display').textContent = '∞';
-    document.getElementById('att-timer-sub').textContent = 'Manual Mode';
-  }
+  const courseEl=document.getElementById('att-course');
+  activeAttendanceSlotId=Number(courseEl.value);
+  const slot=DB.timetable.find(s=>Number(s.id)===activeAttendanceSlotId);
+  if(!slot){toast('No valid timetable slot is selected','err');return;}
+  const topic=document.getElementById('att-topic').value||slot.subject||'General Class';
+  const dur=parseInt(document.getElementById('att-duration').value,10);
+  const students=DB.students.filter(s=>s.active&&s.prog===slot.programme&&s.batch===slot.batch);
+  if(!students.length){toast('No active students are assigned to this programme and batch','err');return;}
+  attStatus={};students.forEach(s=>attStatus[s.roll]=null);
+  document.getElementById('live-class-info').textContent=(slot.subject||'Class')+' · '+(slot.programme||'')+' '+(slot.batch||'')+' · '+topic;
+  document.getElementById('live-total-c').textContent=students.length;
+  document.getElementById('att-start-view').style.display='none';document.getElementById('att-live-view').style.display='block';document.getElementById('att-history-mini').style.display='none';document.getElementById('live-badge').style.display='inline-flex';document.getElementById('live-indicator').textContent='🔴 LIVE';sessionActive=true;
+  const dateEl=document.getElementById('att-date');if(dateEl&&!dateEl.value)dateEl.value=new Date().toLocaleDateString('en-CA');
+  renderStudentList();updateLiveCounts();
+  if(dur>0){timerLeft=dur;updateTimerDisplay();document.getElementById('att-timer-sub').textContent='Time Remaining';timerInterval=setInterval(()=>{timerLeft--;updateTimerDisplay();if(timerLeft<=0){clearInterval(timerInterval);toast('Timer ended. Review and save attendance.','ok');}},1000);}else{document.getElementById('timer-display').textContent='∞';document.getElementById('att-timer-sub').textContent='Manual Mode';}
 }
 
 function updateTimerDisplay() {
@@ -750,7 +730,8 @@ function updateLiveCounts() {
 }
 
 function renderStudentList(filter = '') {
-  const students = DB.students.filter(s => s.active && (!filter || s.name.toLowerCase().includes(filter) || s.roll.includes(filter)));
+  const slot = DB.timetable.find(s => Number(s.id) === Number(activeAttendanceSlotId));
+  const students = DB.students.filter(s => s.active && (!slot || (s.prog === slot.programme && s.batch === slot.batch)) && (!filter || s.name.toLowerCase().includes(filter) || s.roll.includes(filter)));
   const colors = ['#8B2020','#2B5BA8','#2D7A4A','#7A5B2D','#5A2B7A'];
   document.getElementById('student-list-att').innerHTML = students.map((s,i) => `
     <div class="stu-row">
@@ -766,32 +747,34 @@ function renderStudentList(filter = '') {
 
 function filterStudents(v) { renderStudentList(v.toLowerCase()); }
 
-function submitAttendance() {
-  clearInterval(timerInterval);
-  const vals = Object.values(attStatus);
-  const present = vals.filter(v => v === 'present').length;
-  const total   = vals.length;
-  const sess = {
-    date: new Date().toISOString().slice(0,10),
-    cls: document.getElementById('att-course').value,
-    topic: document.getElementById('att-topic').value || 'General Class',
-    present, total,
-    duration: document.getElementById('att-duration').selectedOptions[0].text,
-  };
-  DB.sessions.unshift(sess);
-  // Update student attendance percentages roughly
-  DB.students.filter(s => s.active).forEach(s => {
-    if (attStatus[s.roll] === 'present') s.att = Math.min(100, s.att + 1);
-  });
-
-  sessionActive = false;
-  document.getElementById('att-start-view').style.display = 'block';
-  document.getElementById('att-live-view').style.display = 'none';
-  document.getElementById('att-history-mini').style.display = 'block';
-  document.getElementById('live-badge').style.display = 'none';
-  document.getElementById('live-indicator').textContent = '';
-  renderSessionHistory();
-  toast(`✅ Attendance saved — ${present}/${total} present`, 'ok');
+async function submitAttendance() {
+  if(!activeAttendanceSlotId){toast('Select a timetable slot first','err');return;}
+  const slot=DB.timetable.find(s=>Number(s.id)===activeAttendanceSlotId);
+  if(!slot){toast('The selected timetable slot is no longer available','err');return;}
+  const students=DB.students.filter(s=>s.active&&s.prog===slot.programme&&s.batch===slot.batch);
+  const unmarked=students.filter(s=>!attStatus[s.roll]);
+  if(unmarked.length){toast('Mark every student present or absent before saving ('+unmarked.length+' unmarked)','err');return;}
+  const date=document.getElementById('att-date').value||new Date().toLocaleDateString('en-CA');
+  const token=localStorage.getItem('ushss_token');const headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  try{
+    clearInterval(timerInterval);
+    let sessionId=null;
+    const openRes=await fetch('/api/faculty/attendance/open',{method:'POST',headers,body:JSON.stringify({slot_id:activeAttendanceSlotId,date})});
+    const openData=await openRes.json().catch(()=>({}));
+    if(openRes.ok){sessionId=openData.session&&openData.session.id;}
+    else if(openRes.status===409){const sr=await fetch('/api/faculty/attendance/sessions',{headers});const sessions=await sr.json().catch(()=>[]);const existing=(Array.isArray(sessions)?sessions:[]).find(s=>Number(s.slot_id)===activeAttendanceSlotId&&String(s.date).slice(0,10)===date&&s.is_open);if(existing)sessionId=existing.id;else throw new Error(openData.detail||'Could not open attendance session');}
+    else throw new Error(openData.detail||'Could not open attendance session');
+    if(!sessionId)throw new Error('The server did not return an attendance session ID');
+    const records=students.map(s=>({student_id:Number(s.id),status:attStatus[s.roll]}));
+    const saveRes=await fetch('/api/faculty/attendance/'+sessionId+'/records',{method:'POST',headers,body:JSON.stringify({records})});
+    const saveData=await saveRes.json().catch(()=>({}));if(!saveRes.ok)throw new Error(saveData.detail||'Could not save attendance records');
+    const closeRes=await fetch('/api/faculty/attendance/'+sessionId+'/close',{method:'PATCH',headers});
+    if(!closeRes.ok){const closeData=await closeRes.json().catch(()=>({}));console.warn('Attendance saved, but session close failed',closeData);}
+    const present=records.filter(r=>r.status==='present').length;
+    DB.sessions.unshift({id:sessionId,date,cls:(slot.programme||'')+' — '+(slot.batch||''),topic:slot.subject||'',present,total:records.length,duration:document.getElementById('att-duration').selectedOptions[0].text,is_open:false});
+    sessionActive=false;document.getElementById('att-start-view').style.display='block';document.getElementById('att-live-view').style.display='none';document.getElementById('att-history-mini').style.display='block';document.getElementById('live-badge').style.display='none';document.getElementById('live-indicator').textContent='';renderSessionHistory();updateFacultyStats();
+    toast('Attendance saved to the server — '+present+'/'+records.length+' present','ok');
+  }catch(e){toast(e.message||'Attendance could not be saved','err');}
 }
 
 function renderSessionHistory() {
@@ -925,19 +908,6 @@ function logoutFaculty() {
 }
 </script>
 <!-- USHSS Real API Integration: loads real faculty profile into sidebar -->
-
-async function changeMyPassword(){
-  const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
-  if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
-  if(next.value.length<6){toast('New password must be at least 6 characters','err');return;}
-  if(next.value!==confirm.value){toast('New passwords do not match','err');return;}
-  try{
-    const r=await fetch('/api/change-password',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({current_password:current.value,new_password:next.value,confirm_password:confirm.value})});
-    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not change password');
-    current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
-  }catch(e){toast(e.message,'err');}
-}
-
 <script>
 (async function loadFacultyProfile() {
   const token = localStorage.getItem('ushss_token');
@@ -983,6 +953,21 @@ async function changeMyPassword(){
     current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
   }catch(e){toast(e.message,'err');}
 }
+
+/* Live data sync: fetch fresh faculty data every 10 seconds without page reload. */
+(function startFacultyLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try { await loadFacultyData(); initDashboard(); const activePage=document.querySelector('.page.active'); if(activePage && activePage.id.startsWith('pg-')) { const id=activePage.id.slice(3); if(id!=='dashboard') goPage(id,document.querySelector('.sb-item.active')); } }
+    catch(e) { console.debug('Faculty live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
+
 </script>
 
 </body>

@@ -508,6 +508,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <option value="Semester II">Semester II</option>
             <option value="Semester III">Semester III</option>
             <option value="Semester IV">Semester IV</option>
+            <option value="Semester V">Semester V</option>
+            <option value="Semester VI">Semester VI</option>
+            <option value="Semester VII">Semester VII</option>
+            <option value="Semester VIII">Semester VIII</option>
             <option value="All Sections">All Sections</option>
             <option value="custom">✏ Custom…</option>
           </select>
@@ -914,25 +918,7 @@ async function fetchAdminStats() {
   window.__supabaseAudit=data.log||[];
   return data;
 }
-async function fetchAdminDashboardData() {
-  const safeJson = async (url, fallback) => {
-    try{
-      const r=await fetch(url,{headers:authHeaders()});
-      if(r.status===401){ logoutAdmin(); return fallback; }
-      return r.ok ? await r.json() : fallback;
-    }catch(e){ console.error("Admin API failed:",url,e); return fallback; }
-  };
-  const [stats, timetable, attendance, announcements] = await Promise.all([
-    fetchAdminStats().catch(e=>{ console.error("Admin stats failed:",e); return {}; }),
-    safeJson("/api/admin/timetable",[]),
-    safeJson("/api/admin/attendance/sessions",[]),
-    safeJson("/api/admin/announcements",[])
-  ]);
-  window.__supabaseTimetable=timetable||[];
-  window.__supabaseAttendance=attendance||[];
-  window.__supabaseAnnouncements=announcements||[];
-  return {stats,timetable,attendance,announcements};
-}
+
 function logAudit(action,detail) {
   const db=loadDB(); const ts=new Date().toISOString().replace("T"," ").substring(0,19);
   db.audit.push({id:db._nextId++,user_id:1,action,detail,ts}); saveDB(db);
@@ -1342,168 +1328,15 @@ function ttGetSections(prog) {
   return ttGetMeta().filter(m => m.prog === prog).map(m => m.section);
 }
 
-function renderTimetable() {
-  const db = loadDB();
-  const meta = db.timetableMeta || [];
-  const progs = [...new Set(meta.map(m => m.prog))];
 
-  // Default to first programme if none selected
-  if (!ttCurrentProg && progs.length > 0) ttCurrentProg = progs[0];
-  if (ttCurrentProg && !ttCurrentSection) {
-    const secs = ttGetSections(ttCurrentProg);
-    if (secs.length > 0) ttCurrentSection = secs[0];
-  }
 
-  // Programme tab bar
-  const progTabs = progs.map(p => {
-    const m = meta.find(x => x.prog === p);
-    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
-    const isActive = p === ttCurrentProg;
-    const secCount = ttGetSections(p).length;
-    return `<div class="tt-prog-tab ${isActive?"active":""}" onclick="ttSelectProg('${escAttr(p)}')"
-      style="${isActive?`border-bottom-color:${accent};`:""}"
-      title="${p}">
-      <div class="tt-tab-name" style="${isActive?`color:${accent}`:""}">${p}</div>
-      <div class="tt-tab-sub">${secCount} section${secCount!==1?"s":""}</div>
-    </div>`;
-  }).join("");
-
-  // "+" add new timetable tab
-  const addTab = `<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable for a new programme or section">
-    <div class="tt-tab-add-icon">+</div>
-  </div>`;
-
-  // Section pill bar for current programme
-  let sectionBar = "";
-  if (ttCurrentProg) {
-    const sections = ttGetSections(ttCurrentProg);
-    const sectionPills = sections.map(s => {
-      const isAct = s === ttCurrentSection;
-      return `<div class="tt-section-tab ${isAct?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</div>`;
-    }).join("");
-    const m = meta.find(x => x.prog === ttCurrentProg);
-    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
-    sectionBar = `
-      <div class="tt-section-bar">
-        <span style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-right:2px">SECTIONS:</span>
-        ${sectionPills}
-        <div class="tt-section-add" onclick="openNewTimetableModal('${escAttr(ttCurrentProg)}')" title="Add section">
-          <span>+</span> Add Section
-        </div>
-        ${ttCurrentSection?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Section</button>`:""}
-      </div>`;
-  }
-
-  // Grid
-  let gridHTML = "";
-  if (ttCurrentProg && ttCurrentSection) {
-    const key = ttKey(ttCurrentProg, ttCurrentSection);
-    const slots = db.timetables[key] || {};
-    const m = meta.find(x => x.prog === ttCurrentProg && x.section === ttCurrentSection);
-    const accent = TT_ACCENT_COLORS[m?.accentIdx ?? 0];
-    const accentClass = `tt-acc-${m?.accentIdx ?? 0}`;
-
-    const heads = TT_DAYS.map(d => `<div class="tt-head">${d.label}</div>`).join("");
-    let rows = "";
-    for (let t = 0; t < TT_TIMES.length; t++) {
-      rows += `<div class="tt-time">${TT_TIMES[t]}</div>`;
-      for (const d of TT_DAYS) {
-        const cellKey = `${d.key}_${t}`;
-        const cell = slots[cellKey];
-        if (!cell || !cell.subject) {
-          rows += `<div class="tt-cell" onclick="openTTEdit('${d.key}',${t})">
-            <div class="tt-cell-empty">+</div>
-          </div>`;
-        } else if (cell.subject === "BREAK") {
-          rows += `<div class="tt-cell break" onclick="openTTEdit('${d.key}',${t})">
-            <div style="text-align:center;font-size:11px;color:var(--amber);font-weight:600;margin-top:8px">☕ Break / Lunch</div>
-            <div class="tt-edit-btn">✎</div>
-          </div>`;
-        } else {
-          const isSpecial = ["LAB","SEMINAR","TUTORIAL"].includes(cell.subject);
-          const specialIcon = {LAB:"🔬",SEMINAR:"🎤",TUTORIAL:"📝"}[cell.subject]||"";
-          const displaySub = isSpecial ? `${specialIcon} ${cell.subject}` : cell.subject;
-          rows += `<div class="tt-cell has-class ${accentClass}" onclick="openTTEdit('${d.key}',${t})">
-            <div class="tt-cell-subject">${displaySub}</div>
-            ${cell.room?`<div class="tt-cell-room">📍 ${cell.room}</div>`:""}
-            ${cell.faculty?`<div class="tt-cell-teacher">👤 ${cell.faculty.replace("Dr. ","Dr.")}</div>`:""}
-            ${cell.notes?`<div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px;font-style:italic">${cell.notes}</div>`:""}
-            <div class="tt-edit-btn">✎</div>
-          </div>`;
-        }
-      }
-    }
-
-    // Count classes for this timetable
-    const classCount = Object.values(slots).filter(v=>v.subject&&v.subject!=="BREAK").length;
-    const batchInfo = m?.batch ? `Batch: ${m.batch}` : "";
-
-    gridHTML = `
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:10px;height:10px;border-radius:2px;background:${accent};flex-shrink:0"></div>
-          <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--cream)">${ttCurrentProg}</span>
-          <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">/ ${ttCurrentSection}</span>
-          ${batchInfo?`<span class="badge badge-amber" style="font-size:10px">${batchInfo}</span>`:""}
-        </div>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-          <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${classCount} class${classCount!==1?"es":""}/week</span>
-          <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
-          <button class="btn btn-primary btn-sm" onclick="toast('Timetable published to all portals','success');logAudit('TIMETABLE_PUBLISH','${escAttr(ttCurrentProg)} / ${escAttr(ttCurrentSection)}')">📡 Publish</button>
-        </div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
-        <div class="tt-grid" style="min-width:700px">
-          <div class="tt-head" style="background:transparent;border-color:transparent"></div>
-          ${heads}${rows}
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:12px;font-family:var(--mono)">💡 Click any cell to add or edit a class · Left border colour indicates programme</div>
-      </div>`;
-  } else if (progs.length === 0) {
-    gridHTML = `
-      <div class="tt-empty-state">
-        <div class="tt-empty-icon">🗓️</div>
-        <div class="tt-empty-title">No timetables yet</div>
-        <div class="tt-empty-sub">Click the + button above to create your first timetable</div>
-        <button class="btn btn-primary btn-lg" onclick="openNewTimetableModal()">➕ Create First Timetable</button>
-      </div>`;
-  } else {
-    gridHTML = `
-      <div class="tt-empty-state">
-        <div class="tt-empty-icon">📋</div>
-        <div class="tt-empty-title">Select a section</div>
-        <div class="tt-empty-sub">Choose or create a section above to view its timetable</div>
-      </div>`;
-  }
-
-  return `
-    <div class="sec-head">
-      <div><div class="sec-label">Academic Schedule</div><div class="sec-title">Timetable Manager</div></div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${meta.length} timetable${meta.length!==1?"s":""} across ${progs.length} programme${progs.length!==1?"s":""}</span>
-      </div>
-    </div>
-
-    <!-- Programme tab bar -->
-    <div class="tt-tab-bar" id="tt-tab-bar">
-      ${progTabs}
-      ${addTab}
-    </div>
-
-    <!-- Section pill bar -->
-    ${sectionBar}
-
-    <!-- Grid -->
-    ${gridHTML}`;
-}
-
-function ttSelectProg(prog) {
+function legacy_ttSelectProg(prog) {
   ttCurrentProg = prog;
   const secs = ttGetSections(prog);
   ttCurrentSection = secs.length > 0 ? secs[0] : "";
   renderPage("timetable");
 }
-function ttSelectSection(sec) {
+function legacy_ttSelectSection(sec) {
   ttCurrentSection = sec;
   renderPage("timetable");
 }
@@ -1534,7 +1367,7 @@ function checkTTExists() {
   const exists = db.timetableMeta?.some(m => m.prog === prog && m.section === sec);
   document.getElementById("tt-new-exists-warn").style.display = exists ? "block" : "none";
 }
-function createNewTimetable() {
+function legacy_createNewTimetable() {
   const prog  = document.getElementById("tt-new-prog").value;
   const sec   = (document.getElementById("tt-new-sec-custom").value.trim() || document.getElementById("tt-new-sec-preset").value).trim();
   const batch = document.getElementById("tt-new-batch").value;
@@ -1571,7 +1404,7 @@ function createNewTimetable() {
   renderPage("timetable");
 }
 
-function deleteTimetable(prog, sec) {
+function legacy_deleteTimetable(prog, sec) {
   deleteCallback = () => {
     const db = loadDB();
     const k = ttKey(prog, sec);
@@ -1597,7 +1430,7 @@ function deleteTimetable(prog, sec) {
 }
 
 /* ── Cell edit ──────────────────────────── */
-function openTTEdit(day, timeIdx) {
+function legacy_openTTEdit(day, timeIdx) {
   if (timeIdx < 0 || timeIdx >= TT_TIMES.length) return;
   ttEditing = {day, timeIdx};
   const db = loadDB();
@@ -1613,24 +1446,7 @@ function openTTEdit(day, timeIdx) {
   document.getElementById("tt-modal").classList.add("open");
 }
 function closeTTModal() { document.getElementById("tt-modal").classList.remove("open"); }
-function saveTTCell() {
-  const {day, timeIdx} = ttEditing;
-  if (!ttCurrentProg || !ttCurrentSection) { toast("No timetable selected","error"); return; }
-  const db = loadDB();
-  const k  = ttKey(ttCurrentProg, ttCurrentSection);
-  if (!db.timetables[k]) db.timetables[k] = {};
-  const sub = document.getElementById("tt-subject").value;
-  db.timetables[k][`${day}_${timeIdx}`] = {
-    subject: sub,
-    room:    document.getElementById("tt-room").value,
-    faculty: document.getElementById("tt-faculty").value,
-    notes:   document.getElementById("tt-notes").value,
-  };
-  saveDB(db);
-  logAudit("TIMETABLE_EDIT", `${ttCurrentProg}/${ttCurrentSection} · ${TT_DAYS.find(d=>d.key===day)?.label} ${TT_TIMES[timeIdx]}: ${sub||"Cleared"}`);
-  closeTTModal(); renderPage("timetable");
-  toast("Slot saved", "success");
-}
+
 function clearTTCell() {
   const {day, timeIdx} = ttEditing;
   const db = loadDB();
@@ -1641,7 +1457,7 @@ function clearTTCell() {
   closeTTModal(); renderPage("timetable");
   toast("Slot cleared", "success");
 }
-function exportTimetable() {
+function legacy_exportTimetable() {
   if (!ttCurrentProg || !ttCurrentSection) { toast("Select a timetable first","error"); return; }
   const db = loadDB();
   const k  = ttKey(ttCurrentProg, ttCurrentSection);
@@ -1668,89 +1484,9 @@ function escAttr(s) { return (s||"").replace(/'/g,"&#39;").replace(/"/g,"&quot;"
 let attFilters={date:"",subject:"",roll:"",status:""};
 let attEditingId=null;
 
-function renderAttendance() {
-  const db=loadDB();
-  const liveSessions=(db.liveSessions||[]).filter(s=>s.active);
-  const subjects=[...new Set(db.attendance.map(a=>a.subject))];
-  const dates=[...new Set(db.attendance.map(a=>a.date))].sort().reverse();
-  let records=db.attendance.filter(a=>{
-    if(attFilters.date && a.date!==attFilters.date) return false;
-    if(attFilters.subject && a.subject!==attFilters.subject) return false;
-    const user = dbGetUsers().find(u=>u.username===a.roll);
-    const userName = (user?.full_name || "").toLowerCase();
-    if(attFilters.roll && !a.roll.includes(attFilters.roll) && !userName.includes(attFilters.roll.toLowerCase())) return false;
-    if(attFilters.status && a.status!==attFilters.status) return false;
-    return true;
-  });
-  const colors=["#8B2020","#2B5BA8","#2D7A4A","#7A5B2D","#5A2B7A"];
-  const pct=records.length?Math.round(records.filter(r=>r.status==="present").length/records.length*100):0;
-  const rows=records.length?records.map((r,i)=>{
-    const user=dbGetUsers().find(u=>u.username===r.roll)||{full_name:r.roll};
-    const sc={present:"badge-active",absent:"badge-inactive",late:"badge-amber",excused:"badge-blue"}[r.status]||"badge-blue";
-    return `<tr>
-      <td class="mono" style="color:var(--muted);font-size:11px">${r.date}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="background:${colors[i%5]}22;color:${colors[i%5]};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${user.full_name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
-          <div><div style="font-weight:600;color:var(--text);font-size:12px">${user.full_name}</div><div class="mono" style="font-size:10px;color:var(--muted)">${r.roll}</div></div>
-        </div>
-      </td>
-      <td style="font-size:12px">${r.subject}</td>
-      <td style="font-size:12px;color:var(--muted)">${r.faculty||"—"}</td>
-      <td><span class="badge ${sc}">${r.status.toUpperCase()}</span>${r.note?`<span style="font-size:10px;color:var(--muted);margin-left:6px">📝</span>`:""}</td>
-      <td>${r.edited_by?`<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">Edited by ${r.edited_by}</span>`:`<span style="color:var(--border2)">—</span>`}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openAttEdit(${r.id})">✎ Edit</button></td>
-    </tr>`;
-  }).join(""):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div>No records match filters</div></div></td></tr>`;
-  return `
-    <div class="sec-head">
-      <div><div class="sec-label">Academic Records</div><div class="sec-title">Attendance Editor</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-success" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host New Session</button>
-        <button class="btn btn-primary btn-sm" onclick="exportAtt()">⬇ Export CSV</button>
-      </div>
-    </div>
-    ${liveSessions.length?`<div style="margin-bottom:18px">${liveSessions.map(s=>`
-      <div class="live-host-card" style="margin-bottom:12px">
-        <div class="live-pulse"><div class="live-dot"></div> LIVE SESSION ACTIVE</div>
-        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end">
-          <div><div class="live-timer" id="lt-${s.id}">--:--</div><div class="live-timer-lbl">Time Remaining</div></div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:600;color:var(--cream);margin-bottom:4px">${s.programme} · ${s.subject}</div>
-            <div style="font-size:12px;color:rgba(245,241,232,.6)">${s.faculty} · Topic: ${s.topic||"General Class"}</div>
-            <div style="font-size:11px;color:var(--gold-l);margin-top:6px;font-family:var(--mono)">Started: ${s.startedAt}</div>
-          </div>
-          <button class="btn btn-amber btn-sm" onclick="stopSession('${s.id}')">⏹ Stop Session</button>
-        </div>
-      </div>`).join("")}</div>`:""}
-    <div class="att-filter-bar">
-      <div style="font-size:11px;color:var(--muted);font-family:var(--mono);align-self:center;margin-right:4px">FILTER:</div>
-      <select class="filter-select" onchange="attFilters.date=this.value;renderPage('attendance')">
-        <option value="">All Dates</option>
-        ${dates.map(d=>`<option value="${d}" ${attFilters.date===d?"selected":""}>${d}</option>`).join("")}
-      </select>
-      <select class="filter-select" onchange="attFilters.subject=this.value;renderPage('attendance')">
-        <option value="">All Subjects</option>
-        ${subjects.map(s=>`<option value="${s}" ${attFilters.subject===s?"selected":""}>${s}</option>`).join("")}
-      </select>
-      <select class="filter-select" onchange="attFilters.status=this.value;renderPage('attendance')">
-        <option value="">All Status</option>
-        <option value="present" ${attFilters.status==="present"?"selected":""}>Present</option>
-        <option value="absent" ${attFilters.status==="absent"?"selected":""}>Absent</option>
-        <option value="late" ${attFilters.status==="late"?"selected":""}>Late</option>
-        <option value="excused" ${attFilters.status==="excused"?"selected":""}>Excused</option>
-      </select>
-      <input class="form-input" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px" placeholder="Search roll / name…" value="${attFilters.roll}" oninput="attFilters.roll=this.value;renderPage('attendance')"/>
-      <button class="btn btn-ghost btn-sm" onclick="attFilters={date:'',subject:'',roll:'',status:''};renderPage('attendance')">✕ Clear</button>
-      <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)">${records.length} records · <span style="color:${pct>=75?'var(--green)':'var(--red)'}">${pct}% present</span></span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Faculty</th><th>Status</th><th>Modified</th><th>Action</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>`;
-}
 
-function openAttEdit(id) {
+
+function legacy_openAttEdit(id) {
   attEditingId=id;
   const db=loadDB();
   const rec=db.attendance.find(a=>a.id===id);
@@ -1761,7 +1497,7 @@ function openAttEdit(id) {
   document.getElementById("att-edit-note").value=rec.note||"";
   document.getElementById("att-edit-modal").classList.add("open");
 }
-function saveAttEdit() {
+function legacy_saveAttEdit() {
   const db=loadDB();
   const idx=db.attendance.findIndex(a=>a.id===attEditingId);
   if(idx===-1) return;
@@ -1776,7 +1512,7 @@ function saveAttEdit() {
   closeModal2("att-edit-modal"); renderPage("attendance");
   toast("Attendance record updated","success");
 }
-function exportAtt() {
+function legacy_exportAtt() {
   const db=loadDB();
   let csv="Roll,Name,Date,Subject,Faculty,Status,Note\n";
   for(const r of db.attendance){
@@ -1791,26 +1527,7 @@ function exportAtt() {
    LIVE SESSIONS
 ══════════════════════════════════════════ */
 let timerIntervals={};
-function startLiveSession() {
-  const prog=document.getElementById("live-prog").value;
-  const subj=document.getElementById("live-subj").value;
-  const fac=document.getElementById("live-fac").value;
-  const dur=parseInt(document.getElementById("live-timer").value);
-  const topic=document.getElementById("live-topic").value||"General Class";
-  const db=loadDB();
-  const id="sess_"+Date.now();
-  const now=new Date().toISOString().replace("T"," ").substring(0,19);
-  if(!db.liveSessions) db.liveSessions=[];
-  db.liveSessions.push({id,programme:prog,subject:subj,faculty:fac,topic,duration:dur,timeLeft:dur,startedAt:now,active:true});
-  saveDB(db);
-  logAudit("ATTENDANCE_SESSION_START",`${prog} · ${subj} · ${fac}`);
-  closeModal2("live-modal");
-  document.getElementById("live-nav-badge").style.display="inline-flex";
-  document.getElementById("live-topbar").textContent="🔴 Live";
-  showPage("attendance");
-  toast(`Live session started for ${prog}`,"success");
-  startTimerInterval(id,dur);
-}
+
 function startTimerInterval(id,dur) {
   if(dur===0) return;
   timerIntervals[id]=setInterval(()=>{
@@ -1824,7 +1541,7 @@ function startTimerInterval(id,dur) {
     if(s.timeLeft===0){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);toast("Session timer ended","success");renderPage("attendance");}
   },1000);
 }
-function stopSession(id) {
+function legacy_stopSession(id) {
   const db=loadDB();
   const s=db.liveSessions?.find(x=>x.id===id);
   if(s){s.active=false;saveDB(db);clearInterval(timerIntervals[id]);}
@@ -2237,7 +1954,7 @@ function toast(msg,type="success") {
 }
 
 /* BADGES */
-function updateBadges() {
+function legacy_updateBadges() {
   ["student","faculty","cr","admin"].forEach(role=>{
     const n=dbGetUsers({role}).length;
     const el=document.getElementById(`badge-${role}`);
@@ -2338,6 +2055,25 @@ async function fetchAdminDashboardData() {
   };
 }
 
+const TT_DRAFT_GROUPS_KEY = "ushss_admin_timetable_draft_groups_v1";
+function ttDraftGroups() {
+  try {
+    const rows = JSON.parse(localStorage.getItem(TT_DRAFT_GROUPS_KEY) || "[]");
+    return Array.isArray(rows) ? rows.filter(x => x && x.programme && x.group) : [];
+  } catch (_) { return []; }
+}
+function saveTTDraftGroups(rows) {
+  try { localStorage.setItem(TT_DRAFT_GROUPS_KEY, JSON.stringify(rows)); }
+  catch (_) { toast("Could not save empty timetable draft in this browser", "error"); }
+}
+function ttRememberDraftGroup(programme, group, batch) {
+  const rows = ttDraftGroups().filter(x => !(x.programme === programme && x.group === group));
+  rows.push({programme, group, batch: batch || "General"});
+  saveTTDraftGroups(rows);
+}
+function ttForgetDraftGroup(programme, group) {
+  saveTTDraftGroups(ttDraftGroups().filter(x => !(x.programme === programme && x.group === group)));
+}
 function adminTimetableSlots() {
   return Array.isArray(window.__supabaseTimetable) ? window.__supabaseTimetable : [];
 }
@@ -2367,27 +2103,40 @@ function adminSlotFor(prog, section, day, timeIdx) {
 
 function renderTimetable() {
   const slots=adminTimetableSlots();
-  const progs=[...new Set(slots.map(s=>s.programme).filter(Boolean))];
+  const progs=[...new Set([...slots.map(s=>s.programme).filter(Boolean),...ttDraftGroups().map(x=>x.programme)])];
   if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
-  const sections=ttCurrentProg ? adminSectionNames(ttCurrentProg) : [];
-  if(ttCurrentProg && (!ttCurrentSection || !sections.includes(ttCurrentSection))) ttCurrentSection=sections[0]||"";
+  const savedDraftGroups = ttDraftGroups().filter(x=>x.programme===ttCurrentProg).map(x=>x.group);
+  const allGroups=ttCurrentProg ? [...new Set([...adminSectionNames(ttCurrentProg),...savedDraftGroups])] : [];
+  const semesters=allGroups.filter(x=>/^semester\s+(i{1,3}|iv|v|vi|vii|viii|[1-8])$/i.test(x.trim()));
+  const sections=allGroups.filter(x=>!semesters.includes(x));
+  const groups=[...semesters,...sections];
+  if(ttCurrentProg && groups.length && (!ttCurrentSection || !groups.includes(ttCurrentSection))) ttCurrentSection=groups[0]||"";
   const meta=(p)=>slots.find(s=>s.programme===p);
   const progTabs=progs.map(p=>{
-    const active=p===ttCurrentProg, m=meta(p), secCount=adminSectionNames(p).length;
+    const active=p===ttCurrentProg, m=meta(p);
+    const names=[...new Set([...adminSectionNames(p),...ttDraftGroups().filter(x=>x.programme===p).map(x=>x.group)])];
+    const semCount=names.filter(x=>/^semester\\s+/i.test(x.trim())).length;
+    const groupCount=names.filter(x=>!/^semester\\s+/i.test(x.trim())).length;
+    const countLabel=[semCount?semCount+" semester"+(semCount!==1?"s":""):"",groupCount?groupCount+" group"+(groupCount!==1?"s":""):""].filter(Boolean).join(" · ")||"No groups yet";
     return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProg('${escAttr(p)}')">
       <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${p}</div>
-      <div class="tt-tab-sub">${secCount} section${secCount!==1?"s":""}</div>
+      <div class="tt-tab-sub">${countLabel}</div>
     </div>`;
   }).join("");
   const addTab=`<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable"><div class="tt-tab-add-icon">+</div></div>`;
   let sectionBar="";
   if(ttCurrentProg){
-    sectionBar=`<div class="tt-section-bar">
-      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">SECTIONS:</span>
-      ${sections.map(s=>`<div class="tt-section-tab ${s===ttCurrentSection?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</div>`).join("")}
+    const semesterBar=semesters.length?`<div class="tt-section-bar" style="padding:10px 12px;background:rgba(32,168,155,.06);border:1px solid rgba(32,168,155,.18);border-radius:8px;margin-bottom:10px">
+      <span style="font-size:11px;color:var(--teal);font-family:var(--mono);font-weight:700;min-width:92px">SEMESTER:</span>
+      ${semesters.map(s=>`<button class="tt-section-tab ${s===ttCurrentSection?"active":""}" style="${s===ttCurrentSection?"background:rgba(32,168,155,.16);border-color:var(--teal);color:var(--teal)":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</button>`).join("")}
+      <span style="font-size:10px;color:var(--muted);margin-left:auto">Choose a semester to view its timetable</span>
+    </div>`:"";
+    const sectionTabs=sections.length?`<div class="tt-section-bar">
+      <span style="font-size:11px;color:var(--muted);font-family:var(--mono);min-width:92px">SECTION / GROUP:</span>
+      ${sections.map(s=>`<button class="tt-section-tab ${s===ttCurrentSection?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</button>`).join("")}
       <div class="tt-section-add" onclick="openNewTimetableModal('${escAttr(ttCurrentProg)}')"><span>+</span> Add Section</div>
-      ${ttCurrentSection?`<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Section</button>`:""}
-    </div>`;
+    </div>`:"";
+    sectionBar=semesterBar+sectionTabs+`<div style="display:flex;justify-content:flex-end;margin:-4px 0 14px"><button class="btn btn-danger btn-sm" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Selected Timetable</button></div>`;
   }
   let gridHTML="";
   if(ttCurrentProg && ttCurrentSection){
@@ -2453,6 +2202,7 @@ async function saveTTCell(){
       else await adminApiJson("/api/admin/timetable",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     }
     await fetchAdminDashboardData();
+    if(subject) ttForgetDraftGroup(ttCurrentProg,ttCurrentSection);
     closeTTModal(); renderPage("timetable"); toast(subject?"Slot saved":"Slot cleared","success");
   }catch(e){ toast(e.message||"Could not save timetable slot","error"); }
 }
@@ -2460,10 +2210,13 @@ async function saveTTCell(){
 function createNewTimetable(){
   const prog=document.getElementById("tt-new-prog").value;
   const sec=(document.getElementById("tt-new-sec-custom").value.trim()||document.getElementById("tt-new-sec-preset").value).trim();
+  const batch=document.getElementById("tt-new-batch")?.value?.trim()||"General";
   if(!prog||!sec||sec==="custom") return toast("Programme and section are required","error");
+  const alreadyExists=adminSectionNames(prog).includes(sec);
+  if(!alreadyExists) ttRememberDraftGroup(prog,sec,batch);
   ttCurrentProg=prog; ttCurrentSection=sec;
   closeModal2("tt-new-modal"); renderPage("timetable");
-  toast("Timetable ready — add classes to the cells","success");
+  toast(alreadyExists?"Opening existing timetable":"Timetable created — add classes to save it to the server","success");
 }
 
 function deleteTimetable(prog,sec){
@@ -2471,6 +2224,7 @@ function deleteTimetable(prog,sec){
     try{
       const targets=adminTimetableSlots().filter(s=>s.programme===prog&&(s.section||s.batch||"General")===sec);
       for(const s of targets) await adminApiJson("/api/admin/timetable/"+s.id,{method:"DELETE"});
+      ttForgetDraftGroup(prog,sec);
       if(ttCurrentProg===prog && ttCurrentSection===sec){ ttCurrentSection=""; const p=adminTimetableSlots().filter(s=>s.programme!==prog)[0]?.programme||""; ttCurrentProg=p; }
       await fetchAdminDashboardData(); closeConfirm(); renderPage("timetable"); toast("Timetable section deleted","success");
     }catch(e){ toast(e.message||"Could not delete timetable","error"); }
@@ -2601,6 +2355,28 @@ function exportAtt() {
   });
   const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);a.download="USHSS_Attendance.csv";a.click();toast("Attendance exported","success");
 }
+
+
+/* Live admin data sync: update API-backed dashboard data without a full-page reload. */
+(function startAdminLiveSync(){
+  let syncing=false;
+  setInterval(async()=>{
+    if(syncing || document.hidden || !localStorage.getItem('ushss_token')) return;
+    const active=document.activeElement;
+    if(active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+    syncing=true;
+    try {
+      await Promise.allSettled([
+        fetchAdminUsers(),
+        fetchAdminDashboardData(),
+        fetchPendingRequests(pendingRoleFilter)
+      ]);
+      updateBadges();
+      if (typeof renderPage === 'function' && currentPage) renderPage(currentPage);
+    } catch(e) { console.debug('Admin live sync will retry:',e); }
+    finally { syncing=false; }
+  },10000);
+})();
 
 </script>
 

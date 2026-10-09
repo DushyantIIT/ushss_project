@@ -311,7 +311,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
 
 <!-- NAV -->
 <nav id="navbar">
-  <a class="nav-brand" href="#">
+  <a class="nav-brand" href="#home">
     <div class="nav-logo">GGS</div>
     <div class="nav-title">
       <span>USHSS</span>
@@ -776,7 +776,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         <div class="section-label fade-up">Latest from USHSS</div>
         <h2 class="section-title fade-up fade-up-delay-1">News &amp; <em>Announcements</em></h2>
       </div>
-      <a href="#" class="btn-outline fade-up" style="align-self:flex-end">View All News</a>
+      <a href="#news" class="btn-outline fade-up" style="align-self:flex-end">View All News</a>
     </div>
     <div class="news-grid">
       <div class="news-featured fade-up">
@@ -874,16 +874,12 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
     <div class="section-label fade-up">Campus Life</div>
     <h2 class="section-title fade-up fade-up-delay-1">Moments from <em>USHSS</em></h2>
     <div class="gallery-grid fade-up">
-      <div class="gallery-item"><div class="gallery-placeholder">📸</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">🎓</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">📖</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">🎤</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">🏛️</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">🌿</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">🔬</div></div>
-      <div class="gallery-item"><div class="gallery-placeholder">💬</div></div>
+      <a href="https://ipu.ac.in/photoalubmmain.php" target="_blank" rel="noopener" style="grid-column:1/-1;display:flex;min-height:180px;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:2rem;text-align:center;text-decoration:none;border:1px solid var(--border);background:linear-gradient(135deg,var(--cream-dark),var(--white));color:var(--maroon)">
+        <span style="font-size:2.5rem" aria-hidden="true">📷</span>
+        <strong style="font-family:'Playfair Display',serif;font-size:1.2rem">Explore the official GGSIPU photo gallery ↗</strong>
+        <span style="font-size:.85rem;color:var(--ink-muted)">Opens verified university event photographs in a new tab</span>
+      </a>
     </div>
-    <p style="font-size:.78rem;color:var(--ink-muted);margin-top:1rem;text-align:center">Replace placeholder cells with your actual photos in the HTML</p>
   </div>
 </section>
 
@@ -918,21 +914,22 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         <div class="form-row">
           <div class="form-group">
             <label>First name</label>
-            <input type="text" placeholder="Arjun"/>
+            <input id="fname" type="text" placeholder="Arjun" autocomplete="given-name" required/>
           </div>
           <div class="form-group">
             <label>Last name</label>
-            <input type="text" placeholder="Sharma"/>
+            <input id="lname" type="text" placeholder="Sharma" autocomplete="family-name" required/>
           </div>
         </div>
         <div class="form-group">
           <label>Email address</label>
-          <input type="email" placeholder="arjun@example.com"/>
+          <input id="cemail" type="email" placeholder="arjun@example.com" autocomplete="email" required/>
         </div>
         <div class="form-group">
           <label>Subject</label>
-          <select>
-            <option>Admissions Enquiry</option>
+          <select id="csubj" required>
+             <option value="">Select a subject</option>
+             <option>Admissions Enquiry</option>
             <option>Research Collaboration</option>
             <option>Faculty Information</option>
             <option>General Enquiry</option>
@@ -941,7 +938,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         </div>
         <div class="form-group">
           <label>Message</label>
-          <textarea rows="4" placeholder="Your message..."></textarea>
+          <textarea id="cmsg" rows="4" placeholder="Your message..." required></textarea>
         </div>
         <button class="form-submit" onclick="handleSubmit(event)">Send Message</button>
         <p id="form-msg" style="font-size:.8rem;margin-top:.75rem;display:none;color:var(--maroon)"></p>
@@ -962,34 +959,34 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
       <div class="footer-col">
         <h4>Academics</h4>
         <ul>
-          <li><a href="#">M.A. English</a></li>
-          <li><a href="#">M.A. Economics</a></li>
-          <li><a href="#">M.A. Psychology</a></li>
-          <li><a href="#">M.A. Sociology</a></li>
-          <li><a href="#">M.A. Political Science</a></li>
-          <li><a href="#">Ph.D. Programmes</a></li>
+          <li><a href="#programmes">M.A. English</a></li>
+          <li><a href="#programmes">M.A. Economics</a></li>
+          <li><a href="#programmes">M.A. Psychology</a></li>
+          <li><a href="#programmes">M.A. Sociology</a></li>
+          <li><a href="#programmes">M.A. Political Science</a></li>
+          <li><a href="#programmes">Ph.D. Programmes</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>Quick Links</h4>
         <ul>
-          <li><a href="#">Faculty Profiles</a></li>
-          <li><a href="#">Research Publications</a></li>
-          <li><a href="#">Exam Results</a></li>
-          <li><a href="#">Timetable</a></li>
-          <li><a href="#">Notifications</a></li>
-          <li><a href="#">Alumni Network</a></li>
+          <li><a href="#faculty">Faculty Profiles</a></li>
+          <li><a href="#research">Research Publications</a></li>
+          <li><a href="https://ipu.ac.in/" target="_blank" rel="noopener">Exam Results (official site)</a></li>
+          <li><a href="#contact">Timetable enquiries</a></li>
+          <li><a href="#news">Notifications</a></li>
+          <li><a href="https://ipu.ac.in/" target="_blank" rel="noopener">Alumni Network (official site)</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>University</h4>
         <ul>
           <li><a href="https://ipu.ac.in" target="_blank">GGSIPU Official Site</a></li>
-          <li><a href="#">Examination Division</a></li>
-          <li><a href="#">Library</a></li>
-          <li><a href="#">Student Welfare</a></li>
-          <li><a href="#">NAAC Report</a></li>
-          <li><a href="#">NIRF Ranking</a></li>
+          <li><a href="https://examdept.ggsipu.ac.in/" target="_blank" rel="noopener">Examination Division</a></li>
+          <li><a href="https://ipu.ac.in/" target="_blank" rel="noopener">Library (official site)</a></li>
+          <li><a href="https://ipu.ac.in/dsw_student.php" target="_blank" rel="noopener">Student Welfare</a></li>
+          <li><a href="https://ipu.ac.in/" target="_blank" rel="noopener">NAAC &amp; Accreditation</a></li>
+          <li><a href="https://ipu.ac.in/" target="_blank" rel="noopener">NIRF Ranking (official site)</a></li>
         </ul>
       </div>
     </div>
@@ -1370,26 +1367,14 @@ document.querySelectorAll(".research-area").forEach(el => {
 async function handleSubmit(e) {
   e.preventDefault();
   const msg = document.getElementById("form-msg");
-  const fn = (document.getElementById("fname") || {}).value || "";
-  const ln = (document.getElementById("lname") || {}).value || "";
-  const em = (document.getElementById("cemail") || {}).value || "";
-  const sb = (document.getElementById("csubj") || {}).value || "";
-  const tx = (document.getElementById("cmsg") || {}).value || "";
-  try {
-    const res = await fetch("/api/public/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ first_name: fn, last_name: ln, email: em, subject: sb, message: tx })
-    });
-    const data = await res.json();
-    msg.style.display = "block";
-    msg.style.color = "var(--maroon)";
-    msg.textContent = data.message || "Thank you! Your message has been sent.";
-  } catch {
-    msg.style.display = "block";
-    msg.style.color = "var(--maroon)";
-    msg.textContent = "Thank you! Your message has been received.";
-  }
+  const button = e.currentTarget && e.currentTarget.tagName === "BUTTON" ? e.currentTarget : document.querySelector(".form-submit");
+  const fields = { first_name: document.getElementById("fname")?.value.trim() || "", last_name: document.getElementById("lname")?.value.trim() || "", email: document.getElementById("cemail")?.value.trim() || "", subject: document.getElementById("csubj")?.value.trim() || "", message: document.getElementById("cmsg")?.value.trim() || "" };
+  msg.style.display = "block";
+  if (Object.values(fields).some(value => !value)) { msg.style.color = "#b42318"; msg.textContent = "Please complete all fields before sending."; return; }
+  if (button) { button.disabled = true; button.textContent = "Sending…"; }
+  try { const res = await fetch("/api/public/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(fields) }); const data = await res.json().catch(() => ({})); if (!res.ok || data.success === false) throw new Error(data.detail || data.message || "Could not send your message. Please try again."); msg.style.color = "var(--maroon)"; msg.textContent = data.message || "Thank you! Your message has been sent successfully."; ["fname", "lname", "cemail", "csubj", "cmsg"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; }); }
+  catch (err) { msg.style.color = "#b42318"; msg.textContent = err.message || "Could not send your message. Please try again."; }
+  finally { if (button) { button.disabled = false; button.textContent = "Send Message"; } }
 }
 
 // Smooth scroll for nav links
