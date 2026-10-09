@@ -867,7 +867,7 @@ async function fetchAdminUsers() {
   for(let attempt=1; attempt<=3; attempt++){
     try{
       const res=await fetch("/api/admin/users", {headers:authHeaders()});
-      if(res.status===401){ logoutAdmin(); return []; }
+      if(res.status===401){ console.warn("Admin users refresh returned 401; preserving the current browser session."); return []; }
       if(!res.ok) throw new Error("Could not load users from Supabase");
       const data=await res.json();
       window.__supabaseUsers=data.users||[];
@@ -908,7 +908,7 @@ async function dbDeleteUser(id) {
 }
 async function fetchAdminStats() {
   const res=await fetch("/api/admin/stats", {headers:authHeaders()});
-  if(res.status===401){ logoutAdmin(); return null; }
+  if(res.status===401){ console.warn("Admin stats refresh returned 401; preserving the current browser session."); return null; }
   if(!res.ok) throw new Error("Could not load dashboard statistics");
   const data=await res.json();
   window.__supabaseStats=data;
@@ -1003,7 +1003,7 @@ async function fetchPendingRequests(role = "") {
     const res = await fetch(url, { headers: authHeaders() });
     if (!res.ok) {
       if (res.status === 401) {
-        logoutAdmin();
+        console.warn("Pending requests refresh returned 401; preserving the current browser session.");
         return [];
       }
       return [];
@@ -1587,7 +1587,7 @@ const tgtBadge={all:"badge-teal",student:"badge-student",faculty:"badge-faculty"
 let adminAnnouncements=[];
 async function loadAdminAnnouncements(){
   const res=await fetch('/api/admin/announcements',{headers:authHeaders()});
-  if(res.status===401){logoutAdmin();return [];}
+  if(res.status===401){console.warn("Announcements refresh returned 401; preserving the current browser session.");return [];}
   if(!res.ok)throw new Error('Could not load announcements');
   adminAnnouncements=await res.json(); return adminAnnouncements;
 }
@@ -2043,7 +2043,7 @@ const _db=loadDB();
 
 async function adminApiJson(url, options={}) {
   const res = await fetch(url, { ...options, headers:{...authHeaders(), ...(options.headers||{})} });
-  if (res.status === 401) { logoutAdmin(); throw new Error("Session expired"); }
+  if (res.status === 401) { throw new Error("The API rejected this request. The saved session was preserved; refresh can retry."); }
   let data = null;
   try { data = await res.json(); } catch (_) {}
   if (!res.ok) throw new Error(data?.detail || data?.message || ("Request failed ("+res.status+")"));
