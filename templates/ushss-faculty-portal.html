@@ -408,7 +408,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
           <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap">
             <div>
               <div class="att-timer" id="timer-display">15:00</div>
-              <div class="att-timer-sub">Time Remaining</div>
+              <div class="att-timer-sub" id="att-timer-sub">Time Remaining</div>
             </div>
             <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:6px">
               <div><div class="att-count" id="live-present">0</div><div class="att-count-lbl">Present</div></div>
@@ -925,19 +925,6 @@ function logoutFaculty() {
 }
 </script>
 <!-- USHSS Real API Integration: loads real faculty profile into sidebar -->
-
-async function changeMyPassword(){
-  const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
-  if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}
-  if(next.value.length<6){toast('New password must be at least 6 characters','err');return;}
-  if(next.value!==confirm.value){toast('New passwords do not match','err');return;}
-  try{
-    const r=await fetch('/api/change-password',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({current_password:current.value,new_password:next.value,confirm_password:confirm.value})});
-    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not change password');
-    current.value='';next.value='';confirm.value='';toast(d.message||'Password changed successfully','ok');
-  }catch(e){toast(e.message,'err');}
-}
-
 <script>
 (async function loadFacultyProfile() {
   const token = localStorage.getItem('ushss_token');
