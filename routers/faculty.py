@@ -160,6 +160,63 @@ def close_session(sid: int, faculty: dict = Depends(require_faculty)):
     return {"message": "Session closed", "session": res.data[0]}
 
 
+
+
+class AttendanceRecordInput(BaseModel):
+    student_id: int
+    status: str
+
+
+class BulkAttendanceBody(BaseModel):
+    records: list[AttendanceRecordInput]
+
+
+@router.post("/attendance/{sid}/records", status_code=201, summary="Save faculty-marked attendance records")
+def save_session_records(sid: int, body: BulkAttendanceBody, faculty: dict = Depends(require_faculty)):
+    """Persist attendance marked by the faculty member for their own open session."""
+    session_res = sb.table("attendance_sessions").select(
+        "id, faculty_id, is_open, slot_id, timetable_slots(programme, batch, subject)"
+    ).eq("id", sid).single().execute()
+    if not session_res.data:
+        raise HTTPException(404, "Attendance session not found")
+    session = session_res.data
+    if faculty["role"] != "admin" and session["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only edit your own attendance sessions")
+    if not session["is_open"]:
+        raise HTTPException(400, "This attendance session is closed")
+    slot = session.get("timetable_slots") or {}
+    programme, batch = slot.get("programme"), slot.get("batch")
+    if not body.records:
+        raise HTTPException(400, "At least one attendance record is required")
+
+    saved = []
+    for item in body.records:
+        status = item.status.lower().strip()
+        if status not in ("present", "absent"):
+            raise HTTPException(422, "Attendance status must be present or absent")
+        student_res = sb.table("users").select("id, username").eq("id", item.student_id).eq("role", "student").eq("is_active", True).limit(1).execute()
+        if not student_res.data:
+            raise HTTPException(404, f"Active student {item.student_id} was not found")
+        student = student_res.data[0]
+        # Only record students who belong to the timetable slot's class.
+        class_res = sb.table("users").select("id").eq("id", item.student_id).eq("programme", programme).eq("batch", batch).limit(1).execute()
+        if not class_res.data:
+            raise HTTPException(403, f"Student {item.student_id} does not belong to this class")
+        existing = sb.table("attendance_records").select("id").eq("session_id", sid).eq("student_id", item.student_id).limit(1).execute()
+        payload = {"status": status, "marked_at": datetime.now(timezone.utc).isoformat()}
+        if existing.data:
+            row = sb.table("attendance_records").update(payload).eq("id", existing.data[0]["id"]).execute().data
+        else:
+            row = sb.table("attendance_records").insert({"session_id": sid, "student_id": item.student_id, **payload}).execute().data
+        if row:
+            saved.append(row[0])
+    try:
+        sb.table("audit_log").insert({"user_id": faculty["id"], "action": "SAVE_ATTENDANCE_RECORDS", "detail": f"Faculty '{faculty['username']}' saved {len(saved)} records for session id={sid}"}).execute()
+    except Exception as exc:
+        print(f"ATTENDANCE AUDIT WARNING: {exc!r}")
+    return {"message": "Attendance records saved", "session_id": sid, "saved": len(saved), "records": saved}
+
+
 @router.get("/attendance/{sid}/records", summary="View attendance records for a session")
 def session_records(sid: int, faculty: dict = Depends(require_faculty)):
     """View who marked attendance for a session."""
