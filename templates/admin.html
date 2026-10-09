@@ -2113,10 +2113,14 @@ function renderTimetable() {
   if(ttCurrentProg && groups.length && (!ttCurrentSection || !groups.includes(ttCurrentSection))) ttCurrentSection=groups[0]||"";
   const meta=(p)=>slots.find(s=>s.programme===p);
   const progTabs=progs.map(p=>{
-    const active=p===ttCurrentProg, m=meta(p), secCount=adminSectionNames(p).length;
+    const active=p===ttCurrentProg, m=meta(p);
+    const names=[...new Set([...adminSectionNames(p),...ttDraftGroups().filter(x=>x.programme===p).map(x=>x.group)])];
+    const semCount=names.filter(x=>/^semester\\s+/i.test(x.trim())).length;
+    const groupCount=names.filter(x=>!/^semester\\s+/i.test(x.trim())).length;
+    const countLabel=[semCount?semCount+" semester"+(semCount!==1?"s":""):"",groupCount?groupCount+" group"+(groupCount!==1?"s":""):""].filter(Boolean).join(" · ")||"No groups yet";
     return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProg('${escAttr(p)}')">
       <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${p}</div>
-      <div class="tt-tab-sub">${secCount} group${secCount!==1?"s":""}</div>
+      <div class="tt-tab-sub">${countLabel}</div>
     </div>`;
   }).join("");
   const addTab=`<div class="tt-tab-add" onclick="openNewTimetableModal()" title="Add timetable"><div class="tt-tab-add-icon">+</div></div>`;
