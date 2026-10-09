@@ -410,15 +410,9 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         <div id="reg-row-prog">
           <label class="portal-label">Course</label>
           <select class="portal-reg-select" id="reg-dept">
-            <option value="">— Select —</option>
-            <option>English</option>
-            <option>Hindi</option>
-            <option>History</option>
-            <option>Political Science</option>
-            <option>Psychology</option>
-            <option>Sociology</option>
-            <option>Economics</option>
-            <option>Philosophy</option>
+            <option value="">— Select Course —</option>
+            <option value="English">English</option>
+            <option value="Economics">Economics</option>
           </select>
         </div>
         <div id="reg-row-batch">
@@ -429,8 +423,17 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
         </div>
         <div id="reg-row-semester">
           <label class="portal-label">Semester <span style="color:#e3c881">*</span></label>
-          <select class="portal-reg-select" id="reg-semester">
+          <select class="portal-reg-select" id="reg-semester" required>
             <option value="">— Select programme first —</option>
+          </select>
+        </div>
+        <div id="reg-row-section">
+          <label class="portal-label">Section <span style="color:#e3c881">*</span></label>
+          <select class="portal-reg-select" id="reg-section" required>
+            <option value="">— Select Section —</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="None">None</option>
           </select>
         </div>
         <div id="reg-row-desig" style="display:none" class="full">
@@ -1099,8 +1102,9 @@ function updateRegistrationSemester() {
   if (!semester) return;
   semester.innerHTML = '<option value="">— Select —</option>';
   const maxSemesters = programme === "B.A." ? 8 : programme === "M.A." ? 4 : 0;
+  const roman = ["I","II","III","IV","V","VI","VII","VIII"];
   for (let i = 1; i <= maxSemesters; i++) {
-    semester.innerHTML += '<option value="' + i + '">Semester ' + i + '</option>';
+    semester.add(new Option(roman[i - 1], roman[i - 1]));
   }
   if (!maxSemesters) semester.innerHTML = '<option value="">— Select programme first —</option>';
 }
@@ -1139,6 +1143,8 @@ function onRegRoleChange() {
   document.getElementById("reg-row-domain").style.display = isFaculty ? "" : "none";
   document.getElementById("reg-row-batch").style.display = isFaculty ? "none" : "";
   document.getElementById("reg-row-semester").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-row-section").style.display = isFaculty ? "none" : "";
+  document.getElementById("reg-section").required = !isFaculty;
   document.getElementById("reg-semester").required = !isFaculty;
   document.getElementById("reg-row-desig").style.display = isFaculty ? "" : "none";
 
@@ -1180,6 +1186,7 @@ async function submitPortalRegister() {
   const domain    = document.getElementById("reg-domain").value;
   const batch     = document.getElementById("reg-batch").value;
   const semester  = document.getElementById("reg-semester").value;
+  const section   = document.getElementById("reg-section").value;
   const desig     = document.getElementById("reg-desig").value.trim();
   const pwd       = document.getElementById("reg-pwd").value;
   const pwd2      = document.getElementById("reg-pwd2").value;
@@ -1203,8 +1210,8 @@ async function submitPortalRegister() {
     err.style.display = "block";
     return;
   }
-  if (role !== "faculty" && !semester) {
-    err.textContent = "Please select your semester.";
+  if (role !== "faculty" && (!semester || !section || !dept || !prog || !batch)) {
+    err.textContent = "Please select your programme, course, batch, semester and section.";
     err.style.display = "block";
     return;
   }
