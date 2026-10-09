@@ -678,7 +678,7 @@ function renderMaterials(arr){
         <span class="badge badge-gold">${m.size}</span>
       </div>
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · by ${m.by}</div>
-      \${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
+      ${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
     </div>
   `).join(''):`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No materials yet</div></div>`;
 }
