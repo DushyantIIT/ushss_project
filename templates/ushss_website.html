@@ -1262,6 +1262,7 @@ async function submitPortalRegister() {
         programme: role === "faculty" ? null : (prog || null),
         batch: role === "faculty" ? null : (batch || null),
         semester: role === "faculty" ? null : (semester || null),
+        section: role === "faculty" ? null : (section || null),
         designation: role === "faculty" ? (desig || null) : null
       })
     });
