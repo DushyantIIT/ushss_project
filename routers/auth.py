@@ -33,11 +33,17 @@ class LoginResponse(BaseModel):
 def login(body: LoginRequest):
     if body.role is not None and body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
-    pending_res = sb.table("users").select("*").eq("enrollment_no", body.username).eq("status", "pending").limit(1).execute()
+    pending_query = sb.table("users").select("*").eq("username", body.username).eq("status", "pending")
+    if body.role is not None:
+        pending_query = pending_query.eq("role", body.role)
+    pending_res = pending_query.limit(1).execute()
     if pending_res.data:
         u = pending_res.data[0]
         raise HTTPException(403, detail={"status":"pending","redirect_url":"/waiting","pending_token":create_access_token({"sub":u["username"],"id":u["id"],"role":u["role"]}),"message":"Your registration request is still pending approval."})
-    res = sb.table("users").select("*").eq("username", body.username).limit(1).execute()
+    query = sb.table("users").select("*").eq("username", body.username)
+    if body.role is not None:
+        query = query.eq("role", body.role)
+    res = query.limit(1).execute()
     if not res.data: raise HTTPException(401, "Invalid username or password")
     user = res.data[0]; user_role = user.get("role")
     if not user_role: raise HTTPException(500, "User role missing in profile")
