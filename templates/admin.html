@@ -2087,7 +2087,7 @@ function renderTimetable() {
   const progs=[...new Set(slots.map(s=>s.programme).filter(Boolean))];
   if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
   const allGroups=ttCurrentProg ? adminSectionNames(ttCurrentProg) : [];
-  const semesters=allGroups.filter(x=>/^semester\\s+(i{1,3}|iv|v|vi|vii|viii|[1-8])$/i.test(x.trim()));
+  const semesters=allGroups.filter(x=>/^semester\s+(i{1,3}|iv|v|vi|vii|viii|[1-8])$/i.test(x.trim()));
   const sections=allGroups.filter(x=>!semesters.includes(x));
   const groups=[...semesters,...sections];
   if(ttCurrentProg && (!ttCurrentSection || !groups.includes(ttCurrentSection))) ttCurrentSection=groups[0]||"";
