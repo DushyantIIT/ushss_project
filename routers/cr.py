@@ -152,7 +152,17 @@ def delete_assignment(aid: int, cr: dict = Depends(require_student)):
 @router.get("/materials", summary="View class study materials")
 def get_materials(cr: dict = Depends(require_student)):
     _require_cr(cr)
-    return sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    rows = sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    for row in rows:
+        path = row.get("file_url")
+        if path and not str(path).startswith("http"):
+            try:
+                signed = sb.storage.from_("ushss-study-materials").create_signed_url(str(path), 3600)
+                row["file_url"] = signed.get("signedURL") or signed.get("signedUrl") or ""
+            except Exception as exc:
+                print(f"CR MATERIAL SIGNED URL WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+                row["file_url"] = ""
+    return rows
 
 @router.post("/materials", status_code=201, summary="Create persistent class study material")
 def create_material(body: MaterialBody, cr: dict = Depends(require_student)):
@@ -200,13 +210,13 @@ def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_st
     bucket = "ushss-study-materials"
     try:
         try:
-            sb.storage.create_bucket(bucket, options={"public": True, "file_size_limit": 10 * 1024 * 1024})
+            sb.storage.create_bucket(bucket, options={"public": False, "file_size_limit": 10 * 1024 * 1024})
         except Exception:
             pass
         storage_path = f"{cr['id']}/{uuid4().hex}_{safe_name}"
         storage = sb.storage.from_(bucket)
         storage.upload(storage_path, content, file_options={"content-type": content_type, "upsert": "false"})
-        file_url = storage.get_public_url(storage_path)
+        file_url = storage_path
     except Exception as exc:
         print(f"CR MATERIAL STORAGE ERROR: {type(exc).__name__}: {str(exc)[:200]}")
         raise HTTPException(503, "File storage is unavailable. Please check the Supabase Storage bucket configuration.")
@@ -246,8 +256,8 @@ def delete_material(mid: int, cr: dict = Depends(require_student)):
         raise HTTPException(403, "You can only delete materials you uploaded")
     file_url = str(existing.data.get("file_url") or "")
     marker = "/storage/v1/object/public/ushss-study-materials/"
-    if marker in file_url:
-        storage_path = file_url.split(marker, 1)[1].split("?", 1)[0]
+    storage_path = file_url.split(marker, 1)[1].split("?", 1)[0] if marker in file_url else file_url
+    if storage_path:
         try:
             sb.storage.from_("ushss-study-materials").remove([storage_path])
         except Exception as exc:
