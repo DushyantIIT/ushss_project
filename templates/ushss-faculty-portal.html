@@ -245,7 +245,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
 
     <div class="sb-section">Teaching</div>
     <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Attendance <span class="sb-count" id="live-badge" style="display:none">LIVE</span></div>
-    <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">3</span></div>
+    <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">0</span></div>
 
     <div class="sb-section">Records</div>
     <div class="sb-item" onclick="goPage('students',this)"><span class="ico">🎓</span> My Students</div>
@@ -643,6 +643,7 @@ async function loadFacultyData(){
   const initEl=document.getElementById('sb-init'); if(initEl)initEl.textContent=initials;
   DB.students=(data.students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:s.attendance_percentage??0,active:s.is_active}));
   DB.announcements=data.announcements||[];
+  const annCntEl=document.getElementById('ann-cnt'); if(annCntEl)annCntEl.textContent=DB.announcements.length;
   DB.sessions=(data.sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:s.present||0,total:s.total||0,duration:'',is_open:s.is_open}));
   DB.timetable=data.timetable||[];
   updateFacultyStats();

@@ -232,9 +232,9 @@ tr:hover td{background:var(--gold-pale)}
     <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Mark Attendance</div>
 
     <div class="sb-section">Class</div>
-    <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-badge" id="ann-cnt">4</span></div>
-    <div class="sb-item" onclick="goPage('assignments',this)"><span class="ico">📝</span> Assignments <span class="sb-badge" id="asgn-cnt">3</span></div>
-    <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📂</span> Study Materials <span class="sb-badge" id="mat-cnt">5</span></div>
+    <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-badge" id="ann-cnt">0</span></div>
+    <div class="sb-item" onclick="goPage('assignments',this)"><span class="ico">📝</span> Assignments <span class="sb-badge" id="asgn-cnt">0</span></div>
+    <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📂</span> Study Materials <span class="sb-badge" id="mat-cnt">0</span></div>
 
     <div class="sb-section">Records</div>
     <div class="sb-item" onclick="goPage('myattendance',this)"><span class="ico">📊</span> My Attendance</div>
@@ -742,7 +742,13 @@ function renderTimetable(){
 
 /* COUNTS */
 function updateCounts(){
-  document.getElementById('ann-cnt').textContent=DB.announcements.filter(a=>!a.read).length||DB.announcements.length;
+  const annEl = document.getElementById('ann-cnt');
+  const asgnEl = document.getElementById('asgn-cnt');
+  const matEl = document.getElementById('mat-cnt');
+
+  if (annEl) annEl.textContent = (DB.announcements || []).length;
+  if (asgnEl) asgnEl.textContent = (DB.assignments || []).length;
+  if (matEl) matEl.textContent = (DB.materials || []).length;
 }
 
 /* TOAST */
