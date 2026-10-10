@@ -973,12 +973,20 @@ async function loadAdminProfile() {
     const rawUser = localStorage.getItem("ushss_user");
     if (rawUser) {
       const u = JSON.parse(rawUser);
+      function getCleanInitials(str) {
+        if (!str || str === '—') return 'AD';
+        const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
+        const words = clean.split(/\s+/).filter(Boolean);
+        if (!words.length) return 'AD';
+        if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+        return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+      }
       const nameEl = document.getElementById("sb-admin-name");
       const roleEl = document.getElementById("sb-admin-role");
       const avatarEl = document.getElementById("sb-admin-avatar");
       if (nameEl) nameEl.textContent = u.full_name || u.username || "Administrator";
       if (roleEl) roleEl.textContent = `${u.role || "admin"} · ${u.username || ""}${u.is_super_admin ? " (Super Admin)" : ""}`;
-      if (avatarEl) avatarEl.textContent = (u.full_name || u.username || "AD").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+      if (avatarEl) avatarEl.textContent = getCleanInitials(u.full_name || u.username || "AD");
     }
     return true;
   } catch (e) {
@@ -1621,13 +1629,30 @@ function editAnn(id){
   document.getElementById("ann-modal").classList.add("open");
 }
 
-let searchQuery="",statusFilter="";
+let searchQuery="",statusFilter="",studentSemesterYearFilter="";
 function renderUserTable(role) {
   const users=dbGetUsers({role,search:searchQuery});
-  const filtered=statusFilter===""?users:users.filter(u=>{
+  const statusFiltered=statusFilter===""?users:users.filter(u=>{
     const st = u.status || (u.is_active ? "approved" : "inactive");
     return st === statusFilter || String(u.is_active) === statusFilter;
   });
+  const filtered=statusFiltered.filter(u=>{
+    if(role!=="student" || studentSemesterYearFilter==="") return true;
+    const value=studentSemesterYearFilter;
+    if(value.startsWith("semester:")) return String(u.semester||"").trim()===value.slice(9);
+    if(value.startsWith("year:")) return String(u.batch||"").trim()===value.slice(5);
+    return true;
+  });
+  const semesterOptions=[...new Set(users.map(u=>String(u.semester||"").trim()).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const yearOptions=[...new Set(users.map(u=>String(u.batch||"").trim()).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const semesterYearFilterHtml=role==="student"?`
+      <select class="filter-select" aria-label="Filter students by semester or year" onchange="studentSemesterYearFilter=this.value;renderPage('student')">
+        <option value="" ${studentSemesterYearFilter===""?"selected":""}>All Semesters / Years</option>
+        ${semesterOptions.map(v=>`<option value="semester:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="semester:"+v?"selected":""}>Semester ${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
+        ${yearOptions.map(v=>`<option value="year:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="year:"+v?"selected":""}>Year / Batch: ${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
+      </select>`:"";
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
@@ -1702,6 +1727,7 @@ function renderUserTable(role) {
         <option value="rejected" ${statusFilter==="rejected"?"selected":""}>Rejected</option>
         <option value="0" ${statusFilter==="0"?"selected":""}>Inactive</option>
       </select>
+      ${semesterYearFilterHtml}
 ${addUserButton}
       <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>

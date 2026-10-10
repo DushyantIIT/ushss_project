@@ -72,7 +72,7 @@ let approvalCountdownTimer = null;
 let approvalRedirectStarted = false;
 
 async function checkStatus() {
-  if (statusCheckInProgress) return;
+  if (approvalRedirectStarted || statusCheckInProgress) return;
   const token = getToken();
   const badge = document.getElementById("status-badge");
   const who = document.getElementById("who");
@@ -85,6 +85,7 @@ async function checkStatus() {
   }
   statusCheckInProgress = true;
   try {
+    statusCheckInProgress = true;
     loading.style.display = "block";
     const res = await fetch("/api/registration-status", {headers:{Authorization:"Bearer "+token}});
     const data = await res.json();
@@ -110,7 +111,6 @@ async function checkStatus() {
     statusCheckInProgress = false;
   }
 }
-
 
 function beginApprovalCountdown(data, token) {
   if (approvalRedirectStarted) return;
