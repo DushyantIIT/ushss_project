@@ -33,6 +33,11 @@ button.primary{background:var(--maroon);border-color:var(--maroon);color:var(--g
 button:hover{border-color:var(--gold);color:var(--maroon)}
 button.primary:hover{color:var(--gold-light);opacity:.92}
 .loading{font-size:12px;color:var(--ink-muted);margin-top:.5rem;display:none}
+.approval-countdown{position:fixed;right:20px;bottom:20px;z-index:10;display:none;min-width:190px;padding:14px 16px;background:var(--maroon-deep);color:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 8px 24px rgba(74,14,14,.2);text-align:left}
+.approval-countdown strong{display:block;color:var(--gold-light);font-size:13px;margin-bottom:5px}
+.approval-countdown span{font-size:13px}
+.approval-countdown .seconds{font-size:22px;font-weight:700;margin-left:5px}
+@media(max-width:520px){.approval-countdown{right:12px;bottom:12px;left:12px;min-width:0;text-align:center}}
 </style>
 </head>
 <body>
@@ -47,24 +52,35 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
   <p id="who" style="display:none"></p>
   <div class="loading" id="loading">Checking status…</div>
   <p id="verification-message" role="alert" aria-live="polite" style="display:none;color:#b42318;margin-top:.75rem"></p>
+  <p id="approval-message" role="status" aria-live="polite" style="display:none;color:#276749;margin-top:.75rem">Your account has been approved. You will be redirected to your portal shortly.</p>
   <div class="actions">
     <button type="button" onclick="checkStatus()">Refresh Status</button>
     <button class="primary" type="button" onclick="logout()">Logout</button>
   </div>
 </div>
+<div class="approval-countdown" id="approval-countdown" role="status" aria-live="polite">
+  <strong>Approval successful</strong>
+  <span>Opening your portal in <b class="seconds" id="countdown-seconds">20</b> seconds</span>
+</div>
 
 <script>
+let approvalRedirectStarted = false;
+let statusCheckInProgress = false;
+let statusPollTimer = null;
+
 function getToken() {
   return localStorage.getItem("ushss_pending_token");
 }
 
 async function checkStatus() {
+  if (approvalRedirectStarted || statusCheckInProgress) return;
   const token = getToken();
   const badge = document.getElementById("status-badge");
   const who = document.getElementById("who");
   const loading = document.getElementById("loading");
   if (!token) return;
   try {
+    statusCheckInProgress = true;
     loading.style.display = "block";
     const res = await fetch("/api/registration-status", {headers:{Authorization:"Bearer "+token}});
     const data = await res.json();
@@ -74,12 +90,7 @@ async function checkStatus() {
       who.style.display = "block";
     }
     if (data.status === "approved") {
-      badge.textContent = "Status: Approved";
-      localStorage.setItem("ushss_token", token);
-      localStorage.setItem("ushss_user", JSON.stringify({full_name:data.full_name||"",email:data.email||"",role:data.role||""}));
-      localStorage.removeItem("ushss_pending_token");
-      const roleRedirects={student:"/dashboard/student",cr:"/dashboard/cr",faculty:"/dashboard/faculty",admin:"/dashboard/admin"};
-      window.location.href=roleRedirects[data.role]||"/";
+      startApprovalCountdown(data, token);
     } else if (data.status === "rejected") {
       if(data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason",data.rejection_reason);
       window.location.href="/rejected";
@@ -90,9 +101,37 @@ async function checkStatus() {
     const msg=document.getElementById("verification-message");
     msg.textContent=e.message||"Could not check verification status.";
     msg.style.display="block";
-  } finally { loading.style.display="none"; }
+  } finally {
+    statusCheckInProgress = false;
+    loading.style.display = "none";
+  }
 }
 
+function startApprovalCountdown(data, token) {
+  if (approvalRedirectStarted) return;
+  approvalRedirectStarted = true;
+  if (statusPollTimer) clearInterval(statusPollTimer);
+  document.getElementById("status-badge").textContent = "Status: Approved";
+  document.getElementById("approval-message").style.display = "block";
+  document.getElementById("approval-countdown").style.display = "block";
+  document.querySelector(".actions").style.display = "none";
+  document.getElementById("verification-message").style.display = "none";
+
+  let secondsLeft = 20;
+  document.getElementById("countdown-seconds").textContent = secondsLeft;
+  const countdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+    document.getElementById("countdown-seconds").textContent = Math.max(secondsLeft, 0);
+    if (secondsLeft <= 0) {
+      clearInterval(countdownTimer);
+      localStorage.setItem("ushss_token", token);
+      localStorage.setItem("ushss_user", JSON.stringify({full_name:data.full_name||"",email:data.email||"",role:data.role||""}));
+      localStorage.removeItem("ushss_pending_token");
+      const roleRedirects = {student:"/dashboard/student",cr:"/dashboard/cr",faculty:"/dashboard/faculty",admin:"/dashboard/admin"};
+      window.location.replace(roleRedirects[data.role] || "/");
+    }
+  }, 1000);
+}
 
 function logout() {
   localStorage.removeItem("ushss_pending_token");
@@ -100,6 +139,7 @@ function logout() {
 }
 
 checkStatus();
+statusPollTimer = setInterval(checkStatus, 3000);
 </script>
 </body>
 </html>
