@@ -27,11 +27,52 @@ router = APIRouter(prefix="/student", tags=["Student"])
 #  PROFILE  (read-only)
 # ═══════════════════════════════════════════════════════════════
 
-@router.get("/profile", summary="View your profile (read-only)")
+class StudentProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    programme: Optional[str] = None
+    batch: Optional[str] = None
+
+@router.get("/profile", summary="View your profile")
 def get_profile(student: dict = Depends(require_student)):
-    """Returns your profile. Contact admin to make any changes."""
+    """Returns your profile."""
     student.pop("password_hash", None)
     return student
+
+
+@router.patch("/profile", summary="Update your profile")
+def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_student)):
+    """Allows student to update their profile details."""
+    updates = {}
+    if body.full_name is not None:
+        updates["full_name"] = body.full_name.strip()
+    if body.email is not None:
+        updates["email"] = body.email.strip()
+    if body.phone is not None:
+        updates["phone"] = body.phone.strip()
+    if body.programme is not None:
+        updates["programme"] = body.programme.strip()
+    if body.batch is not None:
+        updates["batch"] = body.batch.strip()
+
+    if not updates:
+        student.pop("password_hash", None)
+        return {"message": "No changes provided", "student": student}
+
+    uid = student["id"]
+    try:
+        sb.table("users").update(updates).eq("id", uid).execute()
+        updated_res = sb.table("users").select("*").eq("id", uid).limit(1).execute()
+        if not updated_res.data:
+            raise HTTPException(404, "Student user not found")
+        updated_student = updated_res.data[0]
+        updated_student.pop("password_hash", None)
+        return {"message": "Profile updated successfully", "student": updated_student}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Could not update profile: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════
