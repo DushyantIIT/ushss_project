@@ -33,11 +33,10 @@ button.primary{background:var(--maroon);border-color:var(--maroon);color:var(--g
 button:hover{border-color:var(--gold);color:var(--maroon)}
 button.primary:hover{color:var(--gold-light);opacity:.92}
 .loading{font-size:12px;color:var(--ink-muted);margin-top:.5rem;display:none}
-.approval-countdown{position:fixed;right:20px;bottom:20px;z-index:10;display:none;min-width:190px;padding:14px 16px;background:var(--maroon-deep);color:#fff;border:1px solid var(--gold);border-radius:8px;box-shadow:0 8px 24px rgba(74,14,14,.2);text-align:left}
-.approval-countdown strong{display:block;color:var(--gold-light);font-size:13px;margin-bottom:5px}
-.approval-countdown span{font-size:13px}
-.approval-countdown .seconds{font-size:22px;font-weight:700;margin-left:5px}
-@media(max-width:520px){.approval-countdown{right:12px;bottom:12px;left:12px;min-width:0;text-align:center}}
+.approval-countdown{position:fixed;right:20px;bottom:20px;z-index:10;background:var(--maroon-deep);color:var(--gold-light);border:1px solid var(--gold);border-radius:8px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.18);font-size:13px;display:none;text-align:left;min-width:210px}
+.approval-countdown strong{font-size:20px;display:block;margin-top:3px}
+body.approved-state .icon{background:#e7f5eb;border-color:#9ed2ad;color:#18743a}
+body.approved-state .actions{display:none}
 </style>
 </head>
 <body>
@@ -52,25 +51,25 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
   <p id="who" style="display:none"></p>
   <div class="loading" id="loading">Checking status…</div>
   <p id="verification-message" role="alert" aria-live="polite" style="display:none;color:#b42318;margin-top:.75rem"></p>
-  <p id="approval-message" role="status" aria-live="polite" style="display:none;color:#276749;margin-top:.75rem">Your account has been approved. You will be redirected to your portal shortly.</p>
   <div class="actions">
     <button type="button" onclick="checkStatus()">Refresh Status</button>
     <button class="primary" type="button" onclick="logout()">Logout</button>
   </div>
 </div>
 <div class="approval-countdown" id="approval-countdown" role="status" aria-live="polite">
-  <strong>Approval successful</strong>
-  <span>Opening your portal in <b class="seconds" id="countdown-seconds">20</b> seconds</span>
+  Approval successful — redirecting in
+  <strong><span id="countdown-seconds">20</span> seconds</strong>
 </div>
 
 <script>
-let approvalRedirectStarted = false;
-let statusCheckInProgress = false;
-let statusPollTimer = null;
-
 function getToken() {
   return localStorage.getItem("ushss_pending_token");
 }
+
+let statusCheckInProgress = false;
+let statusPollTimer = null;
+let approvalCountdownTimer = null;
+let approvalRedirectStarted = false;
 
 async function checkStatus() {
   if (approvalRedirectStarted || statusCheckInProgress) return;
@@ -78,7 +77,13 @@ async function checkStatus() {
   const badge = document.getElementById("status-badge");
   const who = document.getElementById("who");
   const loading = document.getElementById("loading");
-  if (!token) return;
+  if (!token) {
+    const msg=document.getElementById("verification-message");
+    msg.textContent="Your approval session is missing. Please sign in again to check your registration status.";
+    msg.style.display="block";
+    return;
+  }
+  statusCheckInProgress = true;
   try {
     statusCheckInProgress = true;
     loading.style.display = "block";
@@ -90,7 +95,7 @@ async function checkStatus() {
       who.style.display = "block";
     }
     if (data.status === "approved") {
-      startApprovalCountdown(data, token);
+      beginApprovalCountdown(data, token);
     } else if (data.status === "rejected") {
       if(data.rejection_reason) sessionStorage.setItem("ushss_rejection_reason",data.rejection_reason);
       window.location.href="/rejected";
@@ -102,33 +107,52 @@ async function checkStatus() {
     msg.textContent=e.message||"Could not check verification status.";
     msg.style.display="block";
   } finally {
+    loading.style.display="none";
     statusCheckInProgress = false;
-    loading.style.display = "none";
   }
 }
 
-function startApprovalCountdown(data, token) {
+function beginApprovalCountdown(data, token) {
   if (approvalRedirectStarted) return;
   approvalRedirectStarted = true;
   if (statusPollTimer) clearInterval(statusPollTimer);
-  document.getElementById("status-badge").textContent = "Status: Approved";
-  document.getElementById("approval-message").style.display = "block";
-  document.getElementById("approval-countdown").style.display = "block";
-  document.querySelector(".actions").style.display = "none";
-  document.getElementById("verification-message").style.display = "none";
+  if (approvalCountdownTimer) clearInterval(approvalCountdownTimer);
 
+  const badge = document.getElementById("status-badge");
+  badge.textContent = "Status: Approved";
+  document.querySelector("h1").textContent = "Registration Approved!";
+  document.querySelectorAll(".card > p").forEach(p => p.style.display = "none");
+  const who = document.getElementById("who");
+  who.textContent = "Welcome" + (data.full_name ? ", " + data.full_name : "") + "! Your account is ready.";
+  who.style.display = "block";
+  document.querySelector(".icon").innerHTML = "&#10003;";
+  document.body.classList.add("approved-state");
+  document.getElementById("approval-countdown").style.display = "block";
+
+  // Persist the authenticated session before the timed redirect.
+  localStorage.setItem("ushss_token", token);
+  localStorage.setItem("ushss_user", JSON.stringify({
+    full_name: data.full_name || "",
+    email: data.email || "",
+    role: data.role || ""
+  }));
+  localStorage.removeItem("ushss_pending_token");
+
+  const roleRedirects = {
+    student: "/dashboard/student",
+    cr: "/dashboard/cr",
+    faculty: "/dashboard/faculty",
+    admin: "/dashboard/admin"
+  };
+  const destination = roleRedirects[data.role] || "/";
   let secondsLeft = 20;
   document.getElementById("countdown-seconds").textContent = secondsLeft;
-  const countdownTimer = setInterval(() => {
+  approvalCountdownTimer = setInterval(() => {
     secondsLeft -= 1;
     document.getElementById("countdown-seconds").textContent = Math.max(secondsLeft, 0);
     if (secondsLeft <= 0) {
-      clearInterval(countdownTimer);
-      localStorage.setItem("ushss_token", token);
-      localStorage.setItem("ushss_user", JSON.stringify({full_name:data.full_name||"",email:data.email||"",role:data.role||""}));
-      localStorage.removeItem("ushss_pending_token");
-      const roleRedirects = {student:"/dashboard/student",cr:"/dashboard/cr",faculty:"/dashboard/faculty",admin:"/dashboard/admin"};
-      window.location.replace(roleRedirects[data.role] || "/");
+      clearInterval(approvalCountdownTimer);
+      window.location.replace(destination);
     }
   }, 1000);
 }
@@ -138,8 +162,16 @@ function logout() {
   window.location.href = "/";
 }
 
+// Automatically check approval status while this page is open. Once an
+// admin approves the account, checkStatus() stores the session and redirects
+// the user to the dashboard for their assigned role.
 checkStatus();
-statusPollTimer = setInterval(checkStatus, 3000);
+statusPollTimer = setInterval(() => {
+  if (!document.hidden && getToken()) checkStatus();
+}, 2000);
+window.addEventListener("beforeunload", () => {
+  if (statusPollTimer) clearInterval(statusPollTimer);
+});
 </script>
 </body>
 </html>
