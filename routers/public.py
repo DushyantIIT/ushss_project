@@ -10,10 +10,11 @@ Public API endpoints for the main USHSS website (no auth required):
 
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 
 from app.database import sb
+from app.rate_limit import rate_limit, get_client_ip
 
 router = APIRouter(prefix="/public", tags=["Public Website"])
 
@@ -78,17 +79,19 @@ class ContactFormRequest(BaseModel):
 
 
 @router.post("/contact", status_code=201, summary="Submit a contact message", dependencies=[Depends(rate_limit("contact", max_calls=5, window_seconds=600))])
-def submit_contact_form(body: ContactFormRequest):
+def submit_contact_form(body: ContactFormRequest, request: Request):
     # Silent discard if bot filled honeypot
     if body.hp:
         return {"success": True, "message": "Thank you! Your message has been sent successfully."}
 
+    client_ip = get_client_ip(request)
     row = {
         "first_name":   body.first_name,
         "last_name":    body.last_name,
         "email":        body.email,
         "subject":      body.subject,
         "message":      body.message,
+        "ip_address":   client_ip,
         "is_read":      False,
         "submitted_at": datetime.now(timezone.utc).isoformat(),
     }

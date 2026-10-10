@@ -23,22 +23,26 @@ from fastapi import HTTPException, Request
 _hits: dict[str, deque] = defaultdict(deque)
 
 
-def _client_ip(request: Request) -> str:
-    # Check trusted proxy headers first (Render, Cloudflare)
-    render_ip = request.headers.get("x-render-client-ip")
-    if render_ip:
-        return render_ip.strip()
-    cf_ip = request.headers.get("cf-connecting-ip")
-    if cf_ip:
-        return cf_ip.strip()
+def get_client_ip(request: Request) -> str:
+    """Extracts client IP reliably.
+    When behind Render, uses X-Render-Client-IP if on Render environment,
+    or the originating client from X-Forwarded-For (first entry)."""
+    is_render = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID"))
+    if is_render:
+        render_ip = request.headers.get("x-render-client-ip")
+        if render_ip:
+            return render_ip.strip()
 
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
         ips = [ip.strip() for ip in fwd.split(",") if ip.strip()]
         if ips:
-            # On Render, the real client IP is passed via proxy headers
-            return ips[0] if len(ips) == 1 else ips[-1]
-    return request.client.host if request.client else "unknown"
+            return ips[0]
+
+    return request.client.host if request.client else "127.0.0.1"
+
+
+_client_ip = get_client_ip
 
 
 def rate_limit(bucket: str, max_calls: int, window_seconds: int):
@@ -48,7 +52,7 @@ def rate_limit(bucket: str, max_calls: int, window_seconds: int):
     def _dep(request: Request):
         if os.environ.get("TESTING", "").lower() == "true":
             return
-        key = f"{bucket}:{_client_ip(request)}"
+        key = f"{bucket}:{get_client_ip(request)}"
         now = time.monotonic()
         q = _hits[key]
 
@@ -58,9 +62,56 @@ def rate_limit(bucket: str, max_calls: int, window_seconds: int):
         if len(q) >= max_calls:
             raise HTTPException(
                 status_code=429,
-                detail=f"Too many attempts. Please wait a bit and try again.",
+                detail="Too many attempts. Please wait a bit and try again.",
             )
 
         q.append(now)
 
     return _dep
+
+
+def check_login_rate_limit(username: str, ip: str, window_seconds: int = 300, max_user_failures: int = 5, max_ip_failures: int = 40):
+    """Check if failed login threshold has been exceeded.
+    Keyed on username+IP so campus Wi-Fi sharing one IP does not lock out all students.
+    Also has a higher IP-wide threshold to protect against dictionary attacks."""
+    if os.environ.get("TESTING", "").lower() == "true":
+        return
+
+    now = time.monotonic()
+    user_key = f"login_fail:user:{username.strip().lower()}:{ip}"
+    q_user = _hits[user_key]
+    while q_user and now - q_user[0] > window_seconds:
+        q_user.popleft()
+    if len(q_user) >= max_user_failures:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts for this account. Please wait 5 minutes and try again.",
+        )
+
+    ip_key = f"login_fail:ip:{ip}"
+    q_ip = _hits[ip_key]
+    while q_ip and now - q_ip[0] > window_seconds:
+        q_ip.popleft()
+    if len(q_ip) >= max_ip_failures:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts from this network. Please wait 5 minutes and try again.",
+        )
+
+
+def record_login_failure(username: str, ip: str):
+    """Record a failed login attempt."""
+    if os.environ.get("TESTING", "").lower() == "true":
+        return
+    now = time.monotonic()
+    user_key = f"login_fail:user:{username.strip().lower()}:{ip}"
+    _hits[user_key].append(now)
+    ip_key = f"login_fail:ip:{ip}"
+    _hits[ip_key].append(now)
+
+
+def clear_login_failures(username: str, ip: str):
+    """Clear failed login records upon successful login."""
+    user_key = f"login_fail:user:{username.strip().lower()}:{ip}"
+    _hits.pop(user_key, None)
+

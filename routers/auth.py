@@ -2,13 +2,19 @@
 
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
 from app.database import sb
 from app.deps import oauth2_scheme
-from app.security import create_access_token, decode_token
-from app.rate_limit import rate_limit
+from app.security import create_access_token, decode_token, IS_DEV
+from app.rate_limit import (
+    rate_limit,
+    get_client_ip,
+    check_login_rate_limit,
+    record_login_failure,
+    clear_login_failures,
+)
 
 router = APIRouter(tags=["Auth"])
 VALID_ROLES = ("student", "faculty", "cr", "admin")
@@ -29,9 +35,13 @@ class LoginResponse(BaseModel):
     redirect_url: str
     user: dict
 
-@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit("login", max_calls=10, window_seconds=300))])
-def login(body: LoginRequest):
+@router.post("/login", response_model=LoginResponse)
+def login(body: LoginRequest, request: Request):
+    client_ip = get_client_ip(request)
+    check_login_rate_limit(body.username, client_ip)
+
     if body.role is not None and body.role not in VALID_ROLES:
+        record_login_failure(body.username, client_ip)
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
 
     user = None
@@ -66,22 +76,29 @@ def login(body: LoginRequest):
             user = res_other.data[0]
 
     if not user:
+        record_login_failure(body.username, client_ip)
+        try:
+            sb.table("audit_log").insert({
+                "user_id": None,
+                "action": "FAILED_LOGIN",
+                "detail": f"Failed login for non-existent or unapproved username '{body.username}'",
+                "ip": client_ip,
+            }).execute()
+        except Exception:
+            pass
         raise HTTPException(401, "Invalid username or password")
 
     user_role = user.get("role")
     if not user_role:
         raise HTTPException(500, "User role missing in profile")
     if body.role is not None and body.role != user_role:
+        record_login_failure(body.username, client_ip)
         raise HTTPException(401, "Invalid role for this user")
     if not user.get("is_active", True):
+        record_login_failure(body.username, client_ip)
         raise HTTPException(401, "Invalid username or password")
 
     auth_uid = user.get("supabase_uid")
-    if auth_uid:
-        try:
-            sb.auth.admin.update_user_by_id(auth_uid, {"email_confirm": True, "phone_confirm": True})
-        except Exception as e:
-            print(f"LOGIN AUTH CONFIRM SYNC FAILED: {type(e).__name__}: {str(e)[:160]}")
 
     # Authenticate password with Supabase Auth
     authenticated = False
@@ -90,14 +107,15 @@ def login(body: LoginRequest):
         authenticated = bool(getattr(ar, "session", None))
     except Exception as e:
         print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__} detail={str(e)[:240]!r}")
-        if auth_uid:
+        # If sign-in failed possibly due to unconfirmed email, attempt confirmed sign-in
+        if auth_uid and "confirm" in str(e).lower():
             try:
                 sb.auth.admin.update_user_by_id(auth_uid, {"email_confirm": True, "phone_confirm": True})
                 rr = sb.auth.sign_in_with_password({"email": user["email"], "password": body.password})
                 authenticated = bool(getattr(rr, "session", None))
             except Exception as repair:
                 print(f"LOGIN AUTH REPAIR FAILED: {type(repair).__name__}")
-        if not authenticated and user.get("password_hash"):
+        if IS_DEV and not authenticated and user.get("password_hash"):
             try:
                 import bcrypt
                 authenticated = bcrypt.checkpw(body.password.encode(), user["password_hash"].encode())
@@ -105,7 +123,19 @@ def login(body: LoginRequest):
                 pass
 
     if not authenticated:
+        record_login_failure(body.username, client_ip)
+        try:
+            sb.table("audit_log").insert({
+                "user_id": user["id"],
+                "action": "FAILED_LOGIN",
+                "detail": f"Failed password for {user.get('role')} '{body.username}'",
+                "ip": client_ip,
+            }).execute()
+        except Exception:
+            pass
         raise HTTPException(401, "Invalid username or password")
+
+    clear_login_failures(body.username, client_ip)
 
     # Credential is verified; now handle account status
     status_val = user.get("status") or "approved"
@@ -123,7 +153,12 @@ def login(body: LoginRequest):
         print(f"LOGIN WARNING: {e!r}")
 
     try:
-        sb.table("audit_log").insert({"user_id": user["id"], "action": "LOGIN", "detail": f"{user['role']} '{user['username']}' logged in"}).execute()
+        sb.table("audit_log").insert({
+            "user_id": user["id"],
+            "action": "LOGIN",
+            "detail": f"{user['role']} '{user['username']}' logged in",
+            "ip": client_ip,
+        }).execute()
     except Exception as e:
         print(f"LOGIN WARNING: audit log: {e!r}")
 
@@ -163,28 +198,51 @@ class RegisterResponse(BaseModel):
     success: bool; message: str; token: str; redirect_url: str="/waiting"
 
 @router.post("/register", status_code=201, response_model=RegisterResponse, dependencies=[Depends(rate_limit("register", max_calls=5, window_seconds=600))])
-def register(body:RegisterRequest):
+def register(body: RegisterRequest, request: Request):
+    client_ip = get_client_ip(request)
+    if "<" in body.full_name or ">" in body.full_name:
+        raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
+    if "<" in body.username or ">" in body.username:
+        raise HTTPException(400, "Username cannot contain HTML characters (< or >)")
     if body.role not in SELF_REGISTER_ROLES: raise HTTPException(400,f"Self-registration is only allowed for: {SELF_REGISTER_ROLES}")
     if body.role == "faculty" and not body.domain:
         raise HTTPException(400,"Faculty domain is required")
     if body.role in ENROLLMENT_REQUIRED_ROLES:
         if not body.enrollment_no:
-            raise HTTPException(400,"Enrollment number is required for this role")
+            raise HTTPException(400, "Enrollment number is required for this role")
         enr_clean = body.enrollment_no.strip()
-        # Ensure enrollment number is not already registered or pending for an active student
-        existing_enr = sb.table("users").select("id, status").eq("enrollment_no", enr_clean).execute().data or []
+        existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
             if row_enr.get("status") in ("approved", "pending"):
                 raise HTTPException(409, "Enrollment number is already registered or pending approval")
-    if sb.table("users").select("id, status").eq("username",body.username).eq("role",body.role).execute().data:
-        # Check if username is already taken by approved or pending account
-        existing_un = sb.table("users").select("id, status").eq("username",body.username).eq("role",body.role).execute().data
-        if any(r.get("status") in ("approved", "pending") for r in existing_un):
-            raise HTTPException(409,"Username already exists for this role")
-    if sb.table("users").select("id, status").eq("email",body.email).execute().data:
-        existing_em = sb.table("users").select("id, status").eq("email",body.email).execute().data
-        if any(r.get("status") in ("approved", "pending") for r in existing_em):
-            raise HTTPException(409,"Email address is already registered")
+            elif row_enr.get("status") == "rejected":
+                old_uid = row_enr.get("supabase_uid")
+                if old_uid and not str(old_uid).startswith("local_"):
+                    try: sb.auth.admin.delete_user(old_uid)
+                    except Exception: pass
+                sb.table("users").delete().eq("id", row_enr["id"]).execute()
+
+    existing_un = sb.table("users").select("id, status, supabase_uid").eq("username", body.username).eq("role", body.role).execute().data or []
+    for r in existing_un:
+        if r.get("status") in ("approved", "pending"):
+            raise HTTPException(409, "Username already exists for this role")
+        elif r.get("status") == "rejected":
+            old_uid = r.get("supabase_uid")
+            if old_uid and not str(old_uid).startswith("local_"):
+                try: sb.auth.admin.delete_user(old_uid)
+                except Exception: pass
+            sb.table("users").delete().eq("id", r["id"]).execute()
+
+    existing_em = sb.table("users").select("id, status, supabase_uid").eq("email", body.email).execute().data or []
+    for r in existing_em:
+        if r.get("status") in ("approved", "pending"):
+            raise HTTPException(409, "Email address is already registered")
+        elif r.get("status") == "rejected":
+            old_uid = r.get("supabase_uid")
+            if old_uid and not str(old_uid).startswith("local_"):
+                try: sb.auth.admin.delete_user(old_uid)
+                except Exception: pass
+            sb.table("users").delete().eq("id", r["id"]).execute()
     phone = body.phone.strip() if body.phone else None
     if phone:
         if phone.isdigit() and len(phone)==10: phone="+91"+phone
@@ -199,7 +257,7 @@ def register(body:RegisterRequest):
         au=getattr(created,"user",None); supabase_uid=getattr(au,"id",None) if au else None
     except Exception as e:
         print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
-        if "not configured" in str(e).lower():
+        if IS_DEV and "not configured" in str(e).lower():
             import bcrypt
             supabase_uid=f"local_{body.username}"
             pwd_hash=bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
@@ -216,7 +274,7 @@ def register(body:RegisterRequest):
         try: sb.auth.admin.delete_user(supabase_uid)
         except Exception: pass
         raise HTTPException(502,"Could not complete registration — your details could not be saved. Please try again.")
-    try: sb.table("audit_log").insert({"user_id":new_user["id"],"action":"SELF_REGISTER","detail":f"{body.role} '{body.username}' self-registered — pending approval"}).execute()
+    try: sb.table("audit_log").insert({"user_id":new_user["id"],"action":"SELF_REGISTER","detail":f"{body.role} '{body.username}' self-registered — pending approval","ip":client_ip}).execute()
     except Exception as e: print(f"REGISTER WARNING: {e!r}")
     token=create_access_token({"sub":new_user["username"],"id":new_user["id"],"role":new_user["role"],"purpose":"pending"})
     return RegisterResponse(success=True,message="Account created. Your registration request has been submitted and is awaiting admin approval.",token=token,redirect_url="/waiting")

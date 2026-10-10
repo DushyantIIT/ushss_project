@@ -111,12 +111,19 @@ DEMO_USERS = [
 
 
 def seed():
-    """Seed demo data into Supabase if not already present."""
-    if not ping_db():
-        print("SEED WARNING: Cannot connect to Supabase — skipping seed")
+    """Seed demo data into Supabase/SQLite if not already present.
+    In production environments, demo user seeding is disabled for safety."""
+    import os
+    from app.security import IS_PROD
+    if IS_PROD and not os.environ.get("ALLOW_PROD_SEED"):
+        print("SEED NOTICE: Automatic demo seeding is blocked in production to protect credentials.")
         return
 
-    print("🌱 Checking / Seeding Supabase data...")
+    if not ping_db():
+        print("SEED WARNING: Cannot connect to database — skipping seed")
+        return
+
+    print("🌱 Checking / Seeding database data...")
 
     # 1. Faculty directory
     try:

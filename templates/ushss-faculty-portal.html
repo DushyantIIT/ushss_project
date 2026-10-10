@@ -246,12 +246,15 @@ tr:hover td{background:rgba(255,255,255,.01)}
 </head>
 <script>
 (function(){
-  // A dashboard is never public: the browser must already have a portal token.
-  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
-  // with no token even when the normal Chrome window is logged in.
-  if (!localStorage.getItem("ushss_token")) {
-    window.location.replace("/");
-  }
+  const token = localStorage.getItem("ushss_token");
+  if (!token) { window.location.replace("/"); return; }
+  try {
+    const user = JSON.parse(localStorage.getItem("ushss_user") || "{}");
+    if (user.role && user.role !== "faculty" && user.role !== "admin") {
+      const redirects = { student: "/dashboard/student", cr: "/dashboard/cr" };
+      window.location.replace(redirects[user.role] || "/");
+    }
+  } catch(e) {}
 })();
 </script>
 <body>
@@ -547,18 +550,17 @@ tr:hover td{background:rgba(255,255,255,.01)}
       <div class="grid-2" style="max-width:900px">
         <div class="card">
           <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--maroon),var(--maroon-l));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:var(--gold-l);font-weight:700">SS</div>
+            <div id="fac-profile-avatar" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--maroon),var(--maroon-l));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:var(--gold-l);font-weight:700">?</div>
             <div>
-              <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)">Dr. Shuchi Sharma</div>
-              <div style="font-size:12px;color:var(--gold);margin-top:3px">Dean · Professor</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)">shuchi.sharma@ipu.ac.in</div>
+              <div id="fac-profile-name-display" style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)"></div>
+              <div id="fac-profile-sub-display" style="font-size:12px;color:var(--gold);margin-top:3px"></div>
+              <div id="fac-profile-email-display" style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)"></div>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Dr. Shuchi Sharma"/></div>
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="shuchi.sharma@ipu.ac.in"/></div>
-          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="011-2530-2168"/></div>
-          <div class="form-group"><label class="form-label">Department</label><input class="form-input" value="USHSS" readonly/></div>
-          <button class="btn btn-primary" onclick="toast('Profile updated','ok')">Save Changes</button>
+          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="fac-profile-full-name" placeholder="Your full name"/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="fac-profile-phone" placeholder="+91 XXXXX XXXXX"/></div>
+          <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="fac-profile-dept" readonly/></div>
+          <button class="btn btn-primary" onclick="saveFacultyProfile()">Save Changes</button>
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:16px">Change Password</div>
@@ -611,6 +613,12 @@ tr:hover td{background:rgba(255,255,255,.01)}
 <div class="toast-wrap" id="tw"></div>
 
 <script>
+/* ═══ XSS ESCAPE ═══ */
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 /* ═══ DATA STORE ═══ */
 const DB = { students:[], announcements:[], sessions:[], timetable:[] };
 let facultyProfile=null;
@@ -711,11 +719,11 @@ function initDashboard() {
   document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(u=>`
     <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:center">
       <div style="min-width:70px;text-align:center;padding:8px;background:var(--gold-pale);border-radius:6px;border:1px solid rgba(201,168,76,.2)">
-        <div style="font-size:9px;color:var(--gold);font-family:var(--mono);text-transform:uppercase">${u.day_of_week}</div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream);line-height:1">${String(u.start_time).slice(0,5)}</div>
-        <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">to ${String(u.end_time).slice(0,5)}</div>
+        <div style="font-size:9px;color:var(--gold);font-family:var(--mono);text-transform:uppercase">${esc(u.day_of_week)}</div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream);line-height:1">${esc(String(u.start_time).slice(0,5))}</div>
+        <div style="font-size:9px;color:var(--muted);font-family:var(--mono)">to ${esc(String(u.end_time).slice(0,5))}</div>
       </div>
-      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${u.subject||'Class'}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ${u.room||'Room not assigned'} · ${u.programme||''} ${u.batch||''}</div></div>
+      <div><div style="font-size:13px;font-weight:600;color:var(--text)">${esc(u.subject||'Class')}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">📍 ${esc(u.room||'Room not assigned')} · ${esc(u.programme||'')} ${esc(u.batch||'')}</div></div>
     </div>`).join(''):`<div class="empty"><div class="empty-icon">🗓️</div><div>No classes scheduled for today.</div></div>`;
   renderSessionHistory();
 }
@@ -829,9 +837,9 @@ function renderSessionHistory() {
     const pct = Math.round((s.present / s.total) * 100);
     const cls = pct >= 75 ? 'badge-green' : pct >= 50 ? 'badge-amber' : 'badge-red';
     return `<tr>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${s.date}</td>
-      <td style="font-size:12px">${s.cls}</td>
-      <td style="font-size:12px;color:var(--muted)">${s.topic}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(s.date)}</td>
+      <td style="font-size:12px">${esc(s.cls)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(s.topic)}</td>
       <td>${s.present}</td><td>${s.total - s.present}</td>
       <td><span class="badge ${cls}">${pct}%</span></td>
       <td><button class="btn btn-ghost btn-sm">View</button></td>
@@ -843,10 +851,10 @@ function renderFullHistory() {
   document.getElementById('full-history').innerHTML = DB.sessions.map(s => {
     const pct = Math.round((s.present / s.total) * 100);
     return `<tr>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${s.date}</td>
-      <td style="font-size:12px">${s.cls}</td>
-      <td style="font-size:12px;color:var(--muted)">${s.topic}</td>
-      <td style="font-size:12px;color:var(--muted)">${s.duration}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(s.date)}</td>
+      <td style="font-size:12px">${esc(s.cls)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(s.topic)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(s.duration)}</td>
       <td>${s.present}</td><td>${s.total}</td>
       <td><span class="badge ${pct>=75?'badge-green':pct>=50?'badge-amber':'badge-red'}">${pct}%</span></td>
     </tr>`;
@@ -856,16 +864,17 @@ function renderFullHistory() {
 /* ═══ ANNOUNCEMENTS ═══ */
 function annCardHTML(a, mini=false) {
   const p = {important:'badge-amber',urgent:'badge-red',normal:'badge-blue'};
+  const body = mini ? esc(a.body).substring(0,100)+'…' : esc(a.body);
   return `<div class="ann-card">
     <div class="ann-card-top">
-      <div class="ann-title">${a.title}</div>
-      <span class="badge ${p[a.priority]||'badge-blue'}">${a.priority.toUpperCase()}</span>
+      <div class="ann-title">${esc(a.title)}</div>
+      <span class="badge ${p[a.priority]||'badge-blue'}">${esc(a.priority).toUpperCase()}</span>
     </div>
-    <div class="ann-body">${mini ? a.body.substring(0,100)+'…' : a.body}</div>
+    <div class="ann-body">${body}</div>
     <div class="ann-footer">
-      <span class="ann-time">🕒 ${a.ts}</span>
-      <span class="badge badge-gold" style="font-size:9px">📍 ${a.target}</span>
-      ${!mini ? `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn(${a.id})">🗑 Delete</button>` : ''}
+      <span class="ann-time">🕒 ${esc(a.ts)}</span>
+      <span class="badge badge-gold" style="font-size:9px">📍 ${esc(a.target)}</span>
+      ${!mini ? `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn(${Number(a.id)})">🗑 Delete</button>` : ''}
     </div>
   </div>`;
 }
@@ -907,10 +916,10 @@ function renderRoster(students) {
   document.getElementById('roster-body').innerHTML = students.map(s => {
     const cls = s.att >= 75 ? 'badge-green' : s.att >= 60 ? 'badge-amber' : 'badge-red';
     return `<tr>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${s.roll}</td>
-      <td><div style="font-weight:600;color:var(--text)">${s.name}</div></td>
-      <td style="font-size:12px">${s.prog}</td>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${s.batch}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(s.roll)}</td>
+      <td><div style="font-weight:600;color:var(--text)">${esc(s.name)}</div></td>
+      <td style="font-size:12px">${esc(s.prog)}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(s.batch)}</td>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="progress" style="width:60px"><div class="progress-fill ${s.att>=75?'progress-green':s.att>=60?'progress-amber':'progress-red'}" style="width:${s.att}%"></div></div>
@@ -987,8 +996,50 @@ function logoutFaculty() {
     if (initEl) initEl.textContent = getCleanInitials(u.full_name || u.username);
     if (subEl)  subEl.textContent  = [u.designation, u.department].filter(Boolean).join(' · ');
 
+    initFacultyProfilePage(u);
   } catch(e) { console.warn('USHSS API: faculty profile load failed', e); }
 })();
+
+function initFacultyProfilePage(p) {
+  if(!p) return;
+  const av = document.getElementById('fac-profile-avatar');
+  if(av) av.textContent = getCleanInitials(p.full_name || p.username);
+  const nd = document.getElementById('fac-profile-name-display');
+  if(nd) nd.textContent = p.full_name || p.username || '';
+  const sd = document.getElementById('fac-profile-sub-display');
+  if(sd) sd.textContent = [p.designation, p.department].filter(Boolean).join(' · ') || 'Faculty';
+  const ed = document.getElementById('fac-profile-email-display');
+  if(ed) ed.textContent = p.email || '';
+  const fn = document.getElementById('fac-profile-full-name');
+  if(fn) fn.value = p.full_name || '';
+  const ph = document.getElementById('fac-profile-phone');
+  if(ph) ph.value = p.phone || '';
+  const dp = document.getElementById('fac-profile-dept');
+  if(dp) dp.value = p.department || 'USHSS';
+}
+
+async function saveFacultyProfile() {
+  const fullName = document.getElementById('fac-profile-full-name')?.value.trim();
+  const phone = document.getElementById('fac-profile-phone')?.value.trim();
+  if(!fullName) { toast('Full name is required', 'err'); return; }
+  try {
+    const r = await fetch('/api/faculty/profile', {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + localStorage.getItem('ushss_token'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ full_name: fullName, phone: phone || null })
+    });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(d.detail || 'Could not save profile');
+    if(facultyProfile) { facultyProfile.full_name = fullName; facultyProfile.phone = phone || null; }
+    initFacultyProfilePage(facultyProfile || { full_name: fullName, phone });
+    const nameEl = document.getElementById('sb-name'); if(nameEl) nameEl.textContent = fullName;
+    const initEl = document.getElementById('sb-init'); if(initEl) initEl.textContent = getCleanInitials(fullName);
+    toast(d.message || 'Profile updated successfully', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
+}
 async function changeMyPassword(){
   const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
   if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}

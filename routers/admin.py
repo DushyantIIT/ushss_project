@@ -53,11 +53,14 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 VALID_ROLES = ("student", "faculty", "cr", "admin")
 
-#  tiny helper 
-def _audit(admin_id: int, action: str, detail: str):
-    sb.table("audit_log").insert(
-        {"user_id": admin_id, "action": action, "detail": detail}
-    ).execute()
+def _audit(admin_id: int, action: str, detail: str, ip: str = None):
+    row = {"user_id": admin_id, "action": action, "detail": detail}
+    if ip:
+        row["ip"] = ip
+    try:
+        sb.table("audit_log").insert(row).execute()
+    except Exception as e:
+        print(f"AUDIT LOG WARNING: {e!r}")
 
 
 # 
@@ -155,6 +158,8 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
     _validate_programme_batch(body.programme, body.batch, body.role)
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
+    if "<" in body.full_name or ">" in body.full_name:
+        raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
 
     # check duplicate username+role
     dup = sb.table("users").select("id").eq("username", body.username).eq("role", body.role).execute()
@@ -244,6 +249,9 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
     effective_batch = updates.get("batch", target.get("batch"))
     _validate_programme_batch(effective_programme, effective_batch, target.get("role"))
 
+    if "full_name" in updates and ("<" in str(updates["full_name"]) or ">" in str(updates["full_name"])):
+        raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
+
     if "role" in updates:
         new_role = updates["role"]
         current_role = target.get("role")
@@ -326,6 +334,16 @@ def delete_user(
             status_code=403,
             detail="The Super Admin cannot be deleted."
         )
+
+    # Preserve attendance history: if user has recorded attendance, deactivate instead of deleting
+    has_records = bool(sb.table("attendance_records").select("id").eq("student_id", uid).limit(1).execute().data)
+    has_sessions = bool(sb.table("attendance_sessions").select("id").eq("faculty_id", uid).limit(1).execute().data)
+    if has_records or has_sessions:
+        sb.table("users").update({"is_active": False}).eq("id", uid).execute()
+        _audit(admin["id"], "DEACTIVATE_USER", f"Deactivated {target['role']} '{target['username']}' (attendance history preserved)")
+        return {
+            "message": f"User '{target['username']}' has attendance history and was deactivated instead of permanently deleted to preserve academic records."
+        }
 
     sb.table("users") \
         .delete() \
@@ -545,7 +563,7 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
 def reject_request(uid: int, body: RejectBody, admin: dict = Depends(require_admin)):
     existing = (
         sb.table("users")
-        .select("id, username, role, status, email, full_name")
+        .select("id, username, role, status, email, full_name, supabase_uid")
         .eq("id", uid)
         .limit(1)
         .execute()
@@ -561,11 +579,19 @@ def reject_request(uid: int, body: RejectBody, admin: dict = Depends(require_adm
     if target["role"] == "admin" and not admin.get("is_super_admin", False):
         raise HTTPException(403, "Only the Super Admin can reject Admin registrations.")
 
+    auth_uid = target.get("supabase_uid")
+    if auth_uid and not str(auth_uid).startswith("local_"):
+        try:
+            sb.auth.admin.delete_user(auth_uid)
+        except Exception as e:
+            print(f"REJECT: could not delete Supabase Auth user {auth_uid}: {e}")
+
     sb.table("users").update({
         "status":           "rejected",
         "approved_by":      admin["id"],
         "approved_at":      datetime.now(timezone.utc).isoformat(),
         "rejection_reason": body.rejection_reason,
+        "supabase_uid":     None,
     }).eq("id", uid).execute()
 
     _audit(
@@ -784,6 +810,10 @@ def delete_slot(slot_id: int, admin: dict = Depends(require_admin)):
     existing = sb.table("timetable_slots").select("id").eq("id", slot_id).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Timetable slot not found")
+    # Prevent cascading destruction of attendance history
+    has_sessions = sb.table("attendance_sessions").select("id").eq("slot_id", slot_id).limit(1).execute().data
+    if has_sessions:
+        raise HTTPException(400, "Cannot delete timetable slot with existing attendance sessions. Deleting it would destroy historical attendance records.")
     sb.table("timetable_slots").delete().eq("id", slot_id).execute()
     _audit(admin["id"], "DELETE_TIMETABLE", f"Deleted slot id={slot_id}")
     return {"message": "Timetable slot deleted"}
@@ -815,11 +845,38 @@ def list_sessions(
 @router.patch("/attendance/sessions/{sid}/close", summary="Force-close an attendance session")
 def close_session(sid: int, admin: dict = Depends(require_admin)):
     from datetime import datetime, timezone
-    existing = sb.table("attendance_sessions").select("id,is_open").eq("id", sid).limit(1).execute()
+    existing = sb.table("attendance_sessions") \
+                 .select("id, is_open, slot_id, timetable_slots(programme, batch, section)") \
+                 .eq("id", sid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Session not found")
+    s = existing.data[0]
+
+    # Insert absent records for students who never marked (same logic as faculty close)
+    slot = s.get("timetable_slots") or {}
+    prog, batch, section = slot.get("programme"), slot.get("batch"), slot.get("section")
+    if prog and batch:
+        q_stud = sb.table("users").select("id").eq("role", "student") \
+                   .eq("is_active", True).eq("programme", prog).eq("batch", batch)
+        if section:
+            q_stud = q_stud.eq("section", section)
+        class_student_ids = {u["id"] for u in (q_stud.execute().data or [])}
+        marked_ids = {r["student_id"] for r in (
+            sb.table("attendance_records").select("student_id").eq("session_id", sid).execute().data or []
+        )}
+        missing_ids = class_student_ids - marked_ids
+        if missing_ids:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            try:
+                sb.table("attendance_records").insert([
+                    {"session_id": sid, "student_id": st_id, "status": "absent", "marked_at": now_iso}
+                    for st_id in missing_ids
+                ]).execute()
+            except Exception as exc:
+                print(f"ADMIN CLOSE: failed to insert absent records for session {sid}: {exc}")
+
     res = sb.table("attendance_sessions").update({
-        "is_open": False,
+        "is_open":   False,
         "closed_at": datetime.now(timezone.utc).isoformat()
     }).eq("id", sid).execute()
     _audit(admin["id"], "CLOSE_SESSION", f"Admin force-closed session id={sid}")

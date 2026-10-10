@@ -199,12 +199,15 @@ tr:hover td{background:rgba(255,255,255,.01)}
 </head>
 <script>
 (function(){
-  // A dashboard is never public: the browser must already have a portal token.
-  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
-  // with no token even when the normal Chrome window is logged in.
-  if (!localStorage.getItem("ushss_token")) {
-    window.location.replace("/");
-  }
+  const token = localStorage.getItem("ushss_token");
+  if (!token) { window.location.replace("/"); return; }
+  try {
+    const user = JSON.parse(localStorage.getItem("ushss_user") || "{}");
+    if (user.role && user.role !== "cr") {
+      const redirects = { student: "/dashboard/student", faculty: "/dashboard/faculty", admin: "/dashboard/admin" };
+      window.location.replace(redirects[user.role] || "/");
+    }
+  } catch(e) {}
 })();
 </script>
 <body>
@@ -407,17 +410,17 @@ tr:hover td{background:rgba(255,255,255,.01)}
       <div class="grid-2" style="max-width:900px">
         <div class="card">
           <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--teal-d),var(--teal));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:white;font-weight:700">AK</div>
+            <div id="profile-avatar" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--teal-d),var(--teal));display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:24px;color:white;font-weight:700">?</div>
             <div>
-              <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)">Amit Kumar</div>
+              <div id="profile-name-display" style="font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)"></div>
               <div style="font-size:12px;color:var(--teal);margin-top:3px">Class Representative</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)">cr.english@ipu.ac.in</div>
+              <div id="profile-email-display" style="font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)"></div>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" value="Amit Kumar"/></div>
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="cr.english@ipu.ac.in"/></div>
-          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="+91 98100 22001"/></div>
-          <button class="btn btn-primary" onclick="toast('Profile updated','ok')">Save Changes</button>
+          <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="profile-full-name" placeholder="Your full name"/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="profile-phone" placeholder="+91 XXXXX XXXXX"/></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="profile-email-inp" type="email" placeholder="your@email.com"/></div>
+          <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
         </div>
         <div class="card">
           <div class="card-title" style="margin-bottom:16px">Change Password</div>
@@ -533,6 +536,12 @@ tr:hover td{background:rgba(255,255,255,.01)}
 <div class="toast-wrap" id="tw"></div>
 
 <script>
+/* ═══ XSS ESCAPE ═══ */
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 /* ═══ DATA ═══ */
 const DB = { classmates:[], announcements:[], assignments:[], materials:[], liveSessions:[] };
 let crProfile=null;
@@ -588,15 +597,15 @@ async function loadCRData(){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('cr-classmates-count',DB.classmates.length);set('cr-ann-count',DB.announcements.length);set('cr-assignment-count',DB.assignments.length);set('cr-material-count',DB.materials.length);
 }
-loadCRData().then(initDashboard).catch(e=>{console.error(e);toast('Could not load CR data from Supabase','err');});
+loadCRData().then(()=>{initDashboard();initProfilePage();}).catch(e=>{console.error(e);toast('Could not load CR data from Supabase','err');});
 
 /* DASHBOARD INIT */
 function initDashboard(){
   document.getElementById('dash-ann').innerHTML=DB.announcements.slice(0,2).map(a=>`
     <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:13px;font-weight:600;color:var(--cream)">${a.title}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">${a.body.substring(0,80)}…</div>
-      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px">${a.ts}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--cream)">${esc(a.title)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(a.body).substring(0,80)}…</div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px">${esc(a.ts)}</div>
     </div>
   `).join('');
 
@@ -604,10 +613,10 @@ function initDashboard(){
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="width:6px;height:6px;border-radius:50%;background:${new Date(a.due)<new Date()?'var(--red)':'var(--amber)'};flex-shrink:0"></div>
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--text)">${a.title}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Due: ${a.due}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(a.title)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Due: ${esc(a.due)}</div>
       </div>
-      <span class="badge badge-blue">${a.subject.split(' ')[0]}</span>
+      <span class="badge badge-blue">${esc(a.subject.split(' ')[0])}</span>
     </div>
   `).join('');
 
@@ -615,8 +624,8 @@ function initDashboard(){
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:18px">${m.type==='pdf'?'📄':m.type==='slides'?'📊':'📋'}</span>
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--text)">${m.title}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${m.size}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(m.title)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${esc(m.size)}</div>
       </div>
     </div>
   `).join('');
@@ -635,17 +644,17 @@ function renderLiveSessions(){
     return;
   }
   el.innerHTML=DB.liveSessions.map(s=>`
-    <div class="item-card" style="cursor:pointer" onclick="openMarkView('${s.id}')">
+    <div class="item-card" style="cursor:pointer" onclick="openMarkView('${Number(s.id)}')">
       <div class="item-card-top">
         <div>
-          <div class="item-title">${s.cls}</div>
-          <div class="item-body" style="margin-top:4px">${s.topic} · ${s.teacher}</div>
+          <div class="item-title">${esc(s.cls)}</div>
+          <div class="item-body" style="margin-top:4px">${esc(s.topic)} · ${esc(s.teacher)}</div>
         </div>
         <span class="badge badge-green">🟢 LIVE</span>
       </div>
       <div class="item-footer">
         <span class="badge badge-amber">⏱ ${Math.floor(s.endsIn/60)}m remaining</span>
-        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="event.stopPropagation();openMarkView('${s.id}')">Mark Attendance →</button>
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="event.stopPropagation();openMarkView('${Number(s.id)}')">Mark Attendance →</button>
       </div>
     </div>
   `).join('');
@@ -672,12 +681,12 @@ function getLocation(){
       userLat=pos.coords.latitude;
       userLng=pos.coords.longitude;
       locOk=true;
-      document.getElementById('loc-status').innerHTML=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}<br><span style="color:var(--green)">Location captured; server validates the session and class</span>`;
+      document.getElementById('loc-status').textContent=`✅ Location captured — Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}`;
       const btn=document.getElementById('mark-btn');
       if(btn){btn.disabled=false;btn.textContent='✅ Mark Present';}
     },
     err=>{
-      document.getElementById('loc-status').innerHTML=`⚠️ Location unavailable: ${err.message}<br><span style="color:var(--amber)">Attendance can still be marked (flagged for review)</span>`;
+      document.getElementById('loc-status').textContent=`⚠️ Location unavailable: ${err.message}`;
       const btn=document.getElementById('mark-btn');
       if(btn){btn.disabled=false;btn.textContent='⚠️ Mark (No Location)';}
     },
@@ -695,7 +704,7 @@ async function markAttendance(){
     const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Attendance could not be saved');
     document.getElementById('mark-status-badge').className='att-mark-status marked';
-    document.getElementById('mark-status-badge').innerHTML='<span>✅</span> Attendance Marked';
+    document.getElementById('mark-status-badge').textContent='✅ Attendance Marked';
     btn.style.display='none';const res=document.getElementById('mark-result');res.style.display='block';res.style.color='var(--green)';res.textContent=d.message||'Attendance was saved.';toast('Attendance saved successfully','ok');
   }catch(e){toast(e.message||'Attendance could not be saved','err');btn.disabled=false;btn.textContent='Try Again';}
 }
@@ -708,14 +717,14 @@ function renderAnn(){
     DB.announcements.map(a=>`
       <div class="item-card">
         <div class="item-card-top">
-          <div class="item-title">${annTypeIcon[a.type]||'📢'} ${a.title}</div>
-          <span class="badge ${annTypeBadge[a.type]||'badge-blue'}">${a.type.toUpperCase()}</span>
+          <div class="item-title">${annTypeIcon[a.type]||'📢'} ${esc(a.title)}</div>
+          <span class="badge ${annTypeBadge[a.type]||'badge-blue'}">${esc(a.type).toUpperCase()}</span>
         </div>
-        <div class="item-body">${a.body}</div>
+        <div class="item-body">${esc(a.body)}</div>
         <div class="item-footer">
-          <span class="item-time">🕒 ${a.ts}</span>
-          <span class="badge badge-gold" style="font-size:9px">👥 ${a.vis}</span>
-          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn(${a.id})">🗑</button>
+          <span class="item-time">🕒 ${esc(a.ts)}</span>
+          <span class="badge badge-gold" style="font-size:9px">👥 ${esc(a.vis)}</span>
+          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn(${Number(a.id)})">🗑</button>
         </div>
       </div>
     `).join(''):
@@ -744,15 +753,15 @@ function renderAssignments(){
     DB.assignments.map(a=>`
       <div class="item-card">
         <div class="item-card-top">
-          <div class="item-title">📝 ${a.title}</div>
-          <span class="badge ${new Date(a.due)<new Date()?'badge-red':'badge-amber'}">Due ${a.due}</span>
+          <div class="item-title">📝 ${esc(a.title)}</div>
+          <span class="badge ${new Date(a.due)<new Date()?'badge-red':'badge-amber'}">Due ${esc(a.due)}</span>
         </div>
-        <div class="item-body">${a.desc}</div>
+        <div class="item-body">${esc(a.desc)}</div>
         <div class="item-footer">
-          <span class="badge badge-blue">${a.subject}</span>
-          ${a.file?`<span class="badge badge-teal">📎 ${a.file}</span>`:''}
-          <span class="item-time" style="margin-left:auto">Posted ${a.ts}</span>
-          <button class="btn btn-danger btn-sm" onclick="deleteAsgn(${a.id})">🗑</button>
+          <span class="badge badge-blue">${esc(a.subject)}</span>
+          ${a.file?`<span class="badge badge-teal">📎 ${esc(a.file)}</span>`:''}
+          <span class="item-time" style="margin-left:auto">Posted ${esc(a.ts)}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteAsgn(${Number(a.id)})">🗑</button>
         </div>
       </div>
     `).join(''):
@@ -788,16 +797,16 @@ function renderMaterials(){
     DB.materials.map(m=>`
       <div class="card" style="cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="font-size:2.5rem;margin-bottom:12px;opacity:.7">${matIcon[m.type]||'📄'}</div>
-        <div style="font-size:13px;font-weight:600;color:var(--cream);margin-bottom:6px;line-height:1.3">${m.title}</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">${m.desc}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--cream);margin-bottom:6px;line-height:1.3">${esc(m.title)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5">${esc(m.desc)}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-          <span class="badge ${matBadge[m.type]||'badge-blue'}">${m.type.toUpperCase()}</span>
-          <span class="badge badge-gold">${m.size}</span>
+          <span class="badge ${matBadge[m.type]||'badge-blue'}">${esc(m.type).toUpperCase()}</span>
+          <span class="badge badge-gold">${esc(m.size)}</span>
         </div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · ${m.ts}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${esc(m.subject)} · ${esc(m.ts)}</div>
         <div style="display:flex;gap:8px">
-          ${m.file_url ? '<a class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" disabled>⬇ No file</button>'}
-          <button class="btn btn-danger btn-sm" onclick="deleteMat(${m.id})">🗑</button>
+          ${m.file_url ? '<a class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none" href="' + encodeURI(m.file_url) + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" disabled>⬇ No file</button>'}
+          <button class="btn btn-danger btn-sm" onclick="deleteMat(${Number(m.id)})">🗑</button>
         </div>
       </div>
     `).join(''):
@@ -831,10 +840,10 @@ async function deleteMat(id){
 function renderClassmates(arr){
   document.getElementById('classmate-body').innerHTML=arr.map(s=>`
     <tr>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${s.roll}</td>
-      <td><div style="font-weight:600;color:var(--text)">${s.name}</div></td>
-      <td style="font-size:12px;font-family:var(--mono)">${s.phone}</td>
-      <td style="font-size:12px;color:var(--muted)">${s.email}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(s.roll)}</td>
+      <td><div style="font-weight:600;color:var(--text)">${esc(s.name)}</div></td>
+      <td style="font-size:12px;font-family:var(--mono)">${esc(s.phone)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(s.email)}</td>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="progress" style="width:50px"><div class="progress-fill ${s.att>=75?'progress-green':s.att>=60?'progress-amber':'progress-red'}" style="width:${s.att}%"></div></div>
@@ -881,6 +890,31 @@ function logoutCR() {
 <!-- USHSS Real API Integration: loads real CR profile and classmates -->
 
 <script>
+function initProfilePage(){
+  if(!crProfile)return;
+  const p=crProfile;
+  const initials=(p.full_name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const av=document.getElementById('profile-avatar'); if(av) av.textContent=initials;
+  const nd=document.getElementById('profile-name-display'); if(nd) nd.textContent=p.full_name||'';
+  const ed=document.getElementById('profile-email-display'); if(ed) ed.textContent=p.email||'';
+  const fn=document.getElementById('profile-full-name'); if(fn) fn.value=p.full_name||'';
+  const ph=document.getElementById('profile-phone'); if(ph) ph.value=p.phone||'';
+  const em=document.getElementById('profile-email-inp'); if(em) em.value=p.email||'';
+}
+
+async function saveProfile(){
+  const fullName=document.getElementById('profile-full-name')?.value.trim();
+  const phone=document.getElementById('profile-phone')?.value.trim();
+  if(!fullName){toast('Full name is required','err');return;}
+  try{
+    const r=await fetch('/api/student/profile',{method:'PATCH',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({full_name:fullName,phone:phone||null})});
+    const d=await r.json().catch(()=>({})); if(!r.ok) throw new Error(d.detail||'Could not save profile');
+    if(crProfile){crProfile.full_name=fullName;crProfile.phone=phone||null;}
+    initProfilePage();
+    toast(d.message||'Profile updated successfully','ok');
+  }catch(e){toast(e.message,'err');}
+}
+
 async function changeMyPassword(){
   const current=document.getElementById('current-password'), next=document.getElementById('new-password'), confirm=document.getElementById('confirm-password');
   if(!current.value||!next.value||!confirm.value){toast('Please fill all password fields','err');return;}

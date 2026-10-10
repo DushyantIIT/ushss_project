@@ -17,8 +17,6 @@ services:
         sync: false
       - key: USE_SQLITE_FALLBACK
         value: "0"
-      - key: CORS_ORIGINS
-        value: "*"
       - key: DEBUG
         value: "false"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES

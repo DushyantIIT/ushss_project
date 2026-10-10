@@ -146,7 +146,10 @@ def init_sqlite_db():
         end_time TEXT NOT NULL,
         room TEXT,
         programme TEXT NOT NULL,
+        course TEXT,
         batch TEXT NOT NULL,
+        semester TEXT,
+        section TEXT,
         department TEXT,
         faculty_id INTEGER,
         created_at TEXT DEFAULT (datetime('now'))
@@ -168,6 +171,8 @@ def init_sqlite_db():
         session_id INTEGER,
         student_id INTEGER,
         status TEXT DEFAULT 'present',
+        latitude REAL,
+        longitude REAL,
         marked_at TEXT DEFAULT (datetime('now')),
         UNIQUE (session_id, student_id)
     );
@@ -199,6 +204,7 @@ def init_sqlite_db():
         body TEXT,
         target TEXT DEFAULT 'All',
         priority TEXT DEFAULT 'normal',
+        pinUntil TEXT,
         created_by INTEGER,
         ts TEXT DEFAULT (datetime('now'))
     );

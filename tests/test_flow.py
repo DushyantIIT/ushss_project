@@ -13,17 +13,18 @@ Comprehensive integration tests for USHSS Portal:
 """
 
 import os
+import sys
+
+# Force testing mode with isolated local database — never touch production
 os.environ["TESTING"] = "true"
 os.environ["USE_SQLITE_FALLBACK"] = "1"
-os.environ.setdefault("SECRET_KEY", "dev-secret-key-for-local-testing-purposes-32-bytes-long")
-import sys
-import unittest
-from fastapi.testclient import TestClient
-from dotenv import load_dotenv
-
-load_dotenv()
+os.environ["SUPABASE_URL"] = ""
+os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
+os.environ["SECRET_KEY"] = "dev-secret-key-for-local-testing-purposes-32-bytes-long"
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import unittest
+from fastapi.testclient import TestClient
 from main import app
 from app.seed import seed
 

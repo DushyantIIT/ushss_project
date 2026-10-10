@@ -50,6 +50,11 @@ create table if not exists users (
   unique (username, role)
 );
 
+create unique index if not exists idx_users_role_enrollment
+  on users (role, enrollment_no)
+  where enrollment_no is not null and status in ('approved', 'pending');
+
+
 -- ============================================================
 --  AUDIT LOG
 -- ============================================================
@@ -138,7 +143,9 @@ create table if not exists timetable_slots (
   end_time    text not null,
   room        text,
   programme   text not null,
+  course      text,
   batch       text not null,
+  semester    text,
   section     text,
   department  text,
   faculty_id  bigint references users(id) on delete set null,
@@ -167,6 +174,8 @@ create table if not exists attendance_records (
   session_id bigint references attendance_sessions(id) on delete cascade,
   student_id bigint references users(id) on delete cascade,
   status     attendance_status not null default 'present',
+  latitude   double precision,
+  longitude  double precision,
   marked_at  timestamptz not null default now(),
   unique (session_id, student_id)
 );
@@ -180,6 +189,7 @@ create table if not exists announcements (
   body       text,
   target     text        not null default 'All',
   priority   text        not null default 'normal',
+  "pinUntil" timestamptz,
   created_by bigint references users(id) on delete set null,
   ts         timestamptz not null default now()
 );

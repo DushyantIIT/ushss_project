@@ -232,12 +232,15 @@ tr:hover td{background:var(--gold-pale)}
 </head>
 <script>
 (function(){
-  // A dashboard is never public: the browser must already have a portal token.
-  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
-  // with no token even when the normal Chrome window is logged in.
-  if (!localStorage.getItem("ushss_token")) {
-    window.location.replace("/");
-  }
+  const token = localStorage.getItem("ushss_token");
+  if (!token) { window.location.replace("/"); return; }
+  try {
+    const user = JSON.parse(localStorage.getItem("ushss_user") || "{}");
+    if (user.role && user.role !== "student" && user.role !== "cr") {
+      const redirects = { faculty: "/dashboard/faculty", admin: "/dashboard/admin" };
+      window.location.replace(redirects[user.role] || "/");
+    }
+  } catch(e) {}
 })();
 </script>
 <body>

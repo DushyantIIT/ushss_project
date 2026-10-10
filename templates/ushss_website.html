@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>USHSS — University School of Humanities & Social Sciences | GGSIPU</title>
+<meta name="description" content="University School of Humanities and Social Sciences (USHSS) at Guru Gobind Singh Indraprastha University (GGSIPU), New Delhi. Academic programmes in English, Economics, Sociology, and Mass Communication."/>
+<link rel="canonical" href="https://ushss-project.onrender.com/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="USHSS — University School of Humanities &amp; Social Sciences | GGSIPU"/>
+<meta property="og:description" content="University School of Humanities and Social Sciences (USHSS), GGSIPU. Premier centre for interdisciplinary humanities and social science education."/>
+<meta property="og:url" content="https://ushss-project.onrender.com/"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;rect width='100' height='100' rx='20' fill='%236B1A1A'/&gt;&lt;text x='50' y='65' font-size='46' font-family='serif' font-weight='bold' fill='%23C9A84C' text-anchor='middle'&gt;G&lt;/text&gt;&lt;/svg&gt;"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"/>
 <style>
@@ -887,6 +893,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           <label>Message</label>
           <textarea id="cmsg" rows="4" placeholder="Your message..." required></textarea>
         </div>
+        <input type="text" id="chp" name="hp" style="display:none!important;position:absolute;left:-9999px" tabindex="-1" autocomplete="off"/>
         <button class="form-submit" onclick="handleSubmit(event)">Send Message</button>
         <p id="form-msg" style="font-size:.8rem;margin-top:.75rem;display:none;color:var(--maroon)"></p>
       </div>
@@ -1320,7 +1327,7 @@ async function handleSubmit(e) {
   e.preventDefault();
   const msg = document.getElementById("form-msg");
   const button = e.currentTarget && e.currentTarget.tagName === "BUTTON" ? e.currentTarget : document.querySelector(".form-submit");
-  const fields = { first_name: document.getElementById("fname")?.value.trim() || "", last_name: document.getElementById("lname")?.value.trim() || "", email: document.getElementById("cemail")?.value.trim() || "", subject: document.getElementById("csubj")?.value.trim() || "", message: document.getElementById("cmsg")?.value.trim() || "" };
+  const fields = { first_name: document.getElementById("fname")?.value.trim() || "", last_name: document.getElementById("lname")?.value.trim() || "", email: document.getElementById("cemail")?.value.trim() || "", subject: document.getElementById("csubj")?.value.trim() || "", message: document.getElementById("cmsg")?.value.trim() || "", hp: document.getElementById("chp")?.value || "" };
   msg.style.display = "block";
   if (Object.values(fields).some(value => !value)) { msg.style.color = "#b42318"; msg.textContent = "Please complete all fields before sending."; return; }
   if (button) { button.disabled = true; button.textContent = "Sending…"; }

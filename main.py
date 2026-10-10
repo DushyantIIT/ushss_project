@@ -58,6 +58,12 @@ async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend shutting down…")
 
 
+_IS_PROD = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("ENVIRONMENT") == "production")
+# Disable interactive API docs in production — they leak the full schema
+_docs_url   = None if _IS_PROD else "/docs"
+_redoc_url  = None if _IS_PROD else "/redoc"
+_openapi_url= None if _IS_PROD else "/openapi.json"
+
 app = FastAPI(
     title="USHSS Portal API",
     description=(
@@ -70,8 +76,9 @@ app = FastAPI(
         "All protected routes require `Authorization: Bearer <token>` from `POST /api/login`."
     ),
     version="3.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+    openapi_url=_openapi_url,
     lifespan=lifespan,
 )
 
@@ -89,6 +96,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(self)"
+    if _IS_PROD:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: https: blob:; "
+        "connect-src 'self' https:; "
+        "frame-ancestors 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
+    return response
 
 app.include_router(public.router,         prefix="/api")
 app.include_router(auth.router,           prefix="/api")
@@ -130,7 +159,12 @@ def waiting_page(request: Request):
 def rejected_page(request: Request):
     return templates.TemplateResponse(request, "rejected.html")
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots_txt():
+    content = "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /api/\n"
+    return PlainTextResponse(content, media_type="text/plain")
 
 @app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():

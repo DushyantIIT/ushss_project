@@ -27,12 +27,47 @@ router = APIRouter(prefix="/faculty", tags=["Faculty"])
 #  PROFILE  (read-only)
 # ═══════════════════════════════════════════════════════════════
 
+class FacultyProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+
 @router.get("/profile", summary="View your profile (read-only)")
 def get_profile(faculty: dict = Depends(require_faculty)):
     """Returns your own profile. Contact admin to make changes."""
     # Remove password hash before returning
     faculty.pop("password_hash", None)
     return faculty
+
+
+@router.patch("/profile", summary="Update your profile")
+def update_profile(body: FacultyProfileUpdate, faculty: dict = Depends(require_faculty)):
+    updates = {}
+    if body.full_name is not None:
+        name = body.full_name.strip()
+        if not name:
+            raise HTTPException(400, "Full name cannot be empty")
+        if "<" in name or ">" in name:
+            raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
+        updates["full_name"] = name
+    if body.phone is not None:
+        updates["phone"] = body.phone.strip() or None
+
+    if not updates:
+        raise HTTPException(400, "No fields to update")
+
+    try:
+        updated_res = sb.table("users").update(updates).eq("id", faculty["id"]).execute()
+        if not updated_res.data:
+            raise HTTPException(404, "Faculty user not found")
+        updated_faculty = updated_res.data[0]
+        updated_faculty.pop("password_hash", None)
+        return {"message": "Profile updated successfully", "faculty": updated_faculty}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"FACULTY PROFILE UPDATE ERROR: faculty={faculty['id']} err={e!r}")
+        raise HTTPException(500, "Could not update profile. Please try again.")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -97,6 +132,9 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
     if faculty["role"] != "admin" and slot_data["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only open sessions for your own timetable slots")
 
+    if body.date != DateType.today() and faculty["role"] != "admin":
+        raise HTTPException(400, f"Attendance sessions can only be opened for today's date ({DateType.today()}).")
+
     # Verify session date weekday matches the scheduled slot weekday
     day_name = body.date.strftime("%A")
     scheduled_day = (slot_data.get("day_of_week") or "").strip()
@@ -113,13 +151,21 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
         if sess["is_open"]:
             raise HTTPException(409, "An open session already exists for this slot and date")
         else:
-            # Re-open a closed session
+            # Re-open a closed session: delete auto-absent rows so students can mark again
+            try:
+                sb.table("attendance_records") \
+                  .delete() \
+                  .eq("session_id", sess["id"]) \
+                  .eq("status", "absent") \
+                  .execute()
+            except Exception as exc:
+                print(f"REOPEN: could not remove absent records for session {sess['id']}: {exc}")
             res = sb.table("attendance_sessions").update({
-                "is_open": True,
-                "opened_at": datetime.now(timezone.utc).isoformat(),
-                "closed_at": None,
+                "is_open":    True,
+                "opened_at":  datetime.now(timezone.utc).isoformat(),
+                "closed_at":  None,
             }).eq("id", sess["id"]).execute()
-            return {"message": "Session re-opened", "session": res.data[0]}
+            return {"message": "Session re-opened (absent records cleared)", "session": res.data[0]}
 
     # Create new session
     res = sb.table("attendance_sessions").insert({

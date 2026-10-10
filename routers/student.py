@@ -14,6 +14,7 @@ STUDENT / CR rights:
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
+from datetime import date as DateType, datetime, timezone
 import math
 import os
 
@@ -46,6 +47,8 @@ def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_s
     """Allows student to update their profile details."""
     updates = {}
     if body.full_name is not None:
+        if "<" in body.full_name or ">" in body.full_name:
+            raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
         updates["full_name"] = body.full_name.strip()
     if body.email is not None:
         updates["email"] = body.email.strip()
@@ -84,7 +87,8 @@ def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_s
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(500, f"Could not update profile: {e}")
+        print(f"PROFILE UPDATE ERROR: student={student['id']} err={e!r}")
+        raise HTTPException(500, "Could not update profile. Please try again.")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -149,7 +153,22 @@ def open_sessions(student: dict = Depends(require_student)):
         "users(full_name)"  # faculty who opened it
     ).eq("is_open", True).in_("slot_id", slot_ids).execute()
 
-    result = sessions.data or []
+    today_str = str(DateType.today())
+    raw_sessions = sessions.data or []
+    result = []
+    for s in raw_sessions:
+        s_date = str(s.get("date") or "")[:10]
+        if s_date < today_str:
+            # Stale session from a previous day left open — auto-close it
+            try:
+                sb.table("attendance_sessions").update({
+                    "is_open": False,
+                    "closed_at": datetime.now(timezone.utc).isoformat()
+                }).eq("id", s["id"]).execute()
+            except Exception:
+                pass
+            continue
+        result.append(s)
 
     # Batch query whether student marked attendance (avoid N+1)
     if result:
@@ -180,12 +199,13 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     """
     Marks the student as PRESENT in the given open session.
     - Session must be open
+    - Session must be on today's date
     - The session's slot must belong to the student's programme+batch
     - Student cannot mark twice for the same session
     """
     # 1. Verify session exists and is open
     session = sb.table("attendance_sessions").select(
-        "id, is_open, slot_id, timetable_slots(programme, batch, section, subject)"
+        "id, is_open, date, slot_id, timetable_slots(programme, batch, section, subject)"
     ).eq("id", body.session_id).limit(1).execute()
 
     if not session.data:
@@ -194,6 +214,12 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     sess = session.data[0]
     if not sess["is_open"]:
         raise HTTPException(400, "This attendance session is closed. You can no longer mark attendance.")
+
+    # 1b. Verify the session is on today's date (prevent marking stale open sessions)
+    sess_date = str(sess.get("date") or "")[:10]
+    today_str = str(DateType.today())
+    if sess_date != today_str:
+        raise HTTPException(400, f"This session is for date {sess_date}. Attendance can only be marked on the day of the class ({today_str}).")
 
     # 2. Verify the session belongs to the student's class
     slot_prog  = (sess.get("timetable_slots") or {}).get("programme")
@@ -237,17 +263,24 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     if existing.data:
         raise HTTPException(409, f"You have already marked attendance as '{existing.data[0]['status']}'.")
 
-    # 4. Insert record with race condition safety
+    # 4. Insert record with coordinates and race condition safety
+    rec_payload = {
+        "session_id": body.session_id,
+        "student_id": student["id"],
+        "status":     "present",
+    }
+    if body.latitude is not None:
+        rec_payload["latitude"] = float(body.latitude)
+    if body.longitude is not None:
+        rec_payload["longitude"] = float(body.longitude)
+
     try:
-        res = sb.table("attendance_records").insert({
-            "session_id": body.session_id,
-            "student_id": student["id"],
-            "status":     "present",
-        }).execute()
+        res = sb.table("attendance_records").insert(rec_payload).execute()
     except Exception as exc:
         if "unique" in str(exc).lower() or "duplicate" in str(exc).lower() or "already exists" in str(exc).lower():
             raise HTTPException(409, "You have already marked attendance for this session.")
-        raise HTTPException(500, f"Could not record attendance: {exc}")
+        print(f"ATTENDANCE INSERT ERROR: session={body.session_id} student={student['id']} err={exc!r}")
+        raise HTTPException(500, "Could not record attendance. Please try again.")
 
     sb.table("audit_log").insert({
         "user_id": student["id"],

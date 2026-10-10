@@ -319,12 +319,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 </head>
 <script>
 (function(){
-  // A dashboard is never public: the browser must already have a portal token.
-  // localStorage is origin/profile scoped, so Chrome Incognito correctly starts
-  // with no token even when the normal Chrome window is logged in.
-  if (!localStorage.getItem("ushss_token")) {
-    window.location.replace("/");
-  }
+  const token = localStorage.getItem("ushss_token");
+  if (!token) { window.location.replace("/"); return; }
+  try {
+    const user = JSON.parse(localStorage.getItem("ushss_user") || "{}");
+    if (user.role && user.role !== "admin") {
+      const redirects = { student: "/dashboard/student", cr: "/dashboard/cr", faculty: "/dashboard/faculty" };
+      window.location.replace(redirects[user.role] || "/");
+    }
+  } catch(e) {}
 })();
 
 
@@ -498,11 +501,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="form-group"><label class="form-label">Room / Venue</label><input class="form-input" id="tt-room" placeholder="e.g. Seminar Hall A"/></div>
         <div class="form-group"><label class="form-label">Assigned Faculty</label>
           <select class="form-select" id="tt-faculty">
-            <option value="">— Assign —</option>
-            <option>Dr. Shuchi Sharma</option><option>Dr. Anup Singh Beniwal</option><option>Dr. Chetna Tiwari</option>
-            <option>Dr. Vivek Sachdeva</option><option>Dr. Manpreet Kaur Kang</option><option>Dr. Naresh Kumar Vats</option>
-            <option>Dr. Shubhanku Kochar</option><option>Dr. Prarthna Agarwal Goel</option><option>Dr. Sami Ahmad Khan</option>
-            <option>Saurabh Maji</option><option>Dr. Sonika Redhu</option><option>Dr. Pooja Rathore</option>
+            <option value="">— Assign Faculty —</option>
           </select>
         </div>
       </div>
@@ -656,7 +655,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="form-row">
         <div class="form-group"><label class="form-label">Assigned Faculty</label>
           <select class="form-select" id="live-fac">
-            <option>Dr. Shuchi Sharma</option><option>Dr. Anup Singh Beniwal</option><option>Dr. Chetna Tiwari</option><option>Dr. Vivek Sachdeva</option>
+            <option value="">— Select Faculty —</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Timer Duration</label>
@@ -711,6 +710,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <div class="toast-container" id="toast-container"></div>
 
 <script>
+/* ═══ XSS ESCAPE ═══ */
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function openChangePasswordModal(){document.getElementById('change-password-modal').classList.add('open');}
 function closeChangePasswordModal(){document.getElementById('change-password-modal').classList.remove('open');}
 async function changeAdminPassword(){
@@ -782,100 +786,40 @@ function initDB() {
     _annId: 1,
   };
 
-  // Users are loaded from Supabase via the admin API. No user records are hardcoded here.
-  /* ── Seed timetables ──────────────────────────────────────────── */
-
-  // M.A. English — Semester III
-  const maEngKey = ttKey("M.A. English", "Semester III");
-  db.timetables[maEngKey] = {
-    "mon_0":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
-    "mon_1":{subject:"Literary Theory",room:"Room 204",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "mon_4":{subject:"Comparative Literature",room:"Room 202",faculty:"Dr. Shuchi Sharma",notes:""},
-    "tue_0":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
-    "tue_2":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
-    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "wed_0":{subject:"Literary Theory",room:"Room 204",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "wed_1":{subject:"Postcolonial Literature",room:"Sem Hall A",faculty:"Dr. Shuchi Sharma",notes:""},
-    "thu_1":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
-    "thu_2":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "fri_0":{subject:"Modern Fiction",room:"Room 203",faculty:"Dr. Shuchi Sharma",notes:""},
-    "fri_2":{subject:"Linguistics",room:"Room 201",faculty:"Dr. Chetna Tiwari",notes:""},
-  };
-  db.timetableMeta.push({prog:"M.A. English",section:"Semester III",batch:"2023–25",accentIdx:0,createdAt:now()});
-
-  // M.A. Economics — Semester II
-  const maEcoKey = ttKey("M.A. Economics", "Semester II");
-  db.timetables[maEcoKey] = {
-    "mon_2":{subject:"Development Economics",room:"Room 301",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "mon_4":{subject:"Macroeconomics",room:"Room 302",faculty:"Dr. Naresh Kumar Vats",notes:""},
-    "tue_1":{subject:"Microeconomics",room:"Room 302",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "wed_3":{subject:"Econometrics",room:"Room 305",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "thu_0":{subject:"Indian Economy & Policy",room:"Room 301",faculty:"Dr. Naresh Kumar Vats",notes:""},
-    "fri_4":{subject:"Development Economics",room:"Room 301",faculty:"Dr. Vivek Sachdeva",notes:""},
-  };
-  db.timetableMeta.push({prog:"M.A. Economics",section:"Semester II",batch:"2024–26",accentIdx:1,createdAt:now()});
-
-  // B.A. (Hons.) English — Section A
-  const baEngAKey = ttKey("B.A. (Hons.) English", "Section A");
-  db.timetables[baEngAKey] = {
-    "mon_0":{subject:"Old English & Medieval Lit.",room:"Room 101",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "mon_2":{subject:"Poetry & Poetics",room:"Room 102",faculty:"Dr. Shuchi Sharma",notes:""},
-    "tue_0":{subject:"Drama & Theatre",room:"Sem Hall B",faculty:"Dr. Chetna Tiwari",notes:""},
-    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "wed_1":{subject:"Linguistics",room:"Room 101",faculty:"Dr. Chetna Tiwari",notes:""},
-    "wed_3":{subject:"Old English & Medieval Lit.",room:"Room 102",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "thu_0":{subject:"Poetry & Poetics",room:"Room 102",faculty:"Dr. Shuchi Sharma",notes:""},
-    "thu_4":{subject:"TUTORIAL",room:"Room 101",faculty:"Dr. Shuchi Sharma",notes:"Weekly tutorial"},
-    "fri_1":{subject:"Drama & Theatre",room:"Sem Hall B",faculty:"Dr. Chetna Tiwari",notes:""},
-    "fri_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-  };
-  db.timetableMeta.push({prog:"B.A. (Hons.) English",section:"Section A",batch:"2024–28",accentIdx:4,createdAt:now()});
-
-  // B.A. (Hons.) English — Section B
-  const baEngBKey = ttKey("B.A. (Hons.) English", "Section B");
-  db.timetables[baEngBKey] = {
-    "mon_1":{subject:"Old English & Medieval Lit.",room:"Room 103",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "mon_3":{subject:"Poetry & Poetics",room:"Room 104",faculty:"Dr. Shuchi Sharma",notes:""},
-    "tue_2":{subject:"Drama & Theatre",room:"Sem Hall A",faculty:"Dr. Chetna Tiwari",notes:""},
-    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "wed_0":{subject:"Linguistics",room:"Room 103",faculty:"Dr. Chetna Tiwari",notes:""},
-    "thu_2":{subject:"Old English & Medieval Lit.",room:"Room 104",faculty:"Dr. Anup Singh Beniwal",notes:""},
-    "fri_0":{subject:"Poetry & Poetics",room:"Room 104",faculty:"Dr. Shuchi Sharma",notes:""},
-    "fri_4":{subject:"TUTORIAL",room:"Room 103",faculty:"Dr. Chetna Tiwari",notes:""},
-  };
-  db.timetableMeta.push({prog:"B.A. (Hons.) English",section:"Section B",batch:"2024–28",accentIdx:4,createdAt:now()});
-
-  // B.A. (Hons.) Economics — Semester I
-  const baEcoKey = ttKey("B.A. (Hons.) Economics", "Semester I");
-  db.timetables[baEcoKey] = {
-    "mon_0":{subject:"Microeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "mon_3":{subject:"Indian Economy & Policy",room:"Room 202",faculty:"Dr. Naresh Kumar Vats",notes:""},
-    "tue_1":{subject:"Macroeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "tue_3":{subject:"BREAK",room:"",faculty:"",notes:""},
-    "wed_2":{subject:"International Trade",room:"Room 203",faculty:"Dr. Naresh Kumar Vats",notes:""},
-    "thu_0":{subject:"Microeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "thu_3":{subject:"TUTORIAL",room:"Room 202",faculty:"Dr. Vivek Sachdeva",notes:""},
-    "fri_2":{subject:"Macroeconomics",room:"Room 201",faculty:"Dr. Vivek Sachdeva",notes:""},
-  };
-  db.timetableMeta.push({prog:"B.A. (Hons.) Economics",section:"Semester I",batch:"2024–28",accentIdx:5,createdAt:now()});
-
-  // Ph.D. Research Seminar
-  const phdKey = ttKey("Ph.D.", "Research Seminar");
-  db.timetables[phdKey] = {
-    "wed_4":{subject:"Research Methods",room:"Room 101",faculty:"Dr. Chetna Tiwari",notes:""},
-    "fri_3":{subject:"SEMINAR",room:"Conference Room",faculty:"Dr. Shuchi Sharma",notes:"Biweekly presentation"},
-  };
-  db.timetableMeta.push({prog:"Ph.D.",section:"Research Seminar",batch:"",accentIdx:6,createdAt:now()});
-
-  // Attendance is loaded from Supabase APIs; no demo records are created here.
-  db._attId=1;
+  // Timetables, users, and announcements are loaded from Supabase via API.
 
   db.announcements = [];
 
-  db.audit.push({id:1,user_id:1,action:"DB_INIT",detail:"Database initialised with v4 schema",ts:now()});
+  db.audit.push({id:1,user_id:1,action:"DB_INIT",detail:"Database initialised with clean schema",ts:now()});
   saveDB(db);
   return db;
+}
+
+function populateFacultyDropdowns() {
+  const faculties = dbGetUsers({role:"faculty"}).filter(u=>u.is_active!==false);
+  const ttFac = document.getElementById("tt-faculty");
+  if (ttFac) {
+    const cur = ttFac.value;
+    ttFac.innerHTML = '<option value="">— Assign Faculty —</option>' + faculties.map(f => {
+      const name = f.full_name || f.username;
+      return `<option value="${esc(name)}">${esc(name)}</option>`;
+    }).join('');
+    if (cur) ttFac.value = cur;
+  }
+  const liveFac = document.getElementById("live-fac");
+  if (liveFac) {
+    const cur = liveFac.value;
+    liveFac.innerHTML = '<option value="">— Select Faculty —</option>' + faculties.map(f => {
+      const name = f.full_name || f.username;
+      return `<option value="${esc(name)}">${esc(name)}</option>`;
+    }).join('');
+    if (cur) liveFac.value = cur;
+  }
+}
+
+function openLiveModal() {
+  populateFacultyDropdowns();
+  document.getElementById('live-modal').classList.add('open');
 }
 
 /* ══════════════════════════════════════════
@@ -1327,7 +1271,7 @@ function renderDashboard() {
           <div><div class="card-title">Attendance Control</div><div class="card-sub">Host or manage attendance sessions</div></div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-success btn-lg" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host Live Session</button>
+          <button class="btn btn-success btn-lg" onclick="openLiveModal()">▶ Host Live Session</button>
           <button class="btn btn-teal" onclick="showPage('attendance')">✏ Edit Records</button>
         </div>
       </div>
@@ -1338,8 +1282,8 @@ function renderDashboard() {
         </div>
         ${(s.announcements||[]).slice(0,3).map(a=>`
           <div style="padding:8px 0;border-bottom:1px solid var(--border)">
-            <div style="font-size:12px;font-weight:600;color:var(--text)">${a.title}</div>
-            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px">${a.ts} · ${a.target} · <span style="color:${a.priority==='urgent'?'var(--red)':a.priority==='important'?'var(--amber)':'var(--muted)'}">${a.priority}</span></div>
+            <div style="font-size:12px;font-weight:600;color:var(--text)">${esc(a.title)}</div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px">${esc(a.ts)} · ${esc(a.target)} · <span style="color:${a.priority==='urgent'?'var(--red)':a.priority==='important'?'var(--amber)':'var(--muted)'}">${esc(a.priority)}</span></div>
           </div>`).join("")}
       </div>
     </div>
@@ -1644,7 +1588,7 @@ async function loadAdminAnnouncements(){
 function renderAnnouncements(){
   const anns=adminAnnouncements;
   return `<div class="sec-head"><div><div class="sec-label">Communication</div><div class="sec-title">Announcements</div></div><button class="btn btn-primary" onclick="document.getElementById('ann-modal').classList.add('open')">+ New Announcement</button></div>
-  ${anns.length?anns.map(a=>`<div class="ann-item"><div class="ann-item-top"><div class="ann-item-title">${priIcon[a.priority]||"📢"} ${a.title}</div><div style="display:flex;gap:6px;flex-shrink:0"><span class="badge ${priBadge[a.priority]||"badge-blue"}">${(a.priority||"normal").toUpperCase()}</span><span class="badge ${tgtBadge[a.target]||"badge-teal"}">${a.target==="all"?"EVERYONE":(a.target||"ALL").toUpperCase()}</span></div></div><div class="ann-item-body">${a.body||""}</div><div class="ann-item-footer"><span class="ann-time">🕒 ${a.ts||""}</span><div style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="editAnn(${a.id})">✎ Edit</button><button class="btn btn-danger btn-sm" onclick="deleteAnn(${a.id})">🗑</button></div></div></div>`).join(""):`<div class="empty-state"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`}`;
+  ${anns.length?anns.map(a=>`<div class="ann-item"><div class="ann-item-top"><div class="ann-item-title">${priIcon[a.priority]||"📢"} ${esc(a.title)}</div><div style="display:flex;gap:6px;flex-shrink:0"><span class="badge ${priBadge[a.priority]||"badge-blue"}">${esc((a.priority||"normal").toUpperCase())}</span><span class="badge ${tgtBadge[a.target]||"badge-teal"}">${a.target==="all"?"EVERYONE":esc((a.target||"ALL").toUpperCase())}</span></div></div><div class="ann-item-body">${esc(a.body||"")}</div><div class="ann-item-footer"><span class="ann-time">🕒 ${esc(a.ts||"")}</span><div style="margin-left:auto;display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="editAnn(${Number(a.id)})">✎ Edit</button><button class="btn btn-danger btn-sm" onclick="deleteAnn(${Number(a.id)})">🗑</button></div></div></div>`).join(""):`<div class="empty-state"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`}`;
 }
 let editingAnnouncementId=null;
 async function postAnn(){
@@ -1722,36 +1666,36 @@ function renderUserTable(role) {
     let actions = "";
     if (userStatus === "pending") {
       actions = `
-        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${u.id}, '${safeName}')">✓ Approve</button>
-        <button class="btn btn-danger btn-sm" onclick="openRejectRequestModal(${u.id}, '${safeName}')">✕ Reject</button>
-        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏</button>`;
+        <button class="btn btn-success btn-sm" onclick="approvePendingRequest(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">✓ Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="openRejectRequestModal(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">✕ Reject</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏</button>`;
     } else if (isSuperAdmin) {
       const currentUser=JSON.parse(localStorage.getItem("ushss_user")||"{}");
       actions = currentUser.is_super_admin
-        ? `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>\n           <span class="protected-account">🛡 Protected</span>`
+        ? `<button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏ Edit</button>\n           <span class="protected-account">🛡 Protected</span>`
         : `<span class="protected-account">🛡 Protected</span>`;
     } else {
       const crAction = role==="student"
-        ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${u.id}, '${safeName}')">🤝 Assign CR</button>`
+        ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">🤝 Assign CR</button>`
         : "";
-      actions = `${crAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${u.id})">✏ Edit</button>
-                 <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${u.id},'${safeName}')" title="Delete user">🗑</button>`;
+      actions = `${crAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏ Edit</button>
+                 <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')}" title="Delete user">🗑</button>`;
     }
 
     return `<tr>
-      <td class="mono" style="color:var(--muted)">#${u.id}</td>
+      <td class="mono" style="color:var(--muted)">#${Number(u.id)}</td>
       <td>
-        <div style="font-weight:600;color:var(--text)">${u.full_name}</div>
-        <div class="mono" style="font-size:11px;color:var(--muted)">${u.username}</div>
+        <div style="font-weight:600;color:var(--text)">${esc(u.full_name)}</div>
+        <div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.username)}</div>
         ${superBadge}
       </td>
-      <td>${u.email?`<span style="font-size:12px">${u.email}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
-      ${hasStudentFields?`<td><div style="font-size:12px">${u.programme||"—"}</div><div class="mono" style="font-size:11px;color:var(--muted)">${u.batch||""}</div><div style="font-size:11px;color:var(--gold);margin-top:2px">${u.semester?`Semester ${u.semester}`:"Semester —"}</div></td>`:""}
-      ${hasFacultyFields?`<td style="font-size:12px">${u.designation||"—"}</td>`:""}
-      ${role==="admin"?`<td style="font-size:12px">${isSuperAdmin?"Super Administrator":(u.designation||"Administrator")}</td>`:""}
-      <td>${u.department||`<span style="color:var(--muted)">—</span>`}</td>
+      <td>${u.email?`<span style="font-size:12px">${esc(u.email)}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
+      ${hasStudentFields?`<td><div style="font-size:12px">${esc(u.programme||"—")}</div><div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.batch||"")}</div><div style="font-size:11px;color:var(--gold);margin-top:2px">${u.semester?`Semester ${esc(u.semester)}`:"Semester —"}</div></td>`:""}
+      ${hasFacultyFields?`<td style="font-size:12px">${esc(u.designation||"—")}</td>`:""}
+      ${role==="admin"?`<td style="font-size:12px">${isSuperAdmin?"Super Administrator":esc(u.designation||"Administrator")}</td>`:""}
+      <td>${esc(u.department||"")||`<span style="color:var(--muted)">—</span>`}</td>
       <td>${statusBadge}</td>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${u.last_login||"Never"}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(u.last_login||"Never")}</td>
       <td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div></td>
     </tr>`;
   }).join(""):`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
@@ -2267,6 +2211,7 @@ function openTTEdit(day,timeIdx){
   document.getElementById("tt-modal-title").textContent=cell?"Edit Class Slot":"Add Class to Slot";
   document.getElementById("tt-subject").value=cell?.subject||"";
   document.getElementById("tt-room").value=cell?.room||"";
+  populateFacultyDropdowns();
   const facultyName=cell?.users?.full_name||"";
   document.getElementById("tt-faculty").value=facultyName;
   document.getElementById("tt-notes").value="";
@@ -2358,7 +2303,7 @@ function renderAttendance(){
     <td><button class="btn btn-ghost btn-sm" onclick="openAttEdit(${r.id})">✎ Edit</button></td></tr>`).join(""):`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div>No attendance records match the filters</div></div></td></tr>`;
   const active=sessions.filter(s=>s.is_open);
   return `<div class="sec-head"><div><div class="sec-label">Academic Records</div><div class="sec-title">Attendance Editor</div></div>
-    <div style="display:flex;gap:8px"><button class="btn btn-success" onclick="document.getElementById('live-modal').classList.add('open')">▶ Host New Session</button><button class="btn btn-primary btn-sm" onclick="exportAtt()">⬇ Export CSV</button></div></div>
+    <div style="display:flex;gap:8px"><button class="btn btn-success" onclick="openLiveModal()">▶ Host New Session</button><button class="btn btn-primary btn-sm" onclick="exportAtt()">⬇ Export CSV</button></div></div>
     ${active.length?active.map(s=>`<div class="live-host-card" style="margin-bottom:12px"><div class="live-pulse"><div class="live-dot"></div> LIVE SESSION ACTIVE</div>
       <div style="display:flex;gap:24px;align-items:flex-end"><div><div class="live-timer">LIVE</div><div class="live-timer-lbl">${s.date}</div></div>
       <div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--cream)">${s.timetable_slots?.programme||""} · ${s.timetable_slots?.subject||""}</div><div style="font-size:12px;color:rgba(245,241,232,.6)">${s.timetable_slots?.batch||""} · ${s.timetable_slots?.room||""}</div></div>
