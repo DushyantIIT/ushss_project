@@ -30,8 +30,11 @@ create table if not exists users (
   phone         text,
   enrollment_no text,
   department    text,
+  domain        text,
   programme     text,
   batch         text,
+  semester      text,
+  section       text,
   designation   text,
   last_login    timestamptz,
   created_at    timestamptz not null default now(),
@@ -39,6 +42,8 @@ create table if not exists users (
   status            text        not null default 'approved'
                       check (status in ('pending', 'approved', 'rejected')),
   supabase_uid      uuid unique,     -- links to Supabase Auth's auth.users.id
+  email_verified    boolean     not null default true,
+  phone_verified    boolean     not null default true,
   approved_by       bigint references users(id) on delete set null,
   approved_at       timestamptz,
   rejection_reason  text,
@@ -167,6 +172,56 @@ create table if not exists attendance_records (
 );
 
 -- ============================================================
+--  ANNOUNCEMENTS
+-- ============================================================
+create table if not exists announcements (
+  id         bigserial primary key,
+  title      text        not null,
+  body       text,
+  target     text        not null default 'All',
+  priority   text        not null default 'normal',
+  created_by bigint references users(id) on delete set null,
+  ts         timestamptz not null default now()
+);
+
+-- ============================================================
+--  ASSIGNMENTS
+-- ============================================================
+create table if not exists assignments (
+  id          bigserial primary key,
+  title       text        not null,
+  description text,
+  subject     text,
+  programme   text,
+  batch       text,
+  due_date    text,
+  file_name   text,
+  file_url    text,
+  is_active   boolean     not null default true,
+  created_by  bigint references users(id) on delete set null,
+  posted_at   timestamptz not null default now()
+);
+
+-- ============================================================
+--  STUDY MATERIALS
+-- ============================================================
+create table if not exists study_materials (
+  id          bigserial primary key,
+  title       text        not null,
+  description text,
+  subject     text,
+  programme   text,
+  batch       text,
+  file_name   text,
+  file_url    text,
+  uploaded_by text,
+  size        text,
+  is_active   boolean     not null default true,
+  created_by  bigint references users(id) on delete set null,
+  uploaded_at timestamptz not null default now()
+);
+
+-- ============================================================
 --  ROW-LEVEL SECURITY (RLS)
 --  We use FastAPI JWT auth so we disable RLS and enforce
 --  permissions in the API layer (require_admin / require_faculty
@@ -182,6 +237,9 @@ alter table news_items          disable row level security;
 alter table timetable_slots     disable row level security;
 alter table attendance_sessions disable row level security;
 alter table attendance_records  disable row level security;
+alter table announcements       disable row level security;
+alter table assignments         disable row level security;
+alter table study_materials     disable row level security;
 
 -- ============================================================
 --  INDEXES  (speeds up common queries)

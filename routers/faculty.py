@@ -88,19 +88,26 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
     Students can mark attendance only while session is open.
     """
     # Verify the slot belongs to this faculty (or admin can open any)
-    slot = sb.table("timetable_slots").select("id, subject, faculty_id") \
-             .eq("id", body.slot_id).single().execute()
+    slot = sb.table("timetable_slots").select("id, subject, faculty_id, day_of_week") \
+             .eq("id", body.slot_id).limit(1).execute()
     if not slot.data:
         raise HTTPException(404, "Timetable slot not found")
 
-    if faculty["role"] != "admin" and slot.data["faculty_id"] != faculty["id"]:
+    slot_data = slot.data[0]
+    if faculty["role"] != "admin" and slot_data["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only open sessions for your own timetable slots")
+
+    # Verify session date weekday matches the scheduled slot weekday
+    day_name = body.date.strftime("%A")
+    scheduled_day = (slot_data.get("day_of_week") or "").strip()
+    if scheduled_day and scheduled_day.lower() != day_name.lower():
+        raise HTTPException(400, f"Session date {body.date} is a {day_name}, but this timetable slot is scheduled for {scheduled_day}")
 
     # Check if session already exists for this slot+date
     existing = sb.table("attendance_sessions") \
                  .select("id, is_open") \
                  .eq("slot_id", body.slot_id) \
-                 .eq("date", str(body.date)).execute()
+                 .eq("date", str(body.date)).limit(1).execute()
     if existing.data:
         sess = existing.data[0]
         if sess["is_open"]:
@@ -135,16 +142,44 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
 def close_session(sid: int, faculty: dict = Depends(require_faculty)):
     """Faculty closes the session — students can no longer mark attendance."""
     session = sb.table("attendance_sessions") \
-                .select("id, faculty_id, is_open") \
-                .eq("id", sid).single().execute()
+                .select("id, faculty_id, is_open, slot_id, timetable_slots(programme, batch, section)") \
+                .eq("id", sid).limit(1).execute()
     if not session.data:
         raise HTTPException(404, "Session not found")
 
-    s = session.data
+    s = session.data[0]
     if faculty["role"] != "admin" and s["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only close your own sessions")
     if not s["is_open"]:
         raise HTTPException(400, "Session is already closed")
+
+    # Mark all students in the class who did not mark attendance as "absent"
+    slot = s.get("timetable_slots") or {}
+    prog = slot.get("programme")
+    batch = slot.get("batch")
+    section = slot.get("section")
+    if prog and batch:
+        q_stud = sb.table("users").select("id").eq("role", "student").eq("is_active", True).eq("programme", prog).eq("batch", batch)
+        if section:
+            q_stud = q_stud.eq("section", section)
+        class_students = q_stud.execute().data or []
+        class_student_ids = {u["id"] for u in class_students}
+
+        # Check who already marked attendance
+        marked_rows = sb.table("attendance_records").select("student_id").eq("session_id", sid).execute().data or []
+        marked_ids = {r["student_id"] for r in marked_rows}
+
+        missing_ids = class_student_ids - marked_ids
+        if missing_ids:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            absent_payload = [
+                {"session_id": sid, "student_id": st_id, "status": "absent", "marked_at": now_iso}
+                for st_id in missing_ids
+            ]
+            try:
+                sb.table("attendance_records").insert(absent_payload).execute()
+            except Exception as exc:
+                print(f"FAILED TO INSERT ABSENT RECORDS FOR SESSION {sid}: {exc}")
 
     res = sb.table("attendance_sessions").update({
         "is_open":   False,
@@ -176,10 +211,10 @@ def save_session_records(sid: int, body: BulkAttendanceBody, faculty: dict = Dep
     """Persist attendance marked by the faculty member for their own open session."""
     session_res = sb.table("attendance_sessions").select(
         "id, faculty_id, is_open, slot_id, timetable_slots(programme, batch, subject)"
-    ).eq("id", sid).single().execute()
+    ).eq("id", sid).limit(1).execute()
     if not session_res.data:
         raise HTTPException(404, "Attendance session not found")
-    session = session_res.data
+    session = session_res.data[0]
     if faculty["role"] != "admin" and session["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only edit your own attendance sessions")
     if not session["is_open"]:
@@ -189,29 +224,60 @@ def save_session_records(sid: int, body: BulkAttendanceBody, faculty: dict = Dep
     if not body.records:
         raise HTTPException(400, "At least one attendance record is required")
 
-    saved = []
+    # Validate statuses
     for item in body.records:
         status = item.status.lower().strip()
         if status not in ("present", "absent"):
-            raise HTTPException(422, "Attendance status must be present or absent")
-        student_res = sb.table("users").select("id, username").eq("id", item.student_id).eq("role", "student").eq("is_active", True).limit(1).execute()
-        if not student_res.data:
+            raise HTTPException(422, f"Attendance status must be present or absent, got '{item.status}'")
+
+    student_ids = [item.student_id for item in body.records]
+    # Batch validate students in a single query
+    users_res = sb.table("users").select("id, programme, batch").eq("role", "student").eq("is_active", True).in_("id", student_ids).execute()
+    valid_users = {u["id"]: u for u in (users_res.data or [])}
+
+    for item in body.records:
+        u = valid_users.get(item.student_id)
+        if not u:
             raise HTTPException(404, f"Active student {item.student_id} was not found")
-        student = student_res.data[0]
-        # Only record students who belong to the timetable slot's class.
-        class_res = sb.table("users").select("id").eq("id", item.student_id).eq("programme", programme).eq("batch", batch).limit(1).execute()
-        if not class_res.data:
+        if programme and batch and (u.get("programme") != programme or u.get("batch") != batch):
             raise HTTPException(403, f"Student {item.student_id} does not belong to this class")
-        existing = sb.table("attendance_records").select("id").eq("session_id", sid).eq("student_id", item.student_id).limit(1).execute()
-        payload = {"status": status, "marked_at": datetime.now(timezone.utc).isoformat()}
-        if existing.data:
-            row = sb.table("attendance_records").update(payload).eq("id", existing.data[0]["id"]).execute().data
+
+    # Batch check existing records
+    existing_res = sb.table("attendance_records").select("id, student_id").eq("session_id", sid).in_("student_id", student_ids).execute()
+    existing_by_student = {r["student_id"]: r["id"] for r in (existing_res.data or [])}
+
+    saved = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    to_insert = []
+    for item in body.records:
+        st_status = item.status.lower().strip()
+        if item.student_id in existing_by_student:
+            rec_id = existing_by_student[item.student_id]
+            upd = sb.table("attendance_records").update({
+                "status": st_status,
+                "marked_at": now_iso
+            }).eq("id", rec_id).execute().data
+            if upd:
+                saved.append(upd[0])
         else:
-            row = sb.table("attendance_records").insert({"session_id": sid, "student_id": item.student_id, **payload}).execute().data
-        if row:
-            saved.append(row[0])
+            to_insert.append({
+                "session_id": sid,
+                "student_id": item.student_id,
+                "status": st_status,
+                "marked_at": now_iso
+            })
+
+    if to_insert:
+        ins = sb.table("attendance_records").insert(to_insert).execute().data
+        if ins:
+            saved.extend(ins)
+
     try:
-        sb.table("audit_log").insert({"user_id": faculty["id"], "action": "SAVE_ATTENDANCE_RECORDS", "detail": f"Faculty '{faculty['username']}' saved {len(saved)} records for session id={sid}"}).execute()
+        sb.table("audit_log").insert({
+            "user_id": faculty["id"],
+            "action": "SAVE_ATTENDANCE_RECORDS",
+            "detail": f"Faculty '{faculty['username']}' saved {len(saved)} records for session id={sid}"
+        }).execute()
     except Exception as exc:
         print(f"ATTENDANCE AUDIT WARNING: {exc!r}")
     return {"message": "Attendance records saved", "session_id": sid, "saved": len(saved), "records": saved}
@@ -222,11 +288,11 @@ def session_records(sid: int, faculty: dict = Depends(require_faculty)):
     """View who marked attendance for a session."""
     session = sb.table("attendance_sessions") \
                 .select("id, faculty_id, date, timetable_slots(subject, programme, batch)") \
-                .eq("id", sid).single().execute()
+                .eq("id", sid).limit(1).execute()
     if not session.data:
         raise HTTPException(404, "Session not found")
 
-    if faculty["role"] != "admin" and session.data["faculty_id"] != faculty["id"]:
+    if faculty["role"] != "admin" and session.data[0]["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only view records for your own sessions")
 
     records = sb.table("attendance_records") \
@@ -235,7 +301,7 @@ def session_records(sid: int, faculty: dict = Depends(require_faculty)):
                 .order("marked_at").execute()
 
     return {
-        "session":  session.data,
+        "session":  session.data[0],
         "records":  records.data or [],
         "total":    len(records.data or []),
         "present":  sum(1 for r in (records.data or []) if r["status"] == "present"),
@@ -301,6 +367,7 @@ def create_announcement(body: AnnouncementBody, faculty: dict = Depends(require_
         "body": (body.body or "").strip(),
         "target": body.target or "All",
         "priority": body.priority or "normal",
+        "created_by": faculty["id"],
         "ts": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
     res = sb.table("announcements").insert(row).execute()
@@ -308,9 +375,12 @@ def create_announcement(body: AnnouncementBody, faculty: dict = Depends(require_
 
 @router.delete("/announcements/{aid}", summary="Delete an announcement")
 def delete_announcement(aid: int, faculty: dict = Depends(require_faculty)):
-    existing = sb.table("announcements").select("id").eq("id", aid).single().execute()
+    existing = sb.table("announcements").select("id, created_by").eq("id", aid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Announcement not found")
+    ann = existing.data[0]
+    if faculty["role"] != "admin" and ann.get("created_by") and ann["created_by"] != faculty["id"]:
+        raise HTTPException(403, "You can only delete your own announcements")
     sb.table("announcements").delete().eq("id", aid).execute()
     return {"message": "Announcement deleted"}
 

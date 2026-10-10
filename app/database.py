@@ -16,8 +16,6 @@ import bcrypt
 
 load_dotenv()
 
-USE_SQLITE_FALLBACK: bool = os.getenv("USE_SQLITE_FALLBACK", "").strip() == "1"
-
 SUPABASE_URL: str = (
     os.getenv("SUPABASE_URL")
     or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
@@ -27,6 +25,11 @@ SUPABASE_KEY: str = (
     os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
     or ""
+)
+
+USE_SQLITE_FALLBACK: bool = (
+    os.getenv("USE_SQLITE_FALLBACK", "").strip() == "1"
+    or not bool(SUPABASE_URL and SUPABASE_KEY)
 )
 
 _real_sb: Client = None
@@ -61,13 +64,18 @@ def init_sqlite_db():
         phone TEXT,
         enrollment_no TEXT,
         department TEXT,
+        domain TEXT,
         programme TEXT,
         batch TEXT,
+        semester TEXT,
+        section TEXT,
         designation TEXT,
         last_login TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         status TEXT DEFAULT 'approved',
         supabase_uid TEXT UNIQUE,
+        email_verified INTEGER DEFAULT 1,
+        phone_verified INTEGER DEFAULT 1,
         approved_by INTEGER,
         approved_at TEXT,
         rejection_reason TEXT,
@@ -183,6 +191,47 @@ def init_sqlite_db():
         ip_address TEXT,
         is_read INTEGER DEFAULT 0,
         submitted_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        body TEXT,
+        target TEXT DEFAULT 'All',
+        priority TEXT DEFAULT 'normal',
+        created_by INTEGER,
+        ts TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        subject TEXT,
+        programme TEXT,
+        batch TEXT,
+        due_date TEXT,
+        file_name TEXT,
+        file_url TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_by INTEGER,
+        posted_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS study_materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        subject TEXT,
+        programme TEXT,
+        batch TEXT,
+        file_name TEXT,
+        file_url TEXT,
+        uploaded_by TEXT,
+        size TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_by INTEGER,
+        uploaded_at TEXT DEFAULT (datetime('now'))
     );
     """)
     conn.commit()

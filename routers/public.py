@@ -10,7 +10,7 @@ Public API endpoints for the main USHSS website (no auth required):
 
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
 from app.database import sb
@@ -65,17 +65,24 @@ def get_public_news():
         return []
 
 
+from app.rate_limit import rate_limit
+
 class ContactFormRequest(BaseModel):
     first_name: str = Field(..., min_length=1)
     last_name:  str = Field(..., min_length=1)
     email:      EmailStr
     subject:    str = Field(..., min_length=1)
     message:    str = Field(..., min_length=1)
+    hp:         Optional[str] = None  # Honeypot field (must stay empty)
     model_config = {"str_strip_whitespace": True}
 
 
-@router.post("/contact", status_code=201, summary="Submit a contact message")
+@router.post("/contact", status_code=201, summary="Submit a contact message", dependencies=[Depends(rate_limit("contact", max_calls=5, window_seconds=600))])
 def submit_contact_form(body: ContactFormRequest):
+    # Silent discard if bot filled honeypot
+    if body.hp:
+        return {"success": True, "message": "Thank you! Your message has been sent successfully."}
+
     row = {
         "first_name":   body.first_name,
         "last_name":    body.last_name,

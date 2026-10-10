@@ -865,7 +865,8 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector
 function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span> ${msg}`;document.getElementById('tw').appendChild(el);setTimeout(()=>el.remove(),3500);}
 
 /* INIT */
-document.getElementById('asgn-due').value=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+const _dueD = new Date(Date.now() + 7 * 86400000);
+document.getElementById('asgn-due').value = `${_dueD.getFullYear()}-${String(_dueD.getMonth()+1).padStart(2,'0')}-${String(_dueD.getDate()).padStart(2,'0')}`;
 function logoutCR() {
   try {
     localStorage.removeItem('ushss_token');

@@ -87,7 +87,11 @@ def _require_cr(cr: dict):
 @router.get("/announcements", summary="View class announcements")
 def get_announcements(cr: dict = Depends(require_student)):
     _require_cr(cr)
-    return sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+    rows = sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+    if cr["role"] == "admin":
+        return rows
+    prog = (cr.get("programme") or "").strip().lower()
+    return [a for a in rows if str(a.get("target") or "").lower() in ("all", "student", "students", "", prog)]
 
 @router.post("/announcements", status_code=201, summary="Create a persistent class announcement")
 def create_announcement(body: AnnouncementBody, cr: dict = Depends(require_student)):
@@ -97,6 +101,7 @@ def create_announcement(body: AnnouncementBody, cr: dict = Depends(require_stude
         "body": (body.body or "").strip(),
         "target": body.target or cr.get("programme") or "all",
         "priority": body.priority or "normal",
+        "created_by": cr["id"],
         "ts": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
     }
     res = sb.table("announcements").insert(row).execute()
@@ -105,21 +110,28 @@ def create_announcement(body: AnnouncementBody, cr: dict = Depends(require_stude
 @router.delete("/announcements/{aid}", summary="Delete a class announcement")
 def delete_announcement(aid: int, cr: dict = Depends(require_student)):
     _require_cr(cr)
-    existing = sb.table("announcements").select("id,target").eq("id", aid).single().execute()
-    if not existing.data:
+    res = sb.table("announcements").select("id,target,created_by").eq("id", aid).limit(1).execute()
+    if not res.data:
         raise HTTPException(404, "Announcement not found")
+    existing = res.data[0]
     if cr["role"] != "admin":
-        target = str(existing.data.get("target") or "").lower()
-        prog = str(cr.get("programme") or "").lower()
-        if target not in ("all", "student", "students", "", prog):
-            raise HTTPException(403, "You can only delete announcements for your class")
+        if existing.get("created_by") is not None and existing.get("created_by") != cr["id"]:
+            raise HTTPException(403, "You can only delete announcements that you created")
+        if existing.get("created_by") is None:
+            raise HTTPException(403, "Only administrators can delete general system announcements")
     sb.table("announcements").delete().eq("id", aid).execute()
     return {"message": "Announcement deleted"}
 
 @router.get("/assignments", summary="View class assignments")
 def get_assignments(cr: dict = Depends(require_student)):
     _require_cr(cr)
-    return sb.table("assignments").select("*").eq("is_active", True).order("due_date").execute().data or []
+    q = sb.table("assignments").select("*").eq("is_active", True)
+    if cr["role"] != "admin":
+        if cr.get("programme"):
+            q = q.eq("programme", cr["programme"])
+        if cr.get("batch"):
+            q = q.eq("batch", cr["batch"])
+    return q.order("due_date").execute().data or []
 
 @router.post("/assignments", status_code=201, summary="Create a persistent class assignment")
 def create_assignment(body: AssignmentBody, cr: dict = Depends(require_student)):
@@ -141,10 +153,11 @@ def create_assignment(body: AssignmentBody, cr: dict = Depends(require_student))
 @router.delete("/assignments/{aid}", summary="Delete a class assignment")
 def delete_assignment(aid: int, cr: dict = Depends(require_student)):
     _require_cr(cr)
-    existing = sb.table("assignments").select("id,created_by").eq("id", aid).single().execute()
-    if not existing.data:
+    res = sb.table("assignments").select("id,created_by").eq("id", aid).limit(1).execute()
+    if not res.data:
         raise HTTPException(404, "Assignment not found")
-    if cr["role"] != "admin" and existing.data.get("created_by") != cr["id"]:
+    existing = res.data[0]
+    if cr["role"] != "admin" and existing.get("created_by") != cr["id"]:
         raise HTTPException(403, "You can only delete assignments you uploaded")
     sb.table("assignments").delete().eq("id", aid).execute()
     return {"message": "Assignment deleted"}
@@ -152,7 +165,13 @@ def delete_assignment(aid: int, cr: dict = Depends(require_student)):
 @router.get("/materials", summary="View class study materials")
 def get_materials(cr: dict = Depends(require_student)):
     _require_cr(cr)
-    rows = sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    q = sb.table("study_materials").select("*").eq("is_active", True)
+    if cr["role"] != "admin":
+        if cr.get("programme"):
+            q = q.eq("programme", cr["programme"])
+        if cr.get("batch"):
+            q = q.eq("batch", cr["batch"])
+    rows = q.order("uploaded_at", desc=True).execute().data or []
     for row in rows:
         path = row.get("file_url")
         if path and not str(path).startswith("http"):
@@ -205,8 +224,13 @@ def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_st
         raise HTTPException(400, "The uploaded file is empty")
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(413, "Files must be 10 MB or smaller")
+    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".pptx", ".ppt", ".txt", ".xlsx", ".xls", ".png", ".jpg", ".jpeg", ".zip"}
+    ext = os.path.splitext(body.file_name)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, f"Unsupported file type '{ext}'. Allowed: PDF, Word, PowerPoint, Excel, text, images, ZIP.")
+
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(body.file_name))[:160] or "material.bin"
-    content_type = body.content_type or mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+    content_type = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
     bucket = "ushss-study-materials"
     try:
         try:
@@ -249,12 +273,13 @@ def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_st
 @router.delete("/materials/{mid}", summary="Delete a class study material")
 def delete_material(mid: int, cr: dict = Depends(require_student)):
     _require_cr(cr)
-    existing = sb.table("study_materials").select("id,uploaded_by,file_url").eq("id", mid).single().execute()
-    if not existing.data:
+    res = sb.table("study_materials").select("id,uploaded_by,file_url").eq("id", mid).limit(1).execute()
+    if not res.data:
         raise HTTPException(404, "Study material not found")
-    if cr["role"] != "admin" and existing.data.get("uploaded_by") != cr["id"]:
+    existing = res.data[0]
+    if cr["role"] != "admin" and existing.get("uploaded_by") != cr["id"]:
         raise HTTPException(403, "You can only delete materials you uploaded")
-    file_url = str(existing.data.get("file_url") or "")
+    file_url = str(existing.get("file_url") or "")
     marker = "/storage/v1/object/public/ushss-study-materials/"
     storage_path = file_url.split(marker, 1)[1].split("?", 1)[0] if marker in file_url else file_url
     if storage_path:

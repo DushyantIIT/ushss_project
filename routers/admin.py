@@ -138,11 +138,10 @@ def list_users(
 
 @router.get("/users/{uid}", summary="Get single user")
 def get_user(uid: int, admin: dict = Depends(require_admin)):
-    q = sb.table("users").select("*").eq("id", uid)
-    res = q.single().execute()
+    res = sb.table("users").select("*").eq("id", uid).limit(1).execute()
     if not res.data:
         raise HTTPException(404, "User not found")
-    return res.data
+    return res.data[0]
 
 
 @router.post("/users", status_code=201, summary="Create a user")
@@ -150,6 +149,9 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
     # Class Representatives are existing students promoted by Admin; they cannot be created as new accounts.
     if body.role == "cr":
         raise HTTPException(400, "A Class Representative must be assigned from an existing Student account.")
+    # Only Super Admin can create other admin accounts
+    if body.role == "admin" and not admin.get("is_super_admin", False):
+        raise HTTPException(403, "Only the Super Admin can create new administrators.")
     _validate_programme_batch(body.programme, body.batch, body.role)
     if body.role not in VALID_ROLES:
         raise HTTPException(400, f"Invalid role. Must be one of: {VALID_ROLES}")
@@ -164,9 +166,6 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
     if dup_email.data:
         raise HTTPException(409, "Email already in use")
 
-    # Every account's password lives in Supabase Auth, admin-created ones
-    # included — the profile row never stores a hash. Auto-confirm the
-    # email since an admin is vouching for this account directly.
     try:
         auth_res = sb.auth.admin.create_user({
             "email":         body.email,
@@ -195,7 +194,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         "designation":   body.designation,
         "enrollment_no": body.enrollment_no,
         "department":    body.department,
-        "domain":         body.domain,
+        "domain":        body.domain,
         "programme":     body.programme,
         "batch":         body.batch,
         "semester":      body.semester,
@@ -208,7 +207,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
             raise RuntimeError("Insert returned no row")
     except Exception:
         try:
-            sb.auth.delete_user(supabase_uid)
+            sb.auth.admin.delete_user(supabase_uid)
         except Exception:
             pass
         raise HTTPException(502, "Could not complete user creation. Please try again.")
@@ -219,14 +218,14 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/users/{uid}", summary="Update a user")
 def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)):
-    existing = (sb.table("users").select("id,username,role,is_super_admin,supabase_uid,programme,batch,domain").eq("id", uid).single().execute())
+    existing = sb.table("users").select("id,username,role,is_super_admin,supabase_uid,programme,batch,domain,email").eq("id", uid).limit(1).execute()
     if not existing.data:
         raise HTTPException(
             404,
             "User not found"
         )
 
-    target = existing.data
+    target = existing.data[0]
 
     # A regular admin cannot modify the Super Admin.
     # The Super Admin can still modify their own account.
@@ -246,8 +245,6 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
     _validate_programme_batch(effective_programme, effective_batch, target.get("role"))
 
     if "role" in updates:
-        # Admins may assign/remove the Class Representative role for students.
-        # Other role changes remain restricted to the Super Admin.
         new_role = updates["role"]
         current_role = target.get("role")
         if new_role not in VALID_ROLES:
@@ -255,6 +252,17 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         if not admin.get("is_super_admin", False):
             if not ({current_role, new_role} <= {"student", "cr"}):
                 raise HTTPException(403, "Only the Super Admin can make this role change.")
+
+    if "email" in updates:
+        dup = sb.table("users").select("id").eq("email", updates["email"]).neq("id", uid).execute()
+        if dup.data:
+            raise HTTPException(409, "Email already in use")
+        if target.get("supabase_uid"):
+            try:
+                sb.auth.admin.update_user_by_id(target["supabase_uid"], {"email": updates["email"], "email_confirm": True})
+            except Exception as e:
+                print(f"SUPABASE AUTH EMAIL UPDATE FAILED: {e}")
+                raise HTTPException(502, "Could not update login email in Auth service. Please try again.")
 
     new_password = updates.pop("password", None)
     if new_password:
@@ -264,11 +272,6 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
             sb.auth.admin.update_user_by_id(target["supabase_uid"], {"password": new_password})
         except Exception:
             raise HTTPException(502, "Could not update the password. Please try again.")
-
-    if "email" in updates:
-        dup = sb.table("users").select("id").eq("email", updates["email"]).neq("id", uid).execute()
-        if dup.data:
-            raise HTTPException(409, "Email already in use")
 
     if "is_active" in updates and not updates["is_active"] and uid == admin["id"]:
         raise HTTPException(400, "Cannot deactivate your own account")
@@ -280,7 +283,7 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         res = sb.table("users").update(updates).eq("id", uid).execute()
         row = res.data[0]
     else:
-        row = sb.table("users").select("*").eq("id", uid).single().execute().data
+        row = sb.table("users").select("*").eq("id", uid).limit(1).execute().data[0]
 
     _audit(admin["id"], "UPDATE_USER", f"Updated user id={uid}")
     return row
@@ -305,7 +308,7 @@ def delete_user(
             "id,username,role,is_super_admin,supabase_uid"
         )
         .eq("id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
 
@@ -315,7 +318,7 @@ def delete_user(
             detail="User not found."
         )
 
-    target = existing.data
+    target = existing.data[0]
 
     # Nobody can delete the permanent Super Admin.
     if target.get("is_super_admin", False):
@@ -375,7 +378,7 @@ def toggle_user(
             "is_super_admin"
         )
         .eq("id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
 
@@ -385,7 +388,7 @@ def toggle_user(
             detail="User not found."
         )
 
-    target = result.data
+    target = result.data[0]
 
     # The permanent account must always remain active.
     if target.get("is_super_admin", False):
@@ -479,13 +482,13 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
             "email_verified, phone_verified, supabase_uid"
         )
         .eq("id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
     if not existing.data:
         raise HTTPException(404, "Registration request not found")
 
-    target = existing.data
+    target = existing.data[0]
     if target["status"] != "pending":
         raise HTTPException(400, f"This request has already been {target['status']}")
 
@@ -519,11 +522,12 @@ def approve_request(uid: int, admin: dict = Depends(require_admin)):
             f"APPROVAL AUTH SYNC FAILED: username={target['username']!r} "
             f"type={type(e).__name__} detail={str(e)[:200]!r}"
         )
-        raise HTTPException(
-            502,
-            "The Supabase Auth account could not be verified. "
-            "The registration was not approved; please try again."
-        )
+        if not ("not configured" in str(e).lower() and str(auth_uid).startswith("local_")):
+            raise HTTPException(
+                502,
+                "The Supabase Auth account could not be verified. "
+                "The registration was not approved; please try again."
+            )
 
     sb.table("users").update({
             "status":           "approved",
@@ -543,13 +547,13 @@ def reject_request(uid: int, body: RejectBody, admin: dict = Depends(require_adm
         sb.table("users")
         .select("id, username, role, status, email, full_name")
         .eq("id", uid)
-        .single()
+        .limit(1)
         .execute()
     )
     if not existing.data:
         raise HTTPException(404, "Registration request not found")
 
-    target = existing.data
+    target = existing.data[0]
     if target["status"] != "pending":
         raise HTTPException(400, f"This request has already been {target['status']}")
 
@@ -596,7 +600,7 @@ def reset_password(
         )
         .eq("username", body.username)
         .eq("is_active", True)
-        .single()
+        .limit(1)
         .execute()
     )
 
@@ -606,7 +610,7 @@ def reset_password(
             detail="No active user with that username"
         )
 
-    u = res.data
+    u = res.data[0]
 
     # Another admin cannot reset the
     # Super Admin's password.
@@ -729,6 +733,25 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
         fac = sb.table("users").select("id").eq("id", body.faculty_id).eq("role", "faculty").execute()
         if not fac.data:
             raise HTTPException(404, "Faculty user not found")
+        # Faculty clash check
+        fac_clash = sb.table("timetable_slots").select("id, subject").eq("faculty_id", body.faculty_id).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
+        if fac_clash.data:
+            raise HTTPException(409, f"Faculty is already assigned to '{fac_clash.data[0].get('subject')}' at this day and time.")
+
+    # Room clash check
+    if body.room:
+        room_clash = sb.table("timetable_slots").select("id, subject").eq("room", body.room).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
+        if room_clash.data:
+            raise HTTPException(409, f"Room '{body.room}' is already booked for '{room_clash.data[0].get('subject')}' at this day and time.")
+
+    # Class clash check
+    class_q = sb.table("timetable_slots").select("id, subject").eq("programme", body.programme).eq("batch", body.batch).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time)
+    if body.section:
+        class_q = class_q.eq("section", body.section)
+    class_clash = class_q.limit(1).execute()
+    if class_clash.data:
+        raise HTTPException(409, f"This class already has '{class_clash.data[0].get('subject')}' scheduled at this day and time.")
+
     res = sb.table("timetable_slots").insert(body.model_dump()).execute()
     _audit(admin["id"], "CREATE_TIMETABLE",
            f"{body.subject} {body.day_of_week} {body.start_time} [{body.programme} {body.batch}]")
@@ -737,21 +760,20 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
 
 @router.put("/timetable/{slot_id}", summary="Update a timetable slot")
 def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(require_admin)):
-    existing = sb.table("timetable_slots").select("id").eq("id", slot_id).single().execute()
+    existing = sb.table("timetable_slots").select("*").eq("id", slot_id).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Timetable slot not found")
+    current = existing.data[0]
+
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(400, "No fields to update")
 
-    current = sb.table("timetable_slots").select(
-        "day_of_week,start_time,end_time"
-    ).eq("id", slot_id).single().execute().data or {}
-    _validate_timetable_slot(
-        updates.get("start_time", current.get("start_time")),
-        updates.get("end_time", current.get("end_time")),
-        updates.get("day_of_week", current.get("day_of_week")),
-    )
+    eff_start = updates.get("start_time", current.get("start_time"))
+    eff_end = updates.get("end_time", current.get("end_time"))
+    eff_day = updates.get("day_of_week", current.get("day_of_week"))
+    _validate_timetable_slot(eff_start, eff_end, eff_day)
+
     res = sb.table("timetable_slots").update(updates).eq("id", slot_id).execute()
     _audit(admin["id"], "UPDATE_TIMETABLE", f"Updated slot id={slot_id}")
     return res.data[0]
@@ -759,7 +781,7 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
 
 @router.delete("/timetable/{slot_id}", summary="Delete a timetable slot")
 def delete_slot(slot_id: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("timetable_slots").select("id").eq("id", slot_id).single().execute()
+    existing = sb.table("timetable_slots").select("id").eq("id", slot_id).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Timetable slot not found")
     sb.table("timetable_slots").delete().eq("id", slot_id).execute()
@@ -793,7 +815,7 @@ def list_sessions(
 @router.patch("/attendance/sessions/{sid}/close", summary="Force-close an attendance session")
 def close_session(sid: int, admin: dict = Depends(require_admin)):
     from datetime import datetime, timezone
-    existing = sb.table("attendance_sessions").select("id,is_open").eq("id", sid).single().execute()
+    existing = sb.table("attendance_sessions").select("id,is_open").eq("id", sid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Session not found")
     res = sb.table("attendance_sessions").update({
@@ -806,7 +828,7 @@ def close_session(sid: int, admin: dict = Depends(require_admin)):
 
 @router.delete("/attendance/sessions/{sid}", summary="Delete an attendance session")
 def delete_session(sid: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("attendance_sessions").select("id").eq("id", sid).single().execute()
+    existing = sb.table("attendance_sessions").select("id").eq("id", sid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Session not found")
     sb.table("attendance_sessions").delete().eq("id", sid).execute()
@@ -818,7 +840,7 @@ def delete_session(sid: int, admin: dict = Depends(require_admin)):
 def override_record(rid: int, body: RecordOverride, admin: dict = Depends(require_admin)):
     if body.status not in ("present", "absent"):
         raise HTTPException(400, "Status must be 'present' or 'absent'")
-    existing = sb.table("attendance_records").select("id,student_id").eq("id", rid).single().execute()
+    existing = sb.table("attendance_records").select("id,student_id").eq("id", rid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Record not found")
     res = sb.table("attendance_records").update({"status": body.status}).eq("id", rid).execute()
@@ -894,7 +916,7 @@ def create_event(body: EventBody, admin: dict = Depends(require_admin)):
 
 @router.put("/events/{eid}", summary="Update event")
 def update_event(eid: int, body: EventBody, admin: dict = Depends(require_admin)):
-    existing = sb.table("events").select("id").eq("id", eid).single().execute()
+    existing = sb.table("events").select("id").eq("id", eid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Event not found")
     d = body.model_dump(exclude_none=True)
@@ -906,7 +928,7 @@ def update_event(eid: int, body: EventBody, admin: dict = Depends(require_admin)
 
 @router.delete("/events/{eid}", summary="Delete event")
 def delete_event(eid: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("events").select("id").eq("id", eid).single().execute()
+    existing = sb.table("events").select("id").eq("id", eid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Event not found")
     sb.table("events").delete().eq("id", eid).execute()
@@ -946,7 +968,7 @@ def create_news(body: NewsBody, admin: dict = Depends(require_admin)):
 
 @router.put("/news/{nid}", summary="Update news item")
 def update_news(nid: int, body: NewsBody, admin: dict = Depends(require_admin)):
-    existing = sb.table("news_items").select("id").eq("id", nid).single().execute()
+    existing = sb.table("news_items").select("id").eq("id", nid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "News item not found")
     d = body.model_dump(exclude_none=True)
@@ -958,7 +980,7 @@ def update_news(nid: int, body: NewsBody, admin: dict = Depends(require_admin)):
 
 @router.delete("/news/{nid}", summary="Delete news item")
 def delete_news(nid: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("news_items").select("id").eq("id", nid).single().execute()
+    existing = sb.table("news_items").select("id").eq("id", nid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "News item not found")
     sb.table("news_items").delete().eq("id", nid).execute()
@@ -992,9 +1014,9 @@ def create_announcement(body: AnnouncementBody, admin: dict = Depends(require_ad
 
 @router.put("/announcements/{aid}", summary="Update announcement")
 def update_announcement(aid:int, body:AnnouncementBody, admin:dict=Depends(require_admin)):
-    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    existing=sb.table("announcements").select("id").eq("id",aid).limit(1).execute()
     if not existing.data: raise HTTPException(404,"Announcement not found")
-    d=body.model_dump()
+    d=body.model_dump(exclude_unset=True)
     if d.get("pinUntil"): d["pinUntil"]=d["pinUntil"].replace(tzinfo=None).isoformat()
     res=sb.table("announcements").update(d).eq("id",aid).execute()
     _audit(admin["id"], "ANNOUNCEMENT_UPDATE", f"Updated announcement id={aid}")
@@ -1002,7 +1024,7 @@ def update_announcement(aid:int, body:AnnouncementBody, admin:dict=Depends(requi
 
 @router.delete("/announcements/{aid}", summary="Delete announcement")
 def delete_announcement(aid:int, admin:dict=Depends(require_admin)):
-    existing=sb.table("announcements").select("id").eq("id",aid).single().execute()
+    existing=sb.table("announcements").select("id").eq("id",aid).limit(1).execute()
     if not existing.data: raise HTTPException(404,"Announcement not found")
     sb.table("announcements").delete().eq("id",aid).execute()
     _audit(admin["id"], "ANNOUNCEMENT_DELETE", f"Deleted announcement id={aid}")
@@ -1041,7 +1063,7 @@ def create_faculty_dir(body: FacultyDirBody, admin: dict = Depends(require_admin
 
 @router.put("/faculty-directory/{fid}", summary="Update faculty directory entry")
 def update_faculty_dir(fid: int, body: FacultyDirBody, admin: dict = Depends(require_admin)):
-    existing = sb.table("faculty_directory").select("id").eq("id", fid).single().execute()
+    existing = sb.table("faculty_directory").select("id").eq("id", fid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Faculty entry not found")
     res = sb.table("faculty_directory").update(body.model_dump()).eq("id", fid).execute()
@@ -1051,7 +1073,7 @@ def update_faculty_dir(fid: int, body: FacultyDirBody, admin: dict = Depends(req
 
 @router.delete("/faculty-directory/{fid}", summary="Remove from faculty directory")
 def delete_faculty_dir(fid: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("faculty_directory").select("id").eq("id", fid).single().execute()
+    existing = sb.table("faculty_directory").select("id").eq("id", fid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Faculty entry not found")
     sb.table("faculty_directory").delete().eq("id", fid).execute()
@@ -1121,7 +1143,7 @@ def list_messages(admin: dict = Depends(require_admin)):
 
 @router.patch("/messages/{mid}/read", summary="Mark message as read")
 def mark_read(mid: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("contact_messages").select("id").eq("id", mid).single().execute()
+    existing = sb.table("contact_messages").select("id").eq("id", mid).limit(1).execute()
     if not existing.data:
         raise HTTPException(404, "Message not found")
     sb.table("contact_messages").update({"is_read": True}).eq("id", mid).execute()

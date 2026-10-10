@@ -321,31 +321,31 @@ tr:hover td{background:var(--gold-pale)}
           <div>
             <div class="stat-num" id="dash-att-pct">0%</div>
             <div class="stat-lbl">Attendance</div>
-            
+            <div style="font-size:11px;margin-top:5px;color:var(--muted)" id="dash-att-stats">0 Present · 0 Absent</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--blue-bg)">📝</div>
           <div>
-            <div class="stat-num" id="dash-att-absent">0</div>
+            <div class="stat-num" id="dash-asgn-cnt">0</div>
             <div class="stat-lbl">Assignments</div>
-            <div style="font-size:11px;margin-top:5px;color:var(--amber)">1 due soon</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--amber)" id="dash-asgn-sub">0 pending</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--amber-bg)">📢</div>
           <div>
-            <div class="stat-num">4</div>
+            <div class="stat-num" id="dash-ann-stat-cnt">0</div>
             <div class="stat-lbl">Announcements</div>
-            <div style="font-size:11px;margin-top:5px;color:var(--muted)">2 unread</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--muted)" id="dash-ann-sub">Recent updates</div>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon" style="background:var(--purple-bg)">📂</div>
           <div>
-            <div class="stat-num">5</div>
+            <div class="stat-num" id="dash-mat-stat-cnt">0</div>
             <div class="stat-lbl">Materials</div>
-            <div style="font-size:11px;margin-top:5px;color:var(--muted)">New PDFs</div>
+            <div style="font-size:11px;margin-top:5px;color:var(--muted)" id="dash-mat-sub">Study docs</div>
           </div>
         </div>
       </div>
@@ -409,7 +409,7 @@ tr:hover td{background:var(--gold-pale)}
             <div class="mark-success" id="mark-success">
               <div class="mark-success-icon">✅</div>
               <div class="mark-success-title">Attendance Marked!</div>
-              <div class="mark-success-sub" id="mark-detail">Present at 10:32 AM · Location verified</div>
+              <div class="mark-success-sub" id="mark-detail">Present · Location verified</div>
             </div>
           </div>
         </div>
@@ -531,9 +531,13 @@ tr:hover td{background:var(--gold-pale)}
 
 <script>
 /* ═══ DATA ═══ */
-const DB = { announcements:[], assignments:[], materials:[], attLog:[], timetable:[], liveSessions:[] };
+function esc(s){
+  if(s===null || s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const DB = { announcements:[], assignments:[], materials:[], attLog:[], timetable:[], rawTimetable:[], liveSessions:[] };
 let portalProfile=null, attendanceSummary={total:0,present:0,absent:0,percentage:0}, activeSessionId=null;
-;
 
 let locOk=false,userLat=null,userLng=null;
 
@@ -567,43 +571,51 @@ function goPage(id,el){
 /* DASHBOARD INIT */
 function initDashboard(){
   // Announcements
-  document.getElementById('dash-ann').innerHTML=DB.announcements.slice(0,2).map(a=>`
+  const annHtml = (DB.announcements.slice(0,2).map(a=>`
     <div style="padding:9px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start">
       <div style="width:6px;height:6px;border-radius:50%;background:${a.type==='urgent'?'var(--red)':a.type==='reminder'?'var(--amber)':'var(--blue)'};margin-top:5px;flex-shrink:0"></div>
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink-mid)">${a.title}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">${a.ts} · ${a.from}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink-mid)">${esc(a.title)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)">${esc(a.ts)} · ${esc(a.from)}</div>
       </div>
     </div>
-  `).join('');
+  `).join('')) || '<div style="font-size:12px;color:var(--muted);padding:10px 0">No recent announcements.</div>';
+  document.getElementById('dash-ann').innerHTML=annHtml;
 
   // Assignments
-  document.getElementById('dash-asgn').innerHTML=DB.assignments.map(a=>{
-    const overdue=new Date(a.due)<new Date();
+  const asgnHtml = (DB.assignments.slice(0,3).map(a=>{
+    const overdue=a.due && new Date(a.due)<new Date();
     return `<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${a.title}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Due ${a.due}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${esc(a.title)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">Due ${esc(a.due||'TBA')}</div>
       </div>
       <span class="badge ${overdue?'badge-red':'badge-amber'}">${overdue?'OVERDUE':'PENDING'}</span>
     </div>`;
-  }).join('');
+  }).join('')) || '<div style="font-size:12px;color:var(--muted);padding:10px 0">No pending assignments.</div>';
+  document.getElementById('dash-asgn').innerHTML=asgnHtml;
 
-  // Schedule
-  const schedule=[
-    {time:"9:00 AM",sub:"Postcolonial Literature",room:"Seminar Hall A"},
-    {time:"11:00 AM",sub:"Literary Theory",room:"Room 204"},
-    {time:"2:00 PM",sub:"Linguistics",room:"Room 201"},
-  ];
-  document.getElementById('dash-schedule').innerHTML=schedule.map(s=>`
-    <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="min-width:65px;font-size:11px;font-family:var(--mono);color:var(--gold);font-weight:600">${s.time}</div>
-      <div>
-        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${s.sub}</div>
-        <div style="font-size:10px;color:var(--muted)">📍 ${s.room}</div>
-      </div>
-    </div>
-  `).join('');
+  // Dynamic Schedule from today's timetable slots
+  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todaySlots = (DB.rawTimetable || []).filter(s => (s.day_of_week || '').trim().toLowerCase() === todayName.toLowerCase())
+    .sort((a,b) => String(a.start_time||'').localeCompare(String(b.start_time||'')));
+
+  if (todaySlots.length) {
+    document.getElementById('dash-schedule').innerHTML = todaySlots.map(s => {
+      const timeStr = String(s.start_time||'').slice(0,5);
+      return `
+        <div style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+          <div style="min-width:65px;font-size:11px;font-family:var(--mono);color:var(--gold);font-weight:600">${esc(timeStr)}</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${esc(s.subject||'Class')}</div>
+            <div style="font-size:10px;color:var(--muted)">📍 ${esc(s.room||'TBA')}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    document.getElementById('dash-schedule').innerHTML = `<div style="font-size:12px;color:var(--muted);padding:12px 0">No classes scheduled for today (${esc(todayName)}).</div>`;
+  }
 }
 
 /* ATTENDANCE MARK */
@@ -631,19 +643,41 @@ function initAttPage(){
 async function markMyAttendance(){
   if(!activeSessionId){toast('No active attendance session','err');return;}
   const btn=document.getElementById('mark-btn');btn.disabled=true;btn.textContent='Submitting…';
-  try{const r=await fetch('/api/student/attendance/mark',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSessionId,...(locOk?{latitude:userLat,longitude:userLng}:{})})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');toast(d.message||'Attendance marked!','ok');btn.style.display='none';document.getElementById('mark-success').style.display='block';await loadPortalData();renderAttLog();}catch(e){toast(e.message,'err');btn.disabled=false;btn.textContent='Mark Myself Present';}
+  try{
+    const r=await fetch('/api/student/attendance/mark',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:activeSessionId,...(locOk?{latitude:userLat,longitude:userLng}:{})})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');
+    toast(d.message||'Attendance marked!','ok');
+    btn.style.display='none';
+    const detailEl = document.getElementById('mark-detail');
+    if (detailEl) {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      detailEl.textContent = `Present at ${timeStr}${d.location_verified ? ' · Location verified' : ' · Marked'}`;
+    }
+    document.getElementById('mark-success').style.display='block';
+    await loadPortalData();
+    renderAttLog();
+  }catch(e){
+    toast(e.message,'err');
+    btn.disabled=false;
+    btn.textContent='Mark Myself Present';
+  }
 }
 function renderAttLog(){
   const el=document.getElementById('att-log');
   if(!el)return;
   el.innerHTML=DB.attLog.slice(0,5).map(a=>`
     <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status.toUpperCase()}</span>
+      <span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${esc(a.status.toUpperCase())}</span>
       <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${a.subject}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${a.date} · ${a.topic}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${esc(a.subject)}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${esc(a.date)}${a.topic ? ' · ' + esc(a.topic) : ''}</div>
       </div>
-      ${a.loc!=='—'?`<span style="font-size:9px;color:var(--green);font-family:var(--mono)">📍</span>`:''}
+      ${a.loc!=='—'?`<span style="font-size:9px;color:var(--green);font-family:var(--mono)">📍 ${esc(a.loc)}</span>`:''}
     </div>
   `).join('');
 }
@@ -652,50 +686,50 @@ function renderAttLog(){
 const typeIcon={urgent:'🚨',reminder:'⏰',info:'📢'};
 const typeBadge={urgent:'badge-red',reminder:'badge-amber',info:'badge-blue'};
 function renderAnn(){
-  document.getElementById('ann-list').innerHTML=DB.announcements.map(a=>`
+  document.getElementById('ann-list').innerHTML=DB.announcements.length ? DB.announcements.map(a=>`
     <div class="item-card ${!a.read?'':''}">
       <div class="item-card-top">
-        <div class="item-title">${typeIcon[a.type]||'📢'} ${a.title}</div>
+        <div class="item-title">${typeIcon[a.type]||'📢'} ${esc(a.title)}</div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-          <span class="badge ${typeBadge[a.type]||'badge-blue'}">${a.type.toUpperCase()}</span>
+          <span class="badge ${typeBadge[a.type]||'badge-blue'}">${esc(a.type.toUpperCase())}</span>
           ${!a.read?`<span class="badge badge-maroon">NEW</span>`:''}
         </div>
       </div>
-      <div class="item-body">${a.body}</div>
+      <div class="item-body">${esc(a.body)}</div>
       <div class="item-footer">
-        <span class="item-time">🕒 ${a.ts}</span>
-        <span class="badge badge-gold">From: ${a.from}</span>
+        <span class="item-time">🕒 ${esc(a.ts)}</span>
+        <span class="badge badge-gold">From: ${esc(a.from)}</span>
         ${!a.read?`<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="markRead(${a.id})">Mark Read</button>`:''}
       </div>
     </div>
-  `).join('');
+  `).join('') : '<div class="empty"><div class="empty-icon">📢</div><div>No announcements posted.</div></div>';
 }
 function markRead(id){const a=DB.announcements.find(x=>x.id===id);if(a){a.read=true;}renderAnn();updateCounts();}
 
 /* ASSIGNMENTS */
 function renderAssignments(arr){
   document.getElementById('asgn-list').innerHTML=arr.length?arr.map(a=>{
-    const overdue=new Date(a.due)<new Date();
-    const daysLeft=Math.ceil((new Date(a.due)-new Date())/86400000);
+    const overdue=a.due && new Date(a.due)<new Date();
+    const daysLeft=a.due ? Math.ceil((new Date(a.due)-new Date())/86400000) : 0;
     return `<div class="item-card">
       <div class="item-card-top">
-        <div class="item-title">📝 ${a.title}</div>
+        <div class="item-title">📝 ${esc(a.title)}</div>
         <span class="badge ${overdue?'badge-red':daysLeft<=5?'badge-amber':'badge-green'}">${overdue?'OVERDUE':`${daysLeft}d left`}</span>
       </div>
-      <div class="item-body">${a.desc}</div>
+      <div class="item-body">${esc(a.desc)}</div>
       <div class="item-footer">
-        <span class="badge badge-blue">${a.subject}</span>
-        ${a.file?`<button class="btn btn-ghost btn-sm" onclick="toast('Downloading…','ok')">📎 ${a.file}</button>`:''}
-        <span class="item-time" style="margin-left:auto">Posted ${a.posted}</span>
-        <span class="item-time">Due <strong style="color:${overdue?'var(--red)':'var(--ink-mid)'}">${a.due}</strong></span>
+        <span class="badge badge-blue">${esc(a.subject)}</span>
+        ${a.file?`<span class="btn btn-ghost btn-sm">📎 ${esc(a.file)}</span>`:''}
+        <span class="item-time" style="margin-left:auto">Posted ${esc(a.posted)}</span>
+        <span class="item-time">Due <strong style="color:${overdue?'var(--red)':'var(--ink-mid)'}">${esc(a.due||'—')}</strong></span>
       </div>
     </div>`;
   }).join(''):`<div class="empty"><div class="empty-icon">✅</div><div>No assignments pending!</div></div>`;
 }
 function filterAssignments(v){
   if(!v){renderAssignments(DB.assignments);return;}
-  if(v==='overdue')renderAssignments(DB.assignments.filter(a=>new Date(a.due)<new Date()));
-  if(v==='pending')renderAssignments(DB.assignments.filter(a=>new Date(a.due)>=new Date()));
+  if(v==='overdue')renderAssignments(DB.assignments.filter(a=>a.due && new Date(a.due)<new Date()));
+  if(v==='pending')renderAssignments(DB.assignments.filter(a=>!a.due || new Date(a.due)>=new Date()));
 }
 
 /* MATERIALS */
@@ -705,38 +739,38 @@ function renderMaterials(arr){
   document.getElementById('mat-grid').innerHTML=arr.length?arr.map(m=>`
     <div class="mat-card">
       <div style="font-size:2rem;margin-bottom:10px;opacity:.65">${matIcon[m.type]||'📄'}</div>
-      <div style="font-size:13px;font-weight:700;color:var(--maroon-d);margin-bottom:5px;line-height:1.3">${m.title}</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Lora',serif;font-style:italic;line-height:1.5">${m.desc}</div>
+      <div style="font-size:13px;font-weight:700;color:var(--maroon-d);margin-bottom:5px;line-height:1.3">${esc(m.title)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'Lora',serif;font-style:italic;line-height:1.5">${esc(m.desc)}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-        <span class="badge ${matBadge[m.type]||'badge-blue'}">${m.type.replace('-',' ').toUpperCase()}</span>
-        <span class="badge badge-gold">${m.size}</span>
+        <span class="badge ${matBadge[m.type]||'badge-blue'}">${esc(m.type.replace('-',' ').toUpperCase())}</span>
+        <span class="badge badge-gold">${esc(m.size||'File')}</span>
       </div>
-      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${m.subject} · by ${m.by}</div>
-      ${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + m.file_url + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${esc(m.subject)} · by ${esc(m.by||'Faculty')}</div>
+      ${m.file_url ? '<a class="btn btn-primary btn-sm" style="width:100%;justify-content:center;text-decoration:none" href="' + esc(m.file_url) + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" disabled>⬇ No file</button>'}
     </div>
   `).join(''):`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No materials yet</div></div>`;
 }
-function filterMats(v){const f=v.toLowerCase();renderMaterials(DB.materials.filter(m=>m.title.toLowerCase().includes(f)||m.subject.toLowerCase().includes(f)));}
+function filterMats(v){const f=v.toLowerCase();renderMaterials(DB.materials.filter(m=>(m.title||'').toLowerCase().includes(f)||(m.subject||'').toLowerCase().includes(f)));}
 
 /* ATTENDANCE RECORDS */
 function renderAttTable(){
-  document.getElementById('att-table-body').innerHTML=DB.attLog.map(a=>`
+  document.getElementById('att-table-body').innerHTML=DB.attLog.length ? DB.attLog.map(a=>`
     <tr>
-      <td class="mono" style="font-size:11px;color:var(--muted)">${a.date}</td>
-      <td style="font-size:12px;font-weight:600">${a.subject}</td>
-      <td style="font-size:12px;color:var(--muted)">${a.topic}</td>
-      <td style="font-size:12px;color:var(--muted)">${a.teacher}</td>
-      <td><span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${a.status.toUpperCase()}</span></td>
-      <td style="font-size:10px;font-family:var(--mono);color:var(--muted)">${a.loc}</td>
+      <td class="mono" style="font-size:11px;color:var(--muted)">${esc(a.date)}</td>
+      <td style="font-size:12px;font-weight:600">${esc(a.subject)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(a.topic||'—')}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(a.teacher)}</td>
+      <td><span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${esc(a.status.toUpperCase())}</span></td>
+      <td style="font-size:10px;font-family:var(--mono);color:var(--muted)">${esc(a.loc)}</td>
     </tr>
-  `).join('');
+  `).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No attendance records found</td></tr>';
 }
 function renderSubjectAtt(){
   const subjects=[...new Set(DB.attLog.map(a=>a.subject).filter(Boolean))];
   document.getElementById('subject-att').innerHTML=subjects.length?subjects.map(s=>{
     const entries=DB.attLog.filter(a=>a.subject===s);
     const pct=entries.length?Math.round(entries.filter(a=>a.status==='present').length/entries.length*100):0;
-    return '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--ink-mid)">'+s+'</span><span style="font-weight:700">'+pct+'%</span></div><div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>';
+    return '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--ink-mid)">'+esc(s)+'</span><span style="font-weight:700">'+pct+'%</span></div><div class="progress"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>';
   }).join(''):'<div class="empty">No attendance data available</div>';
 }
 
@@ -779,14 +813,30 @@ function updateCounts(){
   const annEl = document.getElementById('ann-cnt');
   const asgnEl = document.getElementById('asgn-cnt');
   const matEl = document.getElementById('mat-cnt');
+  const annStat = document.getElementById('dash-ann-stat-cnt');
+  const asgnStat = document.getElementById('dash-asgn-cnt');
+  const matStat = document.getElementById('dash-mat-stat-cnt');
+  const asgnSub = document.getElementById('dash-asgn-sub');
 
-  if (annEl) annEl.textContent = (DB.announcements || []).length;
-  if (asgnEl) asgnEl.textContent = (DB.assignments || []).length;
-  if (matEl) matEl.textContent = (DB.materials || []).length;
+  const annCount = (DB.announcements || []).length;
+  const asgnCount = (DB.assignments || []).length;
+  const matCount = (DB.materials || []).length;
+
+  if (annEl) annEl.textContent = annCount;
+  if (asgnEl) asgnEl.textContent = asgnCount;
+  if (matEl) matEl.textContent = matCount;
+  if (annStat) annStat.textContent = annCount;
+  if (asgnStat) asgnStat.textContent = asgnCount;
+  if (matStat) matStat.textContent = matCount;
+
+  if (asgnSub) {
+    const overdue = (DB.assignments || []).filter(a => a.due && new Date(a.due) < new Date()).length;
+    asgnSub.textContent = overdue > 0 ? `${overdue} overdue` : `${asgnCount} pending`;
+  }
 }
 
 /* TOAST */
-function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span> ${msg}`;document.getElementById('tw').appendChild(el);setTimeout(()=>el.remove(),3500);}
+function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${type==='ok'?'✓':'✕'}</span> ${esc(msg)}`;document.getElementById('tw').appendChild(el);setTimeout(()=>el.remove(),3500);}
 
 /* SUPABASE DATA */
 async function loadPortalData(){
@@ -843,9 +893,13 @@ async function loadPortalData(){
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
   DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',file_url:m.file_url||'',by:m.uploaded_by||''}));
   DB.attLog=(history.records||[]).map(r=>{const session=r.attendance_sessions||{}, s=session.timetable_slots||{}, faculty=session.users||{}; return {id:r.id,date:session.date||'',subject:s.subject||'',topic:'',teacher:faculty.full_name||'—',status:r.status,loc:s.room||'—'};});
-  attendanceSummary=history; DB.timetable=buildTimetable(timetable||[]);
+  attendanceSummary=history;
+  DB.rawTimetable=timetable||[];
+  DB.timetable=buildTimetable(timetable||[]);
   DB.liveSessions=(openSessions||[]).map(s=>({id:s.id,cls:(s.timetable_slots||{}).subject||'Class',topic:'',teacher:(s.users||{}).full_name||'',endsIn:0,slot_id:s.slot_id}));
-  activeSessionId=DB.liveSessions[0]?.id||null; updatePortalUI();
+  activeSessionId=DB.liveSessions[0]?.id||null;
+  updatePortalUI();
+  initDashboard();
 }
 function buildTimetable(slots){
   const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -864,7 +918,9 @@ function buildTimetable(slots){
 
 function updatePortalUI(){
   const pct=attendanceSummary.percentage||0,set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-  set('dash-att-pct',pct+'%');set('dash-att-present',attendanceSummary.present||0);set('dash-att-absent',attendanceSummary.absent||0);
+  set('dash-att-pct',pct+'%');
+  const attStats = document.getElementById('dash-att-stats');
+  if (attStats) attStats.textContent = `${attendanceSummary.present||0} Present · ${attendanceSummary.absent||0} Absent`;
   const active=DB.liveSessions[0],no=document.getElementById('no-session'),yes=document.getElementById('has-session');
   if(no&&yes){no.style.display=active?'none':'block';yes.style.display=active?'block':'none';}
   if(active){set('session-class',active.cls);set('session-subject',active.topic||active.cls);set('session-faculty',active.teacher||'Faculty');}

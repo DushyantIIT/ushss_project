@@ -24,11 +24,20 @@ _hits: dict[str, deque] = defaultdict(deque)
 
 
 def _client_ip(request: Request) -> str:
-    # Respect a reverse proxy's forwarded header (Render sits behind one),
-    # falling back to the direct connection.
+    # Check trusted proxy headers first (Render, Cloudflare)
+    render_ip = request.headers.get("x-render-client-ip")
+    if render_ip:
+        return render_ip.strip()
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
-        return fwd.split(",")[0].strip()
+        ips = [ip.strip() for ip in fwd.split(",") if ip.strip()]
+        if ips:
+            # On Render, the real client IP is passed via proxy headers
+            return ips[0] if len(ips) == 1 else ips[-1]
     return request.client.host if request.client else "unknown"
 
 

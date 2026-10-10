@@ -62,6 +62,18 @@ def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_s
 
     uid = student["id"]
     try:
+        if updates.get("email"):
+            supa_uid = student.get("supabase_uid")
+            if not supa_uid:
+                u_row = sb.table("users").select("supabase_uid").eq("id", uid).limit(1).execute().data
+                if u_row:
+                    supa_uid = u_row[0].get("supabase_uid")
+            if supa_uid:
+                try:
+                    sb.auth.admin.update_user_by_id(supa_uid, {"email": updates["email"]})
+                except Exception as auth_err:
+                    print(f"Could not update Supabase Auth email for user {uid}: {auth_err}")
+
         sb.table("users").update(updates).eq("id", uid).execute()
         updated_res = sb.table("users").select("*").eq("id", uid).limit(1).execute()
         if not updated_res.data:
@@ -117,31 +129,38 @@ def open_sessions(student: dict = Depends(require_student)):
         raise HTTPException(400, "Your account has no programme/batch assigned. Contact admin.")
 
     # Get all timetable slot IDs for this student's programme+batch
-    slots = sb.table("timetable_slots").select("id").eq(
+    slots = sb.table("timetable_slots").select("id, section").eq(
         "programme", student["programme"]
     ).eq("batch", student["batch"]).execute()
 
-    slot_ids = [s["id"] for s in (slots.data or [])]
+    slot_rows = slots.data or []
+    if student.get("section"):
+        slot_ids = [s["id"] for s in slot_rows if not s.get("section") or s.get("section") == student.get("section")]
+    else:
+        slot_ids = [s["id"] for s in slot_rows]
+
     if not slot_ids:
         return []
 
     # Get open sessions for those slots
     sessions = sb.table("attendance_sessions").select(
         "id, slot_id, date, opened_at, "
-        "timetable_slots(subject, day_of_week, start_time, end_time, room), "
+        "timetable_slots(subject, day_of_week, start_time, end_time, room, section), "
         "users(full_name)"  # faculty who opened it
     ).eq("is_open", True).in_("slot_id", slot_ids).execute()
 
     result = sessions.data or []
 
-    # Flag whether this student already marked attendance for each session
+    # Batch query whether student marked attendance (avoid N+1)
     if result:
+        sess_ids = [s["id"] for s in result]
+        recs = sb.table("attendance_records").select("session_id, status") \
+                 .in_("session_id", sess_ids) \
+                 .eq("student_id", student["id"]).execute().data or []
+        marked_map = {r["session_id"]: r["status"] for r in recs}
         for sess in result:
-            rec = sb.table("attendance_records").select("id, status") \
-                    .eq("session_id", sess["id"]) \
-                    .eq("student_id", student["id"]).execute()
-            sess["already_marked"] = bool(rec.data)
-            sess["my_status"] = rec.data[0]["status"] if rec.data else None
+            sess["already_marked"] = sess["id"] in marked_map
+            sess["my_status"] = marked_map.get(sess["id"])
 
     return result
 
@@ -166,21 +185,24 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     """
     # 1. Verify session exists and is open
     session = sb.table("attendance_sessions").select(
-        "id, is_open, slot_id, timetable_slots(programme, batch, subject)"
-    ).eq("id", body.session_id).single().execute()
+        "id, is_open, slot_id, timetable_slots(programme, batch, section, subject)"
+    ).eq("id", body.session_id).limit(1).execute()
 
     if not session.data:
         raise HTTPException(404, "Attendance session not found")
 
-    sess = session.data
+    sess = session.data[0]
     if not sess["is_open"]:
         raise HTTPException(400, "This attendance session is closed. You can no longer mark attendance.")
 
     # 2. Verify the session belongs to the student's class
     slot_prog  = (sess.get("timetable_slots") or {}).get("programme")
     slot_batch = (sess.get("timetable_slots") or {}).get("batch")
+    slot_sec   = (sess.get("timetable_slots") or {}).get("section")
     if slot_prog != student.get("programme") or slot_batch != student.get("batch"):
         raise HTTPException(403, "This session is not for your class.")
+    if slot_sec and student.get("section") and slot_sec != student.get("section"):
+        raise HTTPException(403, f"This session is for Section {slot_sec}, but you are in Section {student.get('section')}.")
 
     # Enforce the campus geofence on the server whenever configured in Render.
     # Do not trust a browser-side "within campus" label.
@@ -211,16 +233,21 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     existing = sb.table("attendance_records") \
                  .select("id, status") \
                  .eq("session_id", body.session_id) \
-                 .eq("student_id", student["id"]).execute()
+                 .eq("student_id", student["id"]).limit(1).execute()
     if existing.data:
         raise HTTPException(409, f"You have already marked attendance as '{existing.data[0]['status']}'.")
 
-    # 4. Insert record
-    res = sb.table("attendance_records").insert({
-        "session_id": body.session_id,
-        "student_id": student["id"],
-        "status":     "present",
-    }).execute()
+    # 4. Insert record with race condition safety
+    try:
+        res = sb.table("attendance_records").insert({
+            "session_id": body.session_id,
+            "student_id": student["id"],
+            "status":     "present",
+        }).execute()
+    except Exception as exc:
+        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower() or "already exists" in str(exc).lower():
+            raise HTTPException(409, "You have already marked attendance for this session.")
+        raise HTTPException(500, f"Could not record attendance: {exc}")
 
     sb.table("audit_log").insert({
         "user_id": student["id"],
@@ -266,7 +293,7 @@ def attendance_history(
 
     total   = len(records)
     present = sum(1 for r in records if r["status"] == "present")
-    absent  = total - present
+    absent  = sum(1 for r in records if r["status"] == "absent")
 
     return {
         "student":    student["full_name"],
@@ -286,9 +313,26 @@ def attendance_history(
 def get_announcements(student: dict = Depends(require_student)):
     res = sb.table("announcements").select("*").order("ts", desc=True).execute()
     rows = res.data or []
-    target = (student.get("programme") or "").lower()
-    return [a for a in rows if str(a.get("target") or "").lower() in ("all", "student", "students", "") or
-            (target and target in str(a.get("target") or "").lower())]
+    stud_prog = (student.get("programme") or "").strip().lower()
+    stud_batch = (student.get("batch") or "").strip().lower()
+
+    def matches_target(ann_target: Optional[str]) -> bool:
+        if not ann_target:
+            return True
+        t = str(ann_target).strip().lower()
+        if t in ("all", "student", "students"):
+            return True
+        tokens = [tok.strip() for tok in t.split(",") if tok.strip()]
+        for tok in tokens:
+            if tok in ("all", "student", "students"):
+                return True
+            if stud_prog and tok == stud_prog:
+                return True
+            if stud_prog and stud_batch and tok == f"{stud_prog} {stud_batch}":
+                return True
+        return False
+
+    return [a for a in rows if matches_target(a.get("target"))]
 
 @router.get("/assignments", summary="View assignments for your class")
 def get_assignments(student: dict = Depends(require_student)):

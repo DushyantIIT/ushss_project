@@ -84,20 +84,18 @@ In Render → Service → Environment, set:
 
 Do **not** put the Supabase service-role key in GitHub, templates, JavaScript, or client-side configuration.
 
-## Demo login accounts
-
-The project includes the following demo accounts. These are created in Supabase Auth by the seed process.
-
-| Role | Username | Password |
+## User Accounts & Roles
+ 
+The portal supports 4 primary roles:
+ 
+| Role | Identifier | Notes |
 |---|---|---|
-| Admin | `admin001` | `Admin@1234` |
-| Faculty | `fac001` | `Faculty@123` |
-| Faculty | `fac002` | `Faculty@123` |
-| Student | `2301001` | `Student@123` |
-| Student | `2401001` | `Student@123` |
-| CR | `cr2301001` | `Cr@12345` |
-
-> **Security:** These are development/demo credentials. Change or remove them before making the portal public. Do not reuse these passwords for real accounts.
+| Admin | Admin username (e.g. `admin001`) | Super Admin accounts have full permissions |
+| Faculty | Faculty username (e.g. `fac001`) | Hosts attendance sessions, views students |
+| Student | Enrollment number (e.g. `2301001`) | Marks attendance, views timetable & materials |
+| CR | Enrollment number / CR username | Class Representative for class updates |
+ 
+> **Security:** Passwords must be securely provisioned via Supabase Auth or the Admin management portal. Never commit credentials to source control.
 
 ## Authentication
 

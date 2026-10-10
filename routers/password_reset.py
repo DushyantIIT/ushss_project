@@ -88,7 +88,7 @@ def request_reset(
         )
         .eq("username", body.username)
         .eq("is_active", True)
-        .single()
+        .limit(1)
         .execute()
     )
 
@@ -100,7 +100,7 @@ def request_reset(
             ),
         )
 
-    target = res.data
+    target = res.data[0]
 
     if not target.get("supabase_uid"):
         raise HTTPException(
@@ -135,33 +135,6 @@ def request_reset(
         ),
     )
 
-    print("\n" + "=" * 60)
-    print(
-        "  PASSWORD RESET TOKEN "
-        " (Admin-initiated)"
-    )
-    print(
-        f"  Requested by : "
-        f"{admin['username']} (admin)"
-    )
-    print(
-        f"  Target user  : "
-        f"{target['full_name']} "
-        f"({target['username']})"
-    )
-    print(
-        f"  Token        : {token}"
-    )
-    print(
-        f"  Expires      : "
-        f"{RESET_TOKEN_EXPIRE_MINUTES} minutes"
-    )
-    print(
-        "  Endpoint     : "
-        "POST /api/reset/confirm"
-    )
-    print("=" * 60 + "\n")
-
     (
         sb.table("audit_log")
         .insert({
@@ -179,11 +152,9 @@ def request_reset(
     )
 
     return {
-        "message": (
-            "Reset token generated for "
-            f"'{target['username']}'. "
-            "Check server logs."
-        )
+        "message": f"Reset token generated for '{target['username']}'.",
+        "token": token,
+        "expires_in_minutes": RESET_TOKEN_EXPIRE_MINUTES,
     }
 
 

@@ -14,6 +14,8 @@ Comprehensive integration tests for USHSS Portal:
 
 import os
 os.environ["TESTING"] = "true"
+os.environ["USE_SQLITE_FALLBACK"] = "1"
+os.environ.setdefault("SECRET_KEY", "dev-secret-key-for-local-testing-purposes-32-bytes-long")
 import sys
 import unittest
 from fastapi.testclient import TestClient

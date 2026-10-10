@@ -361,10 +361,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </nav>
   <div class="sidebar-footer">
     <div class="sidebar-user" style="margin-bottom:8px">
-      <div class="sidebar-user-avatar" id="sb-admin-avatar">AD</div>
+      <div class="sidebar-user-avatar" id="sb-admin-avatar">--</div>
       <div style="flex:1;min-width:0">
         <div class="sidebar-user-name" id="sb-admin-name">USHSS Administrator</div>
-        <div class="sidebar-user-role" id="sb-admin-role">admin · admin001</div>
+        <div class="sidebar-user-role" id="sb-admin-role">Admin</div>
       </div>
     </div>
     <div class="nav-item" style="color:var(--red);cursor:pointer;padding:7px 10px" onclick="logoutAdmin()">
@@ -2395,7 +2395,9 @@ async function startLiveSession(){
   const slot=adminTimetableSlots().find(s=>s.programme===prog&&s.subject===subj);
   if(!slot) return toast("Create this subject in the Timetable Manager first","error");
   try{
-    await adminApiJson("/api/faculty/attendance/open",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slot_id:slot.id,date:new Date().toISOString().slice(0,10)})});
+    const d=new Date();
+    const todayStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    await adminApiJson("/api/faculty/attendance/open",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slot_id:slot.id,date:todayStr})});
     closeModal2("live-modal"); await fetchAdminDashboardData(); renderPage("attendance"); toast("Attendance session started","success");
   }catch(e){ toast(e.message||"Could not start attendance session","error"); }
 }

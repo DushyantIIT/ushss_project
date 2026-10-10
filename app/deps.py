@@ -27,6 +27,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     )
     try:
         payload = decode_token(token)
+        # Reset tokens or non-access tokens cannot act as login sessions
+        if payload.get("purpose") and payload.get("purpose") != "access":
+            raise exc
         user_id = payload.get("id")
         if not user_id:
             raise exc

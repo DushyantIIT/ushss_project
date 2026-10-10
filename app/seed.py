@@ -158,6 +158,7 @@ def seed():
             if existing.data:
                 continue
 
+            pwd_hash = None
             try:
                 auth_res = sb.auth.admin.create_user({
                     "email": u["email"],
@@ -172,7 +173,12 @@ def seed():
                 supa_uid = getattr(supa_user, "id", None) if supa_user else None
             except Exception as ae:
                 print(f"  · Auth create_user note for {u['username']}: {ae}")
-                continue
+                if "not configured" in str(ae).lower():
+                    import bcrypt
+                    supa_uid = f"local_{u['username']}"
+                    pwd_hash = bcrypt.hashpw(u["password"].encode(), bcrypt.gensalt()).decode()
+                else:
+                    continue
 
             if not supa_uid:
                 print(f"  · No Auth identity returned for {u['username']}; profile not created")
@@ -193,6 +199,7 @@ def seed():
                 "is_super_admin": u.get("is_super_admin", False),
                 "status":         "approved",
                 "supabase_uid":   supa_uid,
+                "password_hash":  pwd_hash,
             }
             res = sb.table("users").insert(user_row).execute()
             if res.data:

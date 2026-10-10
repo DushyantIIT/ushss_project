@@ -14,8 +14,25 @@ from typing import Optional
 
 from jose import JWTError, jwt
 
-SECRET_KEY   = os.environ.get("SECRET_KEY", "dev-secret-change-in-production-must-be-32-chars")
-ALGORITHM    = "HS256"
+SECRET_KEY = os.environ.get("SECRET_KEY", "").strip()
+IS_PROD = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("ENVIRONMENT") == "production")
+IS_DEV = not IS_PROD or os.environ.get("DEBUG", "false").lower() == "true" or os.environ.get("TESTING", "false").lower() == "true"
+
+if not SECRET_KEY:
+    if IS_DEV:
+        SECRET_KEY = "dev-secret-change-in-production-must-be-32-chars"
+    else:
+        raise RuntimeError(
+            "FATAL: SECRET_KEY environment variable is not set. "
+            "Set a random 32+ character SECRET_KEY in your environment/Render dashboard."
+        )
+elif SECRET_KEY == "dev-secret-change-in-production-must-be-32-chars" and IS_PROD:
+    raise RuntimeError(
+        "FATAL: Default development SECRET_KEY detected in production. "
+        "Set a unique, strong SECRET_KEY."
+    )
+
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 480))  # 8 h
 
 

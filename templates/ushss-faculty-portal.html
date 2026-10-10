@@ -941,7 +941,8 @@ function toast(msg, type='ok') {
 }
 
 /* ═══ INIT ═══ */
-document.getElementById('att-date').value = new Date().toISOString().slice(0,10);
+const _dNow = new Date();
+document.getElementById('att-date').value = `${_dNow.getFullYear()}-${String(_dNow.getMonth()+1).padStart(2,'0')}-${String(_dNow.getDate()).padStart(2,'0')}`;
 initDashboard();
 function logoutFaculty() {
   try {

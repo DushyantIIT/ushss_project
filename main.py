@@ -30,13 +30,29 @@ from routers import auth, admin, student, faculty, cr, password_reset, public
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend starting up…")
-    if ping_db():
-        print("✓  Supabase connection OK")
-        # Production data is managed exclusively in Supabase.
-        # The development seed script is never executed automatically at startup.
+    from app.database import USE_SQLITE_FALLBACK
+    if USE_SQLITE_FALLBACK:
+        # Local dev mode — seed demo accounts into SQLite (safe to call multiple times)
+        try:
+            from app.database import get_sqlite_conn
+            conn = get_sqlite_conn()
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM users")
+            cnt = cur.fetchone()[0]
+            conn.close()
+            if cnt == 0:
+                print("🌱 Empty local DB — seeding demo data…")
+                seed()
+            else:
+                print(f"✓  Local SQLite DB has {cnt} user(s) — skipping seed")
+        except Exception as e:
+            print("Startup seed notice:", e)
+        print("✓  Running in LOCAL SQLite fallback mode")
     else:
-        print("✗  WARNING: Cannot reach Supabase — check env vars on Render")
-    print("✓  No SQLAlchemy — tables managed via Supabase SQL Editor")
+        if ping_db():
+            print("✓  Supabase connection OK")
+        else:
+            print("✗  WARNING: Cannot reach Supabase — check env vars on Render")
     print("✓  API docs → /docs\n")
     yield
     print("\n🏛  USHSS Backend shutting down…")
@@ -118,7 +134,8 @@ from fastapi.responses import FileResponse
 
 @app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():
-    return FileResponse("googleda3d4b79bd268fbe.html")
+    vpath = os.path.join(os.path.dirname(__file__), "static", "googleda3d4b79bd268fbe.html")
+    return FileResponse(vpath)
 
 @app.get("/health", tags=["System"])
 def health():
