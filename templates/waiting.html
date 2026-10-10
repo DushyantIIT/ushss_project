@@ -38,6 +38,16 @@ button.primary:hover{color:var(--gold-light);opacity:.92}
 .approval-countdown span{font-size:13px}
 .approval-countdown .seconds{font-size:22px;font-weight:700;margin-left:5px}
 @media(max-width:520px){.approval-countdown{right:12px;bottom:12px;left:12px;min-width:0;text-align:center}}
+
+@media(max-width:600px){
+  body{padding:16px}
+  .card{width:100%;max-width:100%;padding:24px 18px}
+  h1{font-size:clamp(1.35rem,6vw,2rem)}
+  .actions{flex-direction:column;gap:10px}
+  .actions button{width:100%;min-height:44px}
+  .approval-countdown{font-size:14px}
+}
+
 </style>
 </head>
 <body>
