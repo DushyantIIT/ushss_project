@@ -165,6 +165,36 @@ tr:hover td{background:rgba(255,255,255,.01)}
 .toast.err{border-color:rgba(248,81,73,.4);color:var(--red)}
 @keyframes tin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:900px){.sidebar{display:none}.stats-row{grid-template-columns:1fr 1fr}.grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}}
+
+/* Mobile usability improvements */
+@media(max-width:900px){
+  html,body{height:auto;min-height:100%;overflow:auto}
+  body{display:flex;flex-direction:column}
+  .sidebar{display:flex;width:100%;height:auto;min-height:0;position:relative;border-right:0;border-bottom:1px solid var(--border)}
+  .sidebar-logo{padding:12px 16px}
+  .sidebar-nav{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;flex:0 0 auto}
+  .nav-section-title{display:none}
+  .nav-item{flex:0 0 auto;margin:0;padding:9px 12px}
+  .sidebar-footer{display:none}
+  .main,.main-content,.app-main{height:auto;min-height:0;overflow:visible;width:100%;min-width:0}
+  .content,.page-content{padding:16px;overflow:visible}
+  .table-wrap,.table-responsive{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .topbar,.page-header{height:auto;min-height:52px;flex-wrap:wrap;padding:12px 16px}
+  .grid-2,.grid-60-40,.form-row{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:600px){
+  .content,.page-content{padding:12px}
+  .stats-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .search-bar,.filter-row,.toolbar{flex-wrap:wrap}
+  .search-bar>* ,.filter-row>*{max-width:100%}
+  input,select,textarea{max-width:100%}
+  .card,.panel{padding:14px}
+  .table-wrap,.table-responsive{width:100%;overflow-x:auto}
+  .modal,.modal-content{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px);overflow:auto}
+  button,.btn{min-height:40px}
+  th,td{padding:9px 10px}
+}
+
 </style>
 </head>
 <script>
