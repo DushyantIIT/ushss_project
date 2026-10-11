@@ -141,10 +141,37 @@ tr:hover td{background:var(--gold-pale)}
 
 .loc-box{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px;margin:16px 0}
 .loc-coords{font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.8);margin-top:4px}
-.mark-btn-big{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:'Playfair Display',serif;letter-spacing:.5px;transition:all .2s;margin-top:4px}
+.mark-btn-big{width:100%;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:1px solid transparent;font-family:'Playfair Display',serif;letter-spacing:.5px;transition:all .2s;margin-top:4px}
 .mark-btn-big:not(:disabled){background:linear-gradient(135deg,var(--gold),var(--gold-l));color:var(--maroon-d)}
 .mark-btn-big:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,.3)}
 .mark-btn-big:disabled{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:not-allowed}
+
+/* ATTENDANCE STATUS CLARITY BANNERS */
+.att-status-panel{border-radius:12px;padding:16px 18px;margin:14px 0 12px;display:none;animation:fadeIn .25s ease-out;border:1px solid transparent}
+.att-status-panel.active{display:block}
+.att-status-panel.success{background:rgba(30,122,61,.24);border-color:rgba(110,232,154,.45);box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.att-status-panel.error{background:rgba(192,57,43,.28);border-color:rgba(235,87,87,.6);box-shadow:0 6px 20px rgba(192,57,43,.25)}
+.att-status-panel.pending{background:rgba(211,84,0,.25);border-color:rgba(243,156,18,.55);box-shadow:0 6px 20px rgba(211,84,0,.2)}
+
+.att-status-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.att-status-badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.8px;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+.att-status-panel.success .att-status-badge{background:#27ae60;color:#fff}
+.att-status-panel.error .att-status-badge{background:#c0392b;color:#fff}
+.att-status-panel.pending .att-status-badge{background:#d35400;color:#fff}
+
+.att-status-panel.success .att-status-title{color:#6EE89A;font-family:'Playfair Display',serif;font-size:17px;font-weight:700}
+.att-status-panel.error .att-status-title{color:#FF7675;font-family:'Playfair Display',serif;font-size:17px;font-weight:700}
+.att-status-panel.pending .att-status-title{color:#F5B041;font-family:'Playfair Display',serif;font-size:17px;font-weight:700}
+
+.att-status-desc{font-size:13px;line-height:1.5;color:rgba(245,241,232,.95);margin-bottom:8px}
+
+.att-reason-box{background:rgba(0,0,0,.35);border:1px solid rgba(255,118,117,.4);border-radius:8px;padding:12px 14px;margin:10px 0 8px}
+.att-reason-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#FF7675;font-weight:700;margin-bottom:4px}
+.att-reason-text{font-size:13px;font-weight:600;color:#fff;line-height:1.45}
+
+.att-action-advice{font-size:12px;color:rgba(245,241,232,.9);line-height:1.5;margin-top:8px;background:rgba(255,255,255,.06);padding:10px 12px;border-radius:8px;border-left:3px solid var(--gold)}
+.att-status-meta{font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.9);padding-top:10px;margin-top:8px;border-top:1px dashed rgba(255,255,255,.15);display:flex;flex-direction:column;gap:3px}
+
 .mark-success{background:rgba(30,122,61,.15);border:1px solid rgba(30,122,61,.3);border-radius:10px;padding:16px;margin-top:12px;display:none;text-align:center}
 .mark-success-icon{font-size:2.5rem;margin-bottom:8px}
 .mark-success-title{font-family:'Playfair Display',serif;font-size:16px;color:#6EE89A;margin-bottom:4px}
@@ -179,9 +206,10 @@ tr:hover td{background:var(--gold-pale)}
 
 /* TOAST */
 .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(107,26,26,.12);animation:tin .2s ease;max-width:300px}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;display:flex;align-items:flex-start;gap:10px;box-shadow:0 8px 24px rgba(107,26,26,.15);animation:tin .2s ease;max-width:420px;line-height:1.45;word-break:break-word}
 .toast.ok{border-color:var(--green-light);color:var(--green)}
-.toast.err{border-color:rgba(192,57,43,.3);color:var(--red)}
+.toast.err{border-color:rgba(192,57,43,.45);color:var(--red)}
+.toast.warn{border-color:rgba(243,156,18,.5);color:var(--amber)}
 @keyframes tin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
 @media(max-width:900px){.sidebar{display:none}.stats-row{grid-template-columns:1fr 1fr}.grid-2,.grid-60-40,.form-row{grid-template-columns:1fr}}
@@ -281,6 +309,9 @@ tr:hover td{background:var(--gold-pale)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
+    <a href="/" class="sb-item" style="color:var(--cream);text-decoration:none;margin-bottom:6px;display:flex;align-items:center;gap:8px" title="Visit University Website without signing out">
+      <span class="ico">🏛️</span> University Website
+    </a>
     <div class="sb-logout" onclick="logoutStudent()"><span style="font-size:14px">🚪</span> Sign Out</div>
   </div>
 </aside>
@@ -293,6 +324,7 @@ tr:hover td{background:var(--gold-pale)}
       <div class="tb-crumb" id="pg-crumb">USHSS / Student / Overview</div>
     </div>
     <div class="tb-right">
+      <a href="/" class="btn btn-ghost btn-sm" style="text-decoration:none" title="Visit main college website">🏛️ Website</a>
       <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="live-indicator"></span>
       <button class="btn btn-gold btn-sm" onclick="goPage('attendance',document.querySelector('[onclick*=attendance]'))">Mark Attendance</button>
     </div>
@@ -391,29 +423,48 @@ tr:hover td{background:var(--gold-pale)}
           </div>
 
           <div id="has-session">
-            <div class="session-pill open"><div class="dot"></div> Session Open</div>
-            <div style="font-size:13px;color:rgba(240,235,224,.75);margin-top:10px;margin-bottom:14px">
-              <strong id="session-class" style="color:rgba(240,235,224,.9)">No active class</strong><br/>
-              <span id="session-subject">Waiting for faculty session…</span><br/>
-              <span id="session-faculty" style="font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.7)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div class="session-pill open" id="session-pill-badge"><div class="dot"></div> Session Open</div>
+              <span id="session-time-pill" style="font-family:var(--mono);font-size:11px;color:rgba(201,168,76,.85)"></span>
             </div>
 
-            <div class="loc-box">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                <span style="font-size:16px">📍</span>
-                <div style="font-size:13px;color:rgba(240,235,224,.9);font-weight:600">Location Verification</div>
+            <div style="font-size:13px;color:rgba(240,235,224,.85);margin-bottom:14px;background:rgba(0,0,0,.18);padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.08)">
+              <div style="font-size:14px;font-weight:700;color:#fff" id="session-class">No active class</div>
+              <div style="font-size:12px;color:rgba(201,168,76,.95);margin-top:2px" id="session-subject">Waiting for faculty session…</div>
+              <div style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.65);margin-top:4px" id="session-faculty"></div>
+            </div>
+
+            <!-- PROMINENT ATTENDANCE STATUS PANEL: ALWAYS SPECIFIES RECORDED OR NOT & EXACT REASON -->
+            <div id="att-status-panel" class="att-status-panel">
+              <div class="att-status-header">
+                <span id="att-status-icon" style="font-size:20px">ℹ️</span>
+                <div class="att-status-title" id="att-status-title">Attendance Status</div>
+                <span class="att-status-badge" id="att-status-badge">NOT RECORDED</span>
+              </div>
+              <div class="att-status-desc" id="att-status-desc"></div>
+
+              <div class="att-reason-box" id="att-reason-box" style="display:none">
+                <div class="att-reason-label">Exact Reason / Explanation:</div>
+                <div class="att-reason-text" id="att-reason-text">—</div>
+              </div>
+
+              <div class="att-action-advice" id="att-action-advice" style="display:none"></div>
+              <div class="att-status-meta" id="att-status-meta" style="display:none"></div>
+            </div>
+
+            <div class="loc-box" id="loc-box">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:7px">
+                  <span style="font-size:15px">📍</span>
+                  <div style="font-size:13px;color:rgba(240,235,224,.9);font-weight:600">Classroom Location Verification</div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" style="color:var(--gold);font-size:11px;padding:3px 9px;border:1px solid rgba(201,168,76,.3);background:rgba(201,168,76,.08);cursor:pointer" onclick="refreshLocation(true)">🔄 Refresh GPS</button>
               </div>
               <div class="loc-coords" id="loc-text">Requesting location access…</div>
-              <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:6px">Location is captured once and attached to your attendance record.</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:6px">Location is verified against the teacher's classroom anchor fix.</div>
             </div>
 
             <button class="mark-btn-big" id="mark-btn" disabled onclick="markMyAttendance()">⏳ Getting your location…</button>
-
-            <div class="mark-success" id="mark-success">
-              <div class="mark-success-icon">✅</div>
-              <div class="mark-success-title">Attendance Marked!</div>
-              <div class="mark-success-sub" id="mark-detail">Present · Location verified</div>
-            </div>
           </div>
         </div>
 
@@ -512,8 +563,31 @@ tr:hover td{background:var(--gold-pale)}
           <div class="form-group"><label class="form-label">Email</label><input id="profile-email" class="form-input" value="" placeholder="Enter email address"/></div>
           <div class="form-group"><label class="form-label">Phone</label><input id="profile-phone" class="form-input" value="" placeholder="Enter phone number"/></div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Programme</label><input id="profile-programme" class="form-input" value="" placeholder="e.g. M.A. English"/></div>
-            <div class="form-group"><label class="form-label">Batch</label><input id="profile-batch" class="form-input" value="" placeholder="e.g. 2023"/></div>
+            <div class="form-group"><label class="form-label">Programme Type</label>
+              <select id="profile-prog-type" class="form-select" onchange="profileOnProgTypeChange()">
+                <option value="">— Select —</option>
+                <option value="B.A. (Hons.)">B.A. (Hons.)</option>
+                <option value="M.A.">M.A.</option>
+                <option value="Ph.D.">Ph.D.</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Course / Specialisation</label>
+              <select id="profile-programme" class="form-select">
+                <option value="">— Select Programme First —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Batch (Admission Year)</label>
+              <select id="profile-batch" class="form-select">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Current Semester</label>
+              <select id="profile-semester" class="form-select">
+                <option value="">— Select —</option>
+              </select>
+            </div>
           </div>
           <button class="btn btn-primary" onclick="updateMyProfile()">Save Changes</button>
         </div>
@@ -621,68 +695,348 @@ function initDashboard(){
   }
 }
 
-/* ATTENDANCE MARK */
-function initAttPage(){
-  if(!locOk && navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>{
-        userLat=pos.coords.latitude;userLng=pos.coords.longitude;locOk=true;
-        document.getElementById('loc-text').innerHTML=`✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)} — <span style="color:#6EE89A">Location captured; the server verifies the campus radius</span>`;
-        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='✅ Mark Myself Present';document.getElementById('live-indicator').textContent='🔴 Session Live';
-      },
-      err=>{
-        document.getElementById('loc-text').innerHTML=`⚠ ${err.message} — <span style="color:#F0D080">Location is required for campus-restricted attendance</span>`;
-        const btn=document.getElementById('mark-btn');btn.disabled=false;btn.textContent='⚠ Retry attendance';
-      },
-      {enableHighAccuracy:true,timeout:10000}
-    );
-  } else if(!navigator.geolocation) {
-    const info=document.getElementById('loc-text');if(info)info.textContent='This browser does not support location. Use a browser with location access to mark attendance.';
-    const btn=document.getElementById('mark-btn');if(btn){btn.disabled=true;btn.textContent='Location required';}
+/* ── Device UUID: stable fingerprint across localStorage, cookie, IndexedDB ── */
+function _setCookie(name, value, days) {
+  const maxAge = Math.min(days * 86400, 34560000); // cap ~400 days (Chrome limit)
+  document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Strict`;
+}
+function _getCookie(name) {
+  return (document.cookie.split('; ').find(r => r.startsWith(name + '=')) || '').split('=')[1] || null;
+}
+function _uuidv4() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+}
+function getDeviceUUID() {
+  const KEY = 'ushss_device_id';
+  let id = localStorage.getItem(KEY) || _getCookie(KEY);
+  if (!id) {
+    id = _uuidv4();
+    localStorage.setItem(KEY, id);
+    _setCookie(KEY, id, 400);
+    // Also write to IndexedDB (fire-and-forget)
+    try {
+      const req = indexedDB.open('ushss_db', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+      req.onsuccess = e => {
+        const tx = e.target.result.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(id, KEY);
+      };
+    } catch(_) {}
+  } else {
+    // Ensure all three stores are in sync
+    localStorage.setItem(KEY, id);
+    _setCookie(KEY, id, 400);
   }
+  return id;
+}
+// Attempt to recover UUID from IndexedDB if localStorage/cookie empty
+function _syncUUIDFromIDB() {
+  try {
+    const req = indexedDB.open('ushss_db', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+    req.onsuccess = e => {
+      const tx = e.target.result.transaction('kv', 'readonly');
+      const get = tx.objectStore('kv').get('ushss_device_id');
+      get.onsuccess = () => {
+        if (get.result && !localStorage.getItem('ushss_device_id')) {
+          localStorage.setItem('ushss_device_id', get.result);
+          _setCookie('ushss_device_id', get.result, 400);
+        }
+      };
+    };
+  } catch(_) {}
+}
+_syncUUIDFromIDB();
+
+/* ATTENDANCE STATUS CLARITY HELPERS */
+function showAttendanceSuccess(subjectName, markedAt, isPending = false, reason = '') {
+  const panel = document.getElementById('att-status-panel');
+  if(!panel) return;
+  panel.className = isPending ? 'att-status-panel active pending' : 'att-status-panel active success';
+  
+  const icon = document.getElementById('att-status-icon');
+  const title = document.getElementById('att-status-title');
+  const badge = document.getElementById('att-status-badge');
+  const desc = document.getElementById('att-status-desc');
+  const reasonBox = document.getElementById('att-reason-box');
+  const reasonText = document.getElementById('att-reason-text');
+  const advice = document.getElementById('att-action-advice');
+  const meta = document.getElementById('att-status-meta');
+  
+  if (isPending) {
+    if(icon) icon.textContent = '⏳';
+    if(title) title.textContent = 'Submitted — Pending Approval';
+    if(badge) { badge.textContent = 'PENDING REVIEW'; }
+    if(desc) desc.textContent = 'Your attendance was received by the system, but requires instructor approval.';
+    if(reasonBox) {
+      reasonBox.style.display = 'block';
+      if(reasonText) reasonText.textContent = reason || 'Attendance window closed (Late check-in) or verification flag raised.';
+    }
+    if(advice) {
+      advice.style.display = 'block';
+      advice.innerHTML = '👉 <strong>Action Required:</strong> Please inform your teacher inside the classroom so they can approve your check-in from their faculty portal.';
+    }
+  } else {
+    if(icon) icon.textContent = '✅';
+    if(title) title.textContent = 'Attendance Successfully Recorded!';
+    if(badge) { badge.textContent = 'PRESENT'; }
+    if(desc) desc.textContent = `Your attendance for "${subjectName || 'Class'}" has been successfully recorded in the official register.`;
+    if(reasonBox) reasonBox.style.display = 'none';
+    if(advice) {
+      advice.style.display = 'block';
+      advice.innerHTML = '🎉 <strong>Status: Confirmed.</strong> You are officially marked present. You do not need to do anything else.';
+    }
+  }
+
+  if(meta) {
+    meta.style.display = 'flex';
+    const timeDisplay = markedAt ? new Date(markedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    meta.innerHTML = `
+      <span>🕒 Timestamp: ${timeDisplay}</span>
+      <span>🔒 Verification: Physical GPS classroom anchor verified</span>
+    `;
+  }
+
+  const btn = document.getElementById('mark-btn');
+  if(btn) {
+    btn.disabled = true;
+    btn.style.display = 'block';
+    btn.style.background = isPending ? 'rgba(211,84,0,.25)' : 'rgba(39,174,96,.25)';
+    btn.style.color = isPending ? '#F5B041' : '#6EE89A';
+    btn.style.border = isPending ? '1px solid rgba(243,156,18,.4)' : '1px solid rgba(110,232,154,.4)';
+    btn.textContent = isPending ? '⏳ Submitted (Pending Teacher Approval)' : '✅ Attendance Recorded (Present)';
+  }
+}
+
+function showAttendanceError(reasonMessage, adviceMessage = '') {
+  const panel = document.getElementById('att-status-panel');
+  if(!panel) return;
+  panel.className = 'att-status-panel active error';
+  
+  const icon = document.getElementById('att-status-icon');
+  const title = document.getElementById('att-status-title');
+  const badge = document.getElementById('att-status-badge');
+  const desc = document.getElementById('att-status-desc');
+  const reasonBox = document.getElementById('att-reason-box');
+  const reasonText = document.getElementById('att-reason-text');
+  const advice = document.getElementById('att-action-advice');
+  const meta = document.getElementById('att-status-meta');
+  
+  if(icon) icon.textContent = '❌';
+  if(title) title.textContent = 'Attendance NOT Recorded';
+  if(badge) { badge.textContent = 'FAILED'; }
+  if(desc) desc.textContent = 'Your attendance could not be saved to the college register.';
+  
+  if(reasonBox) {
+    reasonBox.style.display = 'block';
+    if(reasonText) reasonText.textContent = reasonMessage || 'Unknown verification error occurred.';
+  }
+  
+  let defaultAdvice = adviceMessage;
+  const lower = (reasonMessage || '').toLowerCase();
+  if(!defaultAdvice) {
+    if(lower.includes('boundary') || lower.includes('outside') || lower.includes('away')) {
+      defaultAdvice = '📍 <strong>How to fix:</strong> You must be physically inside the classroom. Ensure your mobile/laptop Wi-Fi is turned on for better GPS accuracy, tap "🔄 Refresh GPS" above, and click "Retry Marking Attendance". If you are inside the classroom and GPS still drifts, show this screen to your faculty.';
+    } else if(lower.includes('device') || lower.includes('another student')) {
+      defaultAdvice = '📱 <strong>How to fix:</strong> Proxy marking is blocked. Each student must use their own personal device/browser.';
+    } else if(lower.includes('closed')) {
+      defaultAdvice = '⏰ <strong>How to fix:</strong> The attendance window was closed by the faculty. Please ask your instructor for a late manual check-in.';
+    } else if(lower.includes('location') || lower.includes('permission')) {
+      defaultAdvice = '🌐 <strong>How to fix:</strong> Browser location permission is blocked. Tap the settings/lock icon next to the address bar, allow location access, and click "Refresh GPS".';
+    } else if(lower.includes('already')) {
+      defaultAdvice = 'ℹ️ <strong>Note:</strong> Your attendance was already recorded for this session. You do not need to mark it again.';
+    } else {
+      defaultAdvice = '💬 <strong>Next Step:</strong> Check your connection and click "Retry Marking Attendance". If this error continues, inform your faculty.';
+    }
+  }
+
+  if(advice) {
+    advice.style.display = 'block';
+    advice.innerHTML = defaultAdvice;
+  }
+  if(meta) {
+    meta.style.display = 'flex';
+    meta.innerHTML = `<span>⚠️ Attempted at: ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>`;
+  }
+
+  const btn = document.getElementById('mark-btn');
+  if(btn) {
+    btn.disabled = false;
+    btn.style.display = 'block';
+    btn.style.background = 'linear-gradient(135deg, #c0392b, #962d22)';
+    btn.style.color = '#fff';
+    btn.style.border = '1px solid rgba(235,87,87,.6)';
+    btn.textContent = '🔄 Retry Marking Attendance';
+  }
+}
+
+/* GPS & ATTENDANCE ACTIONS */
+function refreshLocation(interactive = false){
+  const locText = document.getElementById('loc-text');
+  const btn = document.getElementById('mark-btn');
+  if(locText) locText.innerHTML = '⏳ Acquiring high-accuracy GPS coordinates…';
+  if(btn && !btn.disabled && btn.textContent !== 'Submitting…' && !btn.textContent.includes('Recorded')) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Verifying location…';
+  }
+
+  if(!navigator.geolocation) {
+    if(locText) locText.innerHTML = '⚠ This browser does not support geolocation. Please use a mobile phone or modern browser.';
+    if(btn) { btn.disabled = true; btn.textContent = 'Location Unsupported'; }
+    showAttendanceError('Browser geolocation is not supported on this device.', 'Please open the portal in Safari or Chrome on your mobile phone or laptop.');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      locOk = true;
+      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      const accInfo = acc ? ` (±${acc}m accuracy)` : '';
+      if(locText) {
+        locText.innerHTML = `✅ Lat: ${userLat.toFixed(4)}, Lng: ${userLng.toFixed(4)}${accInfo} — <span style="color:#6EE89A">Classroom boundary check ready</span>`;
+      }
+      
+      const active = DB.liveSessions[0];
+      if(active && active.already_marked) {
+        showAttendanceSuccess(active.subject, active.marked_at, active.review_status === 'pending');
+      } else {
+        if(btn && !btn.textContent.includes('Recorded')) {
+          btn.disabled = false;
+          btn.style.display = 'block';
+          btn.style.background = 'linear-gradient(135deg,var(--gold),var(--gold-l))';
+          btn.style.color = 'var(--maroon-d)';
+          btn.style.border = '1px solid transparent';
+          btn.textContent = '📍 Mark Myself Present';
+        }
+      }
+      if(interactive) toast(`GPS location updated${accInfo}`, 'ok');
+    },
+    err => {
+      locOk = false;
+      const msg = err.message || 'Location permission denied or unavailable';
+      if(locText) {
+        locText.innerHTML = `⚠ <span style="color:#FF7675">${esc(msg)}</span> — <span style="color:#F0D080">Location required for classroom verification</span>`;
+      }
+      if(btn && !btn.textContent.includes('Recorded')) {
+        btn.disabled = false;
+        btn.style.display = 'block';
+        btn.style.background = 'linear-gradient(135deg, #c0392b, #962d22)';
+        btn.style.color = '#fff';
+        btn.textContent = '⚠ Enable Location & Retry';
+      }
+      showAttendanceError(
+        `Location error: ${msg}`,
+        '📍 <strong>Action Needed:</strong> Click the padlock/settings icon next to your browser address bar → set Location to "Allow" → Click "Refresh GPS" above.'
+      );
+      if(interactive) toast('Location access failed: ' + msg, 'err');
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
+function initAttPage(){
+  refreshLocation(false);
   renderAttLog();
 }
 
 async function markMyAttendance(){
-  if(!activeSessionId){toast('No active attendance session','err');return;}
-  const btn=document.getElementById('mark-btn');btn.disabled=true;btn.textContent='Submitting…';
-  try{
-    const r=await fetch('/api/student/attendance/mark',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},
-      body:JSON.stringify({session_id:activeSessionId,...(locOk?{latitude:userLat,longitude:userLng}:{})})
-    });
-    const d=await r.json();
-    if(!r.ok)throw new Error(d.detail||'Attendance could not be marked');
-    toast(d.message||'Attendance marked!','ok');
-    btn.style.display='none';
-    const detailEl = document.getElementById('mark-detail');
-    if (detailEl) {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      detailEl.textContent = `Present at ${timeStr}${d.location_verified ? ' · Location verified' : ' · Marked'}`;
+  if(!activeSessionId){
+    toast('No active attendance session currently open', 'err');
+    showAttendanceError('No active attendance session found. Please wait for your instructor to open the session.');
+    return;
+  }
+  
+  const btn = document.getElementById('mark-btn');
+  if(btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Verifying & Submitting Attendance…';
+  }
+
+  try {
+    const deviceUUID = getDeviceUUID();
+    const payload = { session_id: activeSessionId, device_uuid: deviceUUID };
+    if(locOk && userLat !== null && userLng !== null){
+      payload.latitude = userLat;
+      payload.longitude = userLng;
     }
-    document.getElementById('mark-success').style.display='block';
+
+    const r = await fetch('/api/student/attendance/mark', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + localStorage.getItem('ushss_token'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const d = await r.json().catch(() => ({}));
+
+    if(!r.ok) {
+      const errorMsg = d.detail || 'Attendance could not be recorded.';
+      throw new Error(errorMsg);
+    }
+
+    const active = DB.liveSessions.find(s => s.id === activeSessionId) || DB.liveSessions[0] || {};
+    const subjectName = active.subject || 'Class';
+    
+    if(d.pending) {
+      toast('Attendance submitted — Pending teacher approval', 'warn');
+      showAttendanceSuccess(subjectName, new Date().toISOString(), true, d.message);
+    } else {
+      toast('✅ ' + (d.message || 'Attendance marked as PRESENT!'), 'ok');
+      showAttendanceSuccess(subjectName, new Date().toISOString(), false);
+    }
+
+    if(active) {
+      active.already_marked = true;
+      active.my_status = 'present';
+      active.review_status = d.pending ? 'pending' : 'approved';
+      active.marked_at = new Date().toISOString();
+    }
+
     await loadPortalData();
     renderAttLog();
-  }catch(e){
-    toast(e.message,'err');
-    btn.disabled=false;
-    btn.textContent='Mark Myself Present';
+
+  } catch(e) {
+    console.error('Mark attendance error:', e);
+    toast('Attendance not recorded: ' + (e.message || 'Unknown error'), 'err');
+    showAttendanceError(e.message || 'Could not record attendance');
   }
 }
+
 function renderAttLog(){
-  const el=document.getElementById('att-log');
-  if(!el)return;
-  el.innerHTML=DB.attLog.slice(0,5).map(a=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <span class="badge ${a.status==='present'?'badge-green':'badge-red'}">${esc(a.status.toUpperCase())}</span>
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${esc(a.subject)}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${esc(a.date)}${a.topic ? ' · ' + esc(a.topic) : ''}</div>
+  const el = document.getElementById('att-log');
+  if(!el) return;
+  if(!DB.attLog.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:14px 0;text-align:center">No attendance records found yet.</div>';
+    return;
+  }
+  el.innerHTML = DB.attLog.slice(0, 5).map(a => {
+    let badgeClass = 'badge-red';
+    let statusLabel = 'ABSENT';
+    if(a.status === 'present') {
+      if(a.review_status === 'pending') {
+        badgeClass = 'badge-amber';
+        statusLabel = 'PENDING REVIEW';
+      } else {
+        badgeClass = 'badge-green';
+        statusLabel = 'PRESENT';
+      }
+    }
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span class="badge ${badgeClass}">${statusLabel}</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:var(--ink-mid)">${esc(a.subject)}</div>
+          <div style="font-size:10px;color:var(--muted);font-family:var(--mono)">${esc(a.date)}${a.topic ? ' · ' + esc(a.topic) : ''}${a.teacher && a.teacher !== '—' ? ' · ' + esc(a.teacher) : ''}</div>
+        </div>
+        ${a.loc && a.loc !== '—' ? `<span style="font-size:9px;color:var(--green);font-family:var(--mono)">📍 ${esc(a.loc)}</span>` : ''}
       </div>
-      ${a.loc!=='—'?`<span style="font-size:9px;color:var(--green);font-family:var(--mono)">📍 ${esc(a.loc)}</span>`:''}
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 /* ANNOUNCEMENTS */
@@ -890,16 +1244,65 @@ async function loadPortalData(){
   setValue('profile-full-name', profile.full_name);
   setValue('profile-email', profile.email);
   setValue('profile-phone', profile.phone);
-  setValue('profile-programme', profile.programme);
-  setValue('profile-batch', profile.batch);
+  // Populate profile cascades from stored programme data
+  (function loadProfileCascade() {
+    const storedProg = profile.programme || '';
+    let inferredType = '';
+    if (storedProg.startsWith('B.A.')) inferredType = 'B.A. (Hons.)';
+    else if (storedProg.startsWith('M.A.')) inferredType = 'M.A.';
+    else if (storedProg.startsWith('Ph.D.')) inferredType = 'Ph.D.';
+    const ptEl = document.getElementById('profile-prog-type');
+    if (ptEl) { ptEl.value = inferredType; profileOnProgTypeChange(); }
+    setValue('profile-programme', storedProg);
+    // populate batch options
+    profilePopulateBatch(inferredType, profile.batch||'');
+    // populate semester options
+    profilePopulateSemester(inferredType, profile.semester||'');
+  })();
   DB.announcements=(anns||[]).map(a=>({id:a.id,title:a.title,body:a.body||'',type:a.priority==='urgent'?'urgent':a.priority==='important'?'reminder':'info',from:a.target||'USHSS',ts:a.ts||'',read:false}));
   DB.assignments=(assignments||[]).map(a=>({id:a.id,title:a.title,desc:a.description||'',subject:a.subject||'',due:a.due_date||'',file:a.file_name||null,posted:a.posted_at?String(a.posted_at).slice(0,10):''}));
   DB.materials=(materials||[]).map(m=>({id:m.id,title:m.title,subject:m.subject||'',type:(m.file_name||'').split('.').pop()||'pdf',size:m.size||'',ts:m.uploaded_at?String(m.uploaded_at).slice(0,10):'',desc:m.description||'',file_url:m.file_url||'',by:m.uploaded_by||''}));
-  DB.attLog=(history.records||[]).map(r=>{const session=r.attendance_sessions||{}, s=session.timetable_slots||{}, faculty=session.users||{}; return {id:r.id,date:session.date||'',subject:s.subject||'',topic:'',teacher:faculty.full_name||'—',status:r.status,loc:s.room||'—'};});
+  DB.attLog=(history.records||[]).map(r=>{
+    const session=r.attendance_sessions||{};
+    const s=session.timetable_slots||{};
+    const faculty=session.users||{};
+    return {
+      id: r.id,
+      date: session.date || (r.marked_at ? String(r.marked_at).slice(0,10) : ''),
+      subject: s.subject || 'Class Session',
+      topic: s.room ? 'Room ' + s.room : '',
+      teacher: faculty.full_name || '—',
+      status: r.status,
+      review_status: r.review_status || 'approved',
+      loc: s.room || '—'
+    };
+  });
   attendanceSummary=history;
   DB.rawTimetable=timetable||[];
   DB.timetable=buildTimetable(timetable||[]);
-  DB.liveSessions=(openSessions||[]).map(s=>({id:s.id,cls:(s.timetable_slots||{}).subject||'Class',topic:'',teacher:(s.users||{}).full_name||'',endsIn:0,slot_id:s.slot_id}));
+  DB.liveSessions=(openSessions||[]).map(s=>{
+    const slot = s.timetable_slots || {};
+    const faculty = s.users || {};
+    const className = [slot.programme || (profile && profile.programme) || 'Class', slot.batch ? 'Batch ' + slot.batch : (profile && profile.batch ? 'Batch ' + profile.batch : ''), slot.section ? 'Sec ' + slot.section : ''].filter(Boolean).join(' · ');
+    const subjectName = slot.subject || 'Class Session';
+    const teacherName = faculty.full_name ? '👨‍🏫 ' + faculty.full_name : '👨‍🏫 Faculty Instructor';
+    const roomInfo = slot.room ? '📍 Room ' + slot.room : '';
+    return {
+      id: s.id,
+      cls: className,
+      subject: subjectName,
+      room: roomInfo,
+      topic: [subjectName, roomInfo].filter(Boolean).join(' · '),
+      teacher: teacherName,
+      slot_id: s.slot_id,
+      already_marked: !!s.already_marked,
+      my_status: s.my_status || null,
+      review_status: s.review_status || null,
+      marked_at: s.marked_at || null,
+      anchor_lat: s.anchor_lat,
+      anchor_lon: s.anchor_lon
+    };
+  });
   activeSessionId=DB.liveSessions[0]?.id||null;
   updatePortalUI();
   initDashboard();
@@ -926,7 +1329,24 @@ function updatePortalUI(){
   if (attStats) attStats.textContent = `${attendanceSummary.present||0} Present · ${attendanceSummary.absent||0} Absent`;
   const active=DB.liveSessions[0],no=document.getElementById('no-session'),yes=document.getElementById('has-session');
   if(no&&yes){no.style.display=active?'none':'block';yes.style.display=active?'block':'none';}
-  if(active){set('session-class',active.cls);set('session-subject',active.topic||active.cls);set('session-faculty',active.teacher||'Faculty');}
+  if(active){
+    set('session-class', active.cls || 'Active Class');
+    set('session-subject', active.topic || active.subject || 'Attendance Session');
+    set('session-faculty', active.teacher || 'Faculty');
+    const pill = document.getElementById('session-time-pill');
+    if(pill) pill.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    
+    // Always provide clarity if attendance for this session was already recorded!
+    if(active.already_marked) {
+      const isPending = active.review_status === 'pending';
+      showAttendanceSuccess(active.subject, active.marked_at, isPending, isPending ? 'Your attendance is pending teacher approval.' : '');
+    } else {
+      const panel = document.getElementById('att-status-panel');
+      if(panel && !panel.classList.contains('error')) {
+        panel.className = 'att-status-panel';
+      }
+    }
+  }
   updateCounts();
 }
 
@@ -953,12 +1373,54 @@ async function changeMyPassword(){
   }catch(e){toast(e.message,'err');}
 }
 
+// ── Profile page cascade helpers ──────────────────────────────────────────
+const PROFILE_USHSS_PROGRAMMES = {
+  "B.A. (Hons.)": { duration:4, semesters:8, courses:["B.A. (Hons.) English","B.A. (Hons.) Economics","B.A. (Hons.) History","B.A. (Hons.) Political Science","B.A. (Hons.) Psychology","B.A. (Hons.) Sociology","B.A. (Hons.) Hindi","B.A. (Hons.) Philosophy"] },
+  "M.A.": { duration:2, semesters:4, courses:["M.A. English","M.A. Economics","M.A. History","M.A. Political Science","M.A. Psychology","M.A. Sociology","M.A. Hindi","M.A. Philosophy"] },
+  "Ph.D.": { duration:3, semesters:6, courses:["Ph.D. Humanities","Ph.D. Social Sciences"] }
+};
+function profileOnProgTypeChange() {
+  const type = document.getElementById('profile-prog-type')?.value || '';
+  const prog = document.getElementById('profile-programme');
+  if (!prog) return;
+  prog.innerHTML = '<option value="">— Select Course —</option>';
+  if (type && PROFILE_USHSS_PROGRAMMES[type]) {
+    PROFILE_USHSS_PROGRAMMES[type].courses.forEach(c => { prog.add(new Option(c, c)); });
+  }
+  profilePopulateBatch(type, '');
+  profilePopulateSemester(type, '');
+}
+function profilePopulateBatch(progType, selected) {
+  const el = document.getElementById('profile-batch');
+  if (!el) return;
+  const data = PROFILE_USHSS_PROGRAMMES[progType];
+  const duration = data ? data.duration : 0;
+  const cur = new Date().getFullYear();
+  el.innerHTML = '<option value="">— Select Batch —</option>';
+  if (!duration) return;
+  for (let y = cur - duration + 1; y <= cur + 1; y++) {
+    const v = y + '-' + (y + duration);
+    el.add(new Option(y + '–' + (y + duration), v));
+  }
+  el.value = selected || '';
+}
+function profilePopulateSemester(progType, selected) {
+  const el = document.getElementById('profile-semester');
+  if (!el) return;
+  const data = PROFILE_USHSS_PROGRAMMES[progType];
+  const max = data ? data.semesters : 0;
+  el.innerHTML = '<option value="">— Select Semester —</option>';
+  for (let i = 1; i <= max; i++) el.add(new Option('Semester ' + i, String(i)));
+  el.value = selected ? String(selected) : '';
+}
+
 async function updateMyProfile(){
   const fullName = document.getElementById('profile-full-name')?.value || '';
   const email = document.getElementById('profile-email')?.value || '';
   const phone = document.getElementById('profile-phone')?.value || '';
   const programme = document.getElementById('profile-programme')?.value || '';
   const batch = document.getElementById('profile-batch')?.value || '';
+  const semester = document.getElementById('profile-semester')?.value || '';
 
   try {
     const token = localStorage.getItem('ushss_token');
@@ -973,7 +1435,8 @@ async function updateMyProfile(){
         email: email,
         phone: phone,
         programme: programme,
-        batch: batch
+        batch: batch,
+        semester: semester
       })
     });
     const data = await r.json().catch(() => ({}));

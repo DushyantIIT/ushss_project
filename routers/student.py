@@ -11,10 +11,10 @@ STUDENT / CR rights:
   ⛔ Open or close sessions — faculty only
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional
-from datetime import date as DateType, datetime, timezone
+from datetime import date as DateType, datetime, timezone, timedelta
 import math
 import os
 
@@ -148,14 +148,16 @@ def open_sessions(student: dict = Depends(require_student)):
 
     # Get open sessions for those slots
     sessions = sb.table("attendance_sessions").select(
-        "id, slot_id, date, opened_at, "
-        "timetable_slots(subject, day_of_week, start_time, end_time, room, section), "
+        "id, slot_id, faculty_id, date, opened_at, anchor_lat, anchor_lon, "
+        "timetable_slots(subject, day_of_week, start_time, end_time, room, section, programme, batch), "
         "users(full_name)"  # faculty who opened it
     ).eq("is_open", True).in_("slot_id", slot_ids).execute()
 
     today_str = str(DateType.today())
     raw_sessions = sessions.data or []
     result = []
+    slot_map = {s["id"]: s for s in slot_rows}
+
     for s in raw_sessions:
         s_date = str(s.get("date") or "")[:10]
         if s_date < today_str:
@@ -168,18 +170,36 @@ def open_sessions(student: dict = Depends(require_student)):
             except Exception:
                 pass
             continue
+
+        # Fallback slot enrichment for SQLite / missing nested joins
+        if not s.get("timetable_slots") and s.get("slot_id") in slot_map:
+            s["timetable_slots"] = slot_map[s["slot_id"]]
+        elif not s.get("timetable_slots") and s.get("slot_id"):
+            s_res = sb.table("timetable_slots").select("subject, day_of_week, start_time, end_time, room, section, programme, batch").eq("id", s["slot_id"]).limit(1).execute()
+            if s_res.data:
+                s["timetable_slots"] = s_res.data[0]
+
+        # Fallback faculty enrichment
+        if not s.get("users") and s.get("faculty_id"):
+            u_res = sb.table("users").select("full_name").eq("id", s["faculty_id"]).limit(1).execute()
+            if u_res.data:
+                s["users"] = u_res.data[0]
+
         result.append(s)
 
     # Batch query whether student marked attendance (avoid N+1)
     if result:
         sess_ids = [s["id"] for s in result]
-        recs = sb.table("attendance_records").select("session_id, status") \
+        recs = sb.table("attendance_records").select("session_id, status, review_status, marked_at, flags") \
                  .in_("session_id", sess_ids) \
                  .eq("student_id", student["id"]).execute().data or []
-        marked_map = {r["session_id"]: r["status"] for r in recs}
+        marked_map = {r["session_id"]: r for r in recs}
         for sess in result:
-            sess["already_marked"] = sess["id"] in marked_map
-            sess["my_status"] = marked_map.get(sess["id"])
+            rec = marked_map.get(sess["id"])
+            sess["already_marked"] = bool(rec)
+            sess["my_status"] = rec.get("status") if rec else None
+            sess["review_status"] = rec.get("review_status") if rec else None
+            sess["marked_at"] = rec.get("marked_at") if rec else None
 
     return result
 
@@ -189,95 +209,237 @@ def open_sessions(student: dict = Depends(require_student)):
 # ═══════════════════════════════════════════════════════════════
 
 class MarkAttendanceBody(BaseModel):
-    session_id: int
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    session_id:   int
+    latitude:     Optional[float] = None
+    longitude:    Optional[float] = None
+    gps_accuracy: Optional[float] = None   # browser-reported accuracy in metres
+    device_uuid:  Optional[str]  = None    # browser fingerprint UUID
+
+
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Return great-circle distance in metres between two lat/lon points."""
+    R = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    a  = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * R * math.asin(min(1.0, math.sqrt(a)))
+
+
+def _extract_subnet(ip: str) -> Optional[str]:
+    try:
+        parts = ip.split(".")
+        if len(parts) == 4:
+            return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
+    except Exception:
+        pass
+    return None
 
 
 @router.post("/attendance/mark", status_code=201, summary="Mark yourself present in an open session")
-def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_student)):
+def mark_attendance(body: MarkAttendanceBody, request: Request, student: dict = Depends(require_student)):
     """
-    Marks the student as PRESENT in the given open session.
-    - Session must be open
-    - Session must be on today's date
-    - The session's slot must belong to the student's programme+batch
-    - Student cannot mark twice for the same session
+    Multi-layer anti-cheating attendance mark:
+    1. Session must be open and today
+    2. 5-minute time window (unless teacher disabled it)
+    3. GPS 3-tier zone check against dynamic classroom anchor
+    4. Device UUID conflict check (one device per session)
+    5. Subnet match (soft signal)
+    6. Weighted suspicion score → instant present OR review queue
     """
-    # 1. Verify session exists and is open
+    # ── Fetch session with all anti-cheating fields ──────────────────────────
     session = sb.table("attendance_sessions").select(
-        "id, is_open, date, slot_id, timetable_slots(programme, batch, section, subject)"
+        "id, is_open, date, opened_at, slot_id, faculty_id, "
+        "anchor_lat, anchor_lon, anchor_accuracy, "
+        "time_limit_disabled, teacher_subnet, session_cap, "
+        "timetable_slots(programme, batch, section, subject, room)"
     ).eq("id", body.session_id).limit(1).execute()
 
     if not session.data:
-        raise HTTPException(404, "Attendance session not found")
+        raise HTTPException(404, f"Attendance session #{body.session_id} not found. Please confirm if your instructor has opened the session.")
 
     sess = session.data[0]
     if not sess["is_open"]:
-        raise HTTPException(400, "This attendance session is closed. You can no longer mark attendance.")
+        raise HTTPException(400, "This attendance session has already been closed by the faculty. Attendance could not be recorded.")
 
-    # 1b. Verify the session is on today's date (prevent marking stale open sessions)
-    sess_date = str(sess.get("date") or "")[:10]
-    today_str = str(DateType.today())
+    # Verify today's date
+    sess_date  = str(sess.get("date") or "")[:10]
+    today_str  = str(DateType.today())
     if sess_date != today_str:
-        raise HTTPException(400, f"This session is for date {sess_date}. Attendance can only be marked on the day of the class ({today_str}).")
+        raise HTTPException(400, f"This session is for {sess_date}. Attendance can only be recorded on the day of the class.")
 
-    # 2. Verify the session belongs to the student's class
-    slot_prog  = (sess.get("timetable_slots") or {}).get("programme")
-    slot_batch = (sess.get("timetable_slots") or {}).get("batch")
-    slot_sec   = (sess.get("timetable_slots") or {}).get("section")
+    # Verify student belongs to this class
+    slot_info = sess.get("timetable_slots")
+    if not slot_info and sess.get("slot_id"):
+        slot_res = sb.table("timetable_slots").select("programme, batch, section, subject, room").eq("id", sess["slot_id"]).limit(1).execute()
+        if slot_res.data:
+            slot_info = slot_res.data[0]
+            sess["timetable_slots"] = slot_info
+    slot_info = slot_info or {}
+    slot_prog  = slot_info.get("programme")
+    slot_batch = slot_info.get("batch")
+    slot_sec   = slot_info.get("section")
     if slot_prog != student.get("programme") or slot_batch != student.get("batch"):
-        raise HTTPException(403, "This session is not for your class.")
+        raise HTTPException(403, f"Attendance not recorded: This session is for '{slot_prog} ({slot_batch})', but your enrolled programme is '{student.get('programme')} ({student.get('batch')})'.")
     if slot_sec and student.get("section") and slot_sec != student.get("section"):
-        raise HTTPException(403, f"This session is for Section {slot_sec}, but you are in Section {student.get('section')}.")
+        raise HTTPException(403, f"Attendance not recorded: This session is for Section {slot_sec}, but you are registered in Section {student.get('section')}.")
 
-    # Enforce the campus geofence on the server whenever configured in Render.
-    # Do not trust a browser-side "within campus" label.
-    campus_lat = os.getenv("CAMPUS_LATITUDE", "28.595016")
-    campus_lon = os.getenv("CAMPUS_LONGITUDE", "77.018942")
-    location_verified = False
-    if campus_lat and campus_lon:
+    # Check if already marked
+    existing = sb.table("attendance_records") \
+                 .select("id, status, review_status, marked_at") \
+                 .eq("session_id", body.session_id) \
+                 .eq("student_id", student["id"]).limit(1).execute()
+    if existing.data:
+        rec = existing.data[0]
+        status_disp = rec.get("status", "present").upper()
+        if rec.get("review_status") == "pending":
+            raise HTTPException(409, f"Attendance already submitted and is currently PENDING teacher approval.")
+        raise HTTPException(409, f"Attendance has already been recorded as '{status_disp}' for this session.")
+
+    # Check session cap
+    if sess.get("session_cap"):
+        present_count_res = sb.table("attendance_records") \
+            .select("id", count="exact") \
+            .eq("session_id", body.session_id) \
+            .eq("status", "present").execute()
+        present_count = present_count_res.count or len(present_count_res.data or [])
+        if present_count >= sess["session_cap"]:
+            raise HTTPException(403, f"Classroom headcount capacity ({sess['session_cap']} students) has been reached. Please ask your instructor for manual check-in.")
+
+    flags:    list[str] = []
+    score:    int       = 0
+    gps_zone: int       = 0
+    gps_distance: Optional[float] = None
+    subnet_match: Optional[bool]  = None
+    time_delta_seconds: int       = 0
+    review_status: str            = "approved"
+
+    # ── GATE 1: 5-minute time window ────────────────────────────────────────
+    opened_at_str = sess.get("opened_at") or ""
+    if opened_at_str and not sess.get("time_limit_disabled", False):
+        try:
+            opened_dt = datetime.fromisoformat(opened_at_str.replace("Z", "+00:00"))
+            now_utc   = datetime.now(timezone.utc)
+            elapsed   = (now_utc - opened_dt).total_seconds()
+            time_delta_seconds = int(max(0, elapsed))
+            if elapsed > 300:  # 5 minutes
+                flags.append("LATE")
+                score += 30
+                review_status = "pending"
+        except Exception:
+            pass
+
+    # ── GATE 2: GPS 3-tier zone (server-side) ───────────────────────────────
+    anchor_lat = sess.get("anchor_lat")
+    anchor_lon = sess.get("anchor_lon")
+    # Fall back to env-var campus centre if no classroom anchor set yet
+    if anchor_lat is None:
+        try:
+            anchor_lat = float(os.getenv("CAMPUS_LATITUDE", ""))
+            anchor_lon = float(os.getenv("CAMPUS_LONGITUDE", ""))
+        except (ValueError, TypeError):
+            anchor_lat = anchor_lon = None
+
+    if anchor_lat is not None and anchor_lon is not None:
         if body.latitude is None or body.longitude is None:
             raise HTTPException(400, "Location permission is required to mark attendance.")
         if not (-90 <= body.latitude <= 90 and -180 <= body.longitude <= 180):
             raise HTTPException(400, "Invalid location coordinates.")
-        try:
-            lat0, lon0 = float(campus_lat), float(campus_lon)
-            radius = max(50.0, float(os.getenv("CAMPUS_RADIUS_METERS", "500")))
-        except ValueError:
-            raise HTTPException(503, "Campus attendance location is misconfigured. Contact the administrator.")
-        earth_radius = 6371000.0
-        p1, p2 = math.radians(lat0), math.radians(body.latitude)
-        dp = math.radians(body.latitude - lat0)
-        dl = math.radians(body.longitude - lon0)
-        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-        distance = 2 * earth_radius * math.asin(min(1.0, math.sqrt(a)))
-        if distance > radius:
-            raise HTTPException(403, f"You appear to be outside the campus attendance radius ({int(distance)} m from campus).")
-        location_verified = True
+        gps_distance = _haversine_m(anchor_lat, anchor_lon, body.latitude, body.longitude)
+        if gps_distance > 150:
+            raise HTTPException(
+                403,
+                f"Attendance not recorded: You are outside the classroom boundary ({int(gps_distance)} m away; limit is 150 m). "
+                "Classroom presence is required to record attendance. Please move closer and try again."
+            )
+        elif gps_distance > 50:
+            gps_zone = 1
+            flags.append("GPS_DRIFT")
+            score += 20
 
-    # 3. Check if already marked
-    existing = sb.table("attendance_records") \
-                 .select("id, status") \
-                 .eq("session_id", body.session_id) \
-                 .eq("student_id", student["id"]).limit(1).execute()
-    if existing.data:
-        raise HTTPException(409, f"You have already marked attendance as '{existing.data[0]['status']}'.")
+    # ── GATE 3: Device UUID conflict (one device per session) ────────────────
+    device_uuid = (body.device_uuid or "").strip() or None
+    if device_uuid:
+        conflict = sb.table("attendance_records") \
+                     .select("id, student_id") \
+                     .eq("session_id", body.session_id) \
+                     .eq("device_uuid", device_uuid) \
+                     .neq("student_id", student["id"]) \
+                     .limit(1).execute()
+        if conflict.data:
+            raise HTTPException(
+                403,
+                "Another student has already used this device for today's session. "
+                "Each student must use their own device."
+            )
+        # FRESH_PROFILE check: student has history but all 3 stores were blank
+        history = sb.table("attendance_records") \
+                    .select("device_uuid") \
+                    .eq("student_id", student["id"]) \
+                    .not_.is_("device_uuid", "null") \
+                    .limit(5).execute().data or []
+        # Only flag if student has prior records with a UUID (not a brand-new user)
+        if history and device_uuid not in [h["device_uuid"] for h in history]:
+            flags.append("NEW_DEVICE")
+            score += 10
+    else:
+        # UUID is blank — only flag if student has prior UUID history (not day-one)
+        history = sb.table("attendance_records") \
+                    .select("device_uuid") \
+                    .eq("student_id", student["id"]) \
+                    .not_.is_("device_uuid", "null") \
+                    .limit(3).execute().data or []
+        if history:
+            flags.append("FRESH_PROFILE")
+            score += 15
 
-    # 4. Insert record with coordinates and race condition safety
-    rec_payload = {
-        "session_id": body.session_id,
-        "student_id": student["id"],
-        "status":     "present",
+    # ── PASSIVE: Subnet match (soft bonus/signal only) ───────────────────────
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or request.headers.get("X-Real-IP", "")
+        or (request.client.host if request.client else "")
+    )
+    student_subnet  = _extract_subnet(client_ip) if client_ip else None
+    teacher_subnet  = sess.get("teacher_subnet")
+    if teacher_subnet and student_subnet:
+        subnet_match = (student_subnet == teacher_subnet)
+        if not subnet_match:
+            score += 15
+    # if teacher was on cellular, teacher_subnet is None → no penalty
+
+    # ── Time delta score (late submission even within window) ─────────────────
+    if time_delta_seconds > 240:   # > 4 min inside window
+        score += 10
+
+    score = min(100, score)
+
+    # ── Route to approved or pending ─────────────────────────────────────────
+    if score >= 50 and review_status != "pending":
+        review_status = "pending"
+
+    # ── Build and insert record ───────────────────────────────────────────────
+    rec_payload: dict = {
+        "session_id":         body.session_id,
+        "student_id":         student["id"],
+        "status":             "present",
+        "device_uuid":        device_uuid,
+        "gps_zone":           gps_zone,
+        "gps_distance":       gps_distance,
+        "subnet_match":       subnet_match,
+        "suspicion_score":    float(score),
+        "flags":              ",".join(flags) if flags else None,
+        "review_status":      review_status,
+        "time_delta_seconds": time_delta_seconds,
     }
     if body.latitude is not None:
-        rec_payload["latitude"] = float(body.latitude)
+        rec_payload["latitude"]  = float(body.latitude)
     if body.longitude is not None:
         rec_payload["longitude"] = float(body.longitude)
 
     try:
         res = sb.table("attendance_records").insert(rec_payload).execute()
     except Exception as exc:
-        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower() or "already exists" in str(exc).lower():
+        if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
             raise HTTPException(409, "You have already marked attendance for this session.")
         print(f"ATTENDANCE INSERT ERROR: session={body.session_id} student={student['id']} err={exc!r}")
         raise HTTPException(500, "Could not record attendance. Please try again.")
@@ -285,14 +447,30 @@ def mark_attendance(body: MarkAttendanceBody, student: dict = Depends(require_st
     sb.table("audit_log").insert({
         "user_id": student["id"],
         "action":  "MARK_ATTENDANCE",
-        "detail":  f"Student '{student['username']}' marked present in session id={body.session_id}",
+        "detail":  (
+            f"Student '{student['username']}' marked present in session id={body.session_id} "
+            f"[score={score}, flags={','.join(flags) or 'none'}, review={review_status}]"
+        ),
     }).execute()
 
     subject = (sess.get("timetable_slots") or {}).get("subject", "")
+    if review_status == "pending":
+        if "LATE" in flags:
+            msg = "Attendance window has closed. Ask your teacher to accept your late check-in."
+        else:
+            msg = "Attendance submitted. Pending teacher approval."
+        return {
+            "message": msg,
+            "pending": True,
+            "record":  res.data[0],
+        }
+
     return {
-        "message": f"Attendance marked as PRESENT for '{subject}'.",
-        "location_verified": location_verified,
-        "record":  res.data[0],
+        "message":           f"Attendance marked as PRESENT for '{subject}'.",
+        "pending":           False,
+        "suspicion_score":   score,
+        "gps_zone":          gps_zone,
+        "record":            res.data[0],
     }
 
 
@@ -310,11 +488,29 @@ def attendance_history(
     with subject name, date, and present/absent status.
     """
     res = sb.table("attendance_records").select(
-        "id, status, marked_at, "
-        "attendance_sessions(date, timetable_slots(subject, start_time, end_time, room))"
+        "id, session_id, status, review_status, marked_at, latitude, longitude, "
+        "attendance_sessions(id, slot_id, faculty_id, date, timetable_slots(subject, start_time, end_time, room), users(full_name))"
     ).eq("student_id", student["id"]).order("marked_at", desc=True).execute()
 
     records = res.data or []
+
+    # Fallback enrichment for nested joins (SQLite / missing foreign key resolution)
+    for r in records:
+        sess = r.get("attendance_sessions")
+        if not sess and r.get("session_id"):
+            s_res = sb.table("attendance_sessions").select("id, slot_id, faculty_id, date").eq("id", r["session_id"]).limit(1).execute()
+            if s_res.data:
+                sess = s_res.data[0]
+                r["attendance_sessions"] = sess
+        if sess:
+            if not sess.get("timetable_slots") and sess.get("slot_id"):
+                sl_res = sb.table("timetable_slots").select("subject, start_time, end_time, room").eq("id", sess["slot_id"]).limit(1).execute()
+                if sl_res.data:
+                    sess["timetable_slots"] = sl_res.data[0]
+            if not sess.get("users") and sess.get("faculty_id"):
+                u_res = sb.table("users").select("full_name").eq("id", sess["faculty_id"]).limit(1).execute()
+                if u_res.data:
+                    sess["users"] = u_res.data[0]
 
     if subject:
         records = [r for r in records if

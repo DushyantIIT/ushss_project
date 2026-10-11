@@ -44,14 +44,20 @@ nav.scrolled{box-shadow:0 2px 20px rgba(107,26,26,0.08)}
 .nav-title{display:flex;flex-direction:column}
 .nav-title span:first-child{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:var(--maroon);letter-spacing:.3px}
 .nav-title span:last-child{font-size:10px;color:var(--ink-muted);letter-spacing:.5px;text-transform:uppercase}
-.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links{display:flex;align-items:center;gap:1.75rem;list-style:none}
 .nav-links a{font-size:13px;color:var(--ink-mid);text-decoration:none;letter-spacing:.3px;transition:color .2s;position:relative}
 .nav-links a::after{content:'';position:absolute;bottom:-4px;left:0;right:0;height:1.5px;background:var(--gold);transform:scaleX(0);transition:transform .25s}
 .nav-links a:hover{color:var(--maroon)}.nav-links a:hover::after{transform:scaleX(1)}
-.nav-cta{padding:8px 18px;background:var(--maroon);color:var(--gold-light)!important;border-radius:4px;font-size:12px!important;letter-spacing:.6px!important;text-transform:uppercase}
+.nav-cta{height:36px;padding:0 18px;background:var(--maroon);color:var(--gold-light)!important;border-radius:4px;font-size:12px!important;letter-spacing:.6px!important;text-transform:uppercase;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;transition:all .2s;box-sizing:border-box}
+.nav-cta:hover{background:var(--maroon-deep)}
 .nav-cta::after{display:none!important}
-.nav-login-btn{padding:8px 16px;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);border-radius:4px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.nav-login-btn{height:36px;padding:0 18px;border:1px solid var(--border);background:var(--white);color:var(--maroon-deep);border-radius:4px;font-size:12px;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;display:inline-flex;align-items:center;justify-content:center;transition:all .2s;box-sizing:border-box}
 .nav-login-btn:hover{border-color:var(--gold);color:var(--maroon)}
+.nav-portal-btn{height:36px;padding:0 18px;background:var(--maroon-deep);color:var(--gold-light)!important;border:1px solid var(--gold);border-radius:4px;font-size:12px!important;letter-spacing:.6px!important;text-transform:uppercase;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;transition:all .2s;box-sizing:border-box;white-space:nowrap}
+.nav-portal-btn:hover{background:var(--maroon);border-color:var(--gold-light);transform:translateY(-1px)}
+.nav-portal-btn::after{display:none!important}
+.nav-signout-btn{height:36px;padding:0 12px;background:transparent;color:var(--ink-muted);border:1px solid rgba(107,26,26,.25);border-radius:4px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-weight:500;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;box-sizing:border-box;white-space:nowrap}
+.nav-signout-btn:hover{color:var(--maroon);border-color:var(--maroon);background:rgba(107,26,26,.04)}
 .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
 .hamburger span{width:22px;height:1.5px;background:var(--maroon);display:block;transition:all .3s}
 
@@ -330,7 +336,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
     <li><a href="#faculty">Faculty</a></li>
     <li><a href="#research">Research</a></li>
     <li><a href="#news">News</a></li>
-    <li><button class="nav-login-btn" type="button" onclick="openPortalLogin()">Login</button></li>
+    <li id="nav-auth-item"><button class="nav-login-btn" type="button" onclick="openPortalLogin()">Login</button></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
   </ul>
   <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
@@ -395,51 +401,54 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
           <label class="portal-label">Phone</label>
           <input class="portal-input" id="reg-phone" type="tel" placeholder="+91 98xxx xxxxx"/>
         </div>
-        <div id="reg-row-programme">
-          <label class="portal-label">Programme</label>
-          <select class="portal-reg-select" id="reg-prog">
-            <option value="">— Select —</option>
-            <option>B.A. </option>
-            <option>M.A. </option>
-            <option>Ph.D.</option>
+        <div id="reg-row-programme" class="full">
+          <label class="portal-label">Programme <span style="color:#e3c881">*</span></label>
+          <select class="portal-reg-select" id="reg-prog" onchange="onRegProgChange()">
+            <option value="">— Select Programme —</option>
+            <option value="B.A. (Hons.)">B.A. (Hons.) — Bachelor of Arts (Honours)</option>
+            <option value="M.A.">M.A. — Master of Arts</option>
+            <option value="Ph.D.">Ph.D. — Doctor of Philosophy</option>
           </select>
         </div>
-        <div id="reg-row-domain" style="display:none">
-          <label class="portal-label">Domain <span style="color:#e3c881">*</span></label>
+        <div id="reg-row-domain" style="display:none" class="full">
+          <label class="portal-label">Department / Domain <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-domain">
-            <option value="">— Select —</option>
-            <option>English</option><option>Economics</option><option>History</option>
-            <option>Political Science</option><option>Psychology</option><option>Sociology</option>
-            <option>Hindi</option><option>Philosophy</option>
+            <option value="">— Select Department —</option>
+            <option value="English">English</option>
+            <option value="Economics">Economics</option>
+            <option value="History">History</option>
+            <option value="Political Science">Political Science</option>
+            <option value="Psychology">Psychology</option>
+            <option value="Sociology">Sociology</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Philosophy">Philosophy</option>
           </select>
         </div>
         <div id="reg-row-prog">
-          <label class="portal-label">Course</label>
-          <select class="portal-reg-select" id="reg-dept">
-            <option value="">— Select Course —</option>
-            <option value="English">English</option>
-            <option value="Economics">Economics</option>
+          <label class="portal-label">Course / Subject <span style="color:#e3c881">*</span></label>
+          <select class="portal-reg-select" id="reg-dept" onchange="updateRegistrationBatch();updateRegistrationSemester()">
+            <option value="">— Select Programme First —</option>
           </select>
         </div>
         <div id="reg-row-batch">
-          <label class="portal-label">Batch</label>
+          <label class="portal-label">Batch (Admission Year) <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-batch">
-            <option value="">— Select —</option>
+            <option value="">— Select Course First —</option>
           </select>
         </div>
         <div id="reg-row-semester">
-          <label class="portal-label">Semester <span style="color:#e3c881">*</span></label>
+          <label class="portal-label">Current Semester <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-semester" required>
-            <option value="">— Select programme first —</option>
+            <option value="">— Select Programme First —</option>
           </select>
         </div>
         <div id="reg-row-section">
           <label class="portal-label">Section <span style="color:#e3c881">*</span></label>
           <select class="portal-reg-select" id="reg-section" required>
             <option value="">— Select Section —</option>
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="None">None</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="None">No Section</option>
           </select>
         </div>
         <div id="reg-row-desig" style="display:none" class="full">
@@ -1102,40 +1111,88 @@ async function submitPortalLogin() {
   }
 }
 
-// ── Registration ──────────────────────────────────────────────────────────
+// ── Registration — USHSS Academic Structure ──────────────────────────────
+// All programmes offered at University School of Humanities & Social Sciences
+const USHSS_PROGRAMMES = {
+  "B.A. (Hons.)": {
+    duration: 4,
+    semesters: 8,
+    courses: [
+      "B.A. (Hons.) English",
+      "B.A. (Hons.) Economics",
+      "B.A. (Hons.) History",
+      "B.A. (Hons.) Political Science",
+      "B.A. (Hons.) Psychology",
+      "B.A. (Hons.) Sociology",
+      "B.A. (Hons.) Hindi",
+      "B.A. (Hons.) Philosophy",
+    ]
+  },
+  "M.A.": {
+    duration: 2,
+    semesters: 4,
+    courses: [
+      "M.A. English",
+      "M.A. Economics",
+      "M.A. History",
+      "M.A. Political Science",
+      "M.A. Psychology",
+      "M.A. Sociology",
+      "M.A. Hindi",
+      "M.A. Philosophy",
+    ]
+  },
+  "Ph.D.": {
+    duration: 3,
+    semesters: 6,
+    courses: ["Ph.D. Humanities", "Ph.D. Social Sciences"]
+  }
+};
+
+function onRegProgChange() {
+  const prog = document.getElementById("reg-prog").value;
+  const dept = document.getElementById("reg-dept");
+  dept.innerHTML = '<option value="">— Select Course —</option>';
+  if (prog && USHSS_PROGRAMMES[prog]) {
+    USHSS_PROGRAMMES[prog].courses.forEach(c => {
+      dept.add(new Option(c, c));
+    });
+  }
+  // Reset downstream
+  document.getElementById("reg-batch").innerHTML = '<option value="">— Select Course First —</option>';
+  document.getElementById("reg-semester").innerHTML = '<option value="">— Select Programme First —</option>';
+}
+
 function updateRegistrationSemester() {
-  const programme = document.getElementById("reg-prog").value.trim();
+  const prog = document.getElementById("reg-prog").value.trim();
   const semester = document.getElementById("reg-semester");
   if (!semester) return;
-  semester.innerHTML = '<option value="">— Select —</option>';
-  const maxSemesters = programme === "B.A." ? 8 : programme === "M.A." ? 4 : 0;
-  const roman = ["I","II","III","IV","V","VI","VII","VIII"];
+  const progData = USHSS_PROGRAMMES[prog];
+  const maxSemesters = progData ? progData.semesters : 0;
+  semester.innerHTML = '<option value="">— Select Semester —</option>';
   for (let i = 1; i <= maxSemesters; i++) {
-    semester.add(new Option(roman[i - 1], roman[i - 1]));
+    semester.add(new Option("Semester " + i, String(i)));
   }
-  if (!maxSemesters) semester.innerHTML = '<option value="">— Select programme first —</option>';
+  if (!maxSemesters) semester.innerHTML = '<option value="">— Select Programme First —</option>';
 }
 
 function updateRegistrationBatch() {
-  const programme = document.getElementById("reg-prog").value.trim();
+  const prog = document.getElementById("reg-prog").value.trim();
   const batch = document.getElementById("reg-batch");
   if (!batch) return;
-
-  const duration = programme === "B.A." ? 4 : programme === "M.A." ? 2 : 0;
+  const progData = USHSS_PROGRAMMES[prog];
+  const duration = progData ? progData.duration : 0;
   const currentYear = new Date().getFullYear();
-  batch.innerHTML = '<option value="">— Select —</option>';
-
+  batch.innerHTML = '<option value="">— Select Batch —</option>';
   if (!duration) return;
-
-  // Show the current intake and prior cohorts across the programme duration.
+  // Show cohorts: earliest batch that still has students enrolled
   const firstYear = currentYear - duration + 1;
-  for (let start = firstYear; start <= currentYear; start++) {
+  for (let start = firstYear; start <= currentYear + 1; start++) {
     const end = start + duration;
-    const value = start + "-" + end;
-    batch.innerHTML += '<option value="' + value + '">' + value + '</option>';
+    const label = start + "–" + end;
+    batch.add(new Option(label, start + "-" + end));
   }
-
-  // Select the current intake by default.
+  // Default to current year cohort
   const currentValue = currentYear + "-" + (currentYear + duration);
   if (Array.from(batch.options).some(o => o.value === currentValue)) {
     batch.value = currentValue;
@@ -1165,13 +1222,12 @@ function onRegRoleChange() {
     input.placeholder = "e.g. 2401001";
   }
 }
-
-document.getElementById("reg-prog").addEventListener("change", () => {
+// Initialize registration dropdowns
+(function initRegForm() {
+  onRegProgChange();
   updateRegistrationBatch();
   updateRegistrationSemester();
-});
-updateRegistrationBatch();
-updateRegistrationSemester();
+})();
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -1254,6 +1310,8 @@ async function submitPortalRegister() {
     }
 
     btn.textContent = "Creating Account...";
+    // For students: dept = full course name (e.g. "B.A. (Hons.) English")
+    // For faculty: domain = their teaching subject/department
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1265,11 +1323,12 @@ async function submitPortalRegister() {
         email: email,
         phone: phone || null,
         enrollment_no: ENROLLMENT_ROLES.includes(role) ? username : null,
-        department: dept || null,
+        department: role === "faculty" ? (domain || null) : (dept || null),
         programme: role === "faculty" ? null : (prog || null),
         batch: role === "faculty" ? null : (batch || null),
         semester: role === "faculty" ? null : (semester || null),
         section: role === "faculty" ? null : (section || null),
+        domain: role === "faculty" ? (domain || null) : null,
         designation: role === "faculty" ? (desig || null) : null
       })
     });
@@ -1388,6 +1447,56 @@ if (facultyRail) {
 
   updateCenterCard();
 }
+
+// ── Persistent Auth state on homepage ─────────────────────────────────────────
+function checkExistingAuth() {
+  const token = localStorage.getItem("ushss_token");
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("ushss_user") || "null");
+  } catch (_) {}
+
+  const navAuthItem = document.getElementById("nav-auth-item");
+  if (!navAuthItem) return;
+
+  if (token && user && user.role) {
+    const roleRedirects = {
+      admin: "/dashboard/admin",
+      faculty: "/dashboard/faculty",
+      student: "/dashboard/student",
+      cr: "/dashboard/cr"
+    };
+    const roleTitles = {
+      faculty: "Faculty Portal",
+      student: "Student Portal",
+      cr: "CR Portal",
+      admin: "Admin Portal"
+    };
+    const targetUrl = roleRedirects[user.role] || "/dashboard/" + user.role;
+    const portalTitle = roleTitles[user.role] || "Portal";
+    navAuthItem.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px">
+        <a href="${targetUrl}" class="nav-portal-btn" title="Open ${portalTitle}">
+          🏛️ ${portalTitle}
+        </a>
+        <button type="button" class="nav-signout-btn" onclick="logoutFromHome()" title="Sign Out">
+          Sign Out
+        </button>
+      </div>
+    `;
+  }
+}
+
+function logoutFromHome() {
+  localStorage.removeItem("ushss_token");
+  localStorage.removeItem("ushss_user");
+  sessionStorage.clear();
+  window.location.reload();
+}
+
+checkExistingAuth();
+document.addEventListener("DOMContentLoaded", checkExistingAuth);
 </script>
 </body>
 </html>
+

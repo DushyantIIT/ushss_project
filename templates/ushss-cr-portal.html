@@ -241,6 +241,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
+    <a href="/" class="sb-item" style="color:var(--cream);text-decoration:none;margin-bottom:6px;display:flex;align-items:center;gap:8px" title="Visit University Website without signing out">
+      <span class="ico">🏛️</span> University Website
+    </a>
     <div class="sb-logout" onclick="logoutCR()">
       <span style="font-size:14px">🚪</span> Sign Out
     </div>
@@ -254,6 +257,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
       <div class="tb-crumb" id="pg-crumb">USHSS / CR / Overview</div>
     </div>
     <div class="tb-right">
+      <a href="/" class="btn btn-ghost btn-sm" style="text-decoration:none" title="Visit main college website">🏛️ Website</a>
       <button class="btn btn-primary btn-sm" onclick="goPage('announcements',document.querySelector('[onclick*=announcements]'))">+ Announce</button>
     </div>
   </div>

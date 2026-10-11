@@ -290,6 +290,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item" onclick="goPage('profile',this)"><span class="ico">👤</span> My Profile</div>
   </nav>
   <div class="sb-foot">
+    <a href="/" class="sb-item" style="color:var(--cream);text-decoration:none;margin-bottom:6px;display:flex;align-items:center;gap:8px" title="Visit University Website without signing out">
+      <span class="ico">🏛️</span> University Website
+    </a>
     <div class="sb-logout" onclick="logoutFaculty()">
       <span style="font-size:14px">🚪</span> Sign Out
     </div>
@@ -304,6 +307,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
       <div class="tb-crumb" id="pg-crumb">USHSS / Faculty / Overview</div>
     </div>
     <div class="tb-right">
+      <a href="/" class="btn btn-ghost btn-sm" style="text-decoration:none" title="Visit main college website">🏛️ Website</a>
       <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="live-indicator"></div>
       <button class="btn btn-gold btn-sm" onclick="goPage('attendance',document.querySelector('[onclick*=attendance]'))">+ Start Attendance</button>
     </div>
@@ -432,6 +436,10 @@ tr:hover td{background:rgba(255,255,255,.01)}
               <input class="form-input" id="att-date" type="date"/>
             </div>
           </div>
+          <div style="margin:12px 0;display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="att-disable-window" style="cursor:pointer;accent-color:var(--gold)"/>
+            <label for="att-disable-window" style="font-size:12px;color:var(--text);cursor:pointer">Disable 5-minute attendance cutoff (allow check-ins anytime)</label>
+          </div>
           <button class="btn btn-gold btn-lg" style="width:100%;margin-top:4px" onclick="startAttendance()">▶ Start Attendance Session</button>
         </div>
       </div>
@@ -449,6 +457,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
               <div><div class="att-count" id="live-present">0</div><div class="att-count-lbl">Present</div></div>
               <div><div class="att-count" id="live-absent">0</div><div class="att-count-lbl">Absent</div></div>
               <div><div class="att-count" id="live-total-c">38</div><div class="att-count-lbl">Total</div></div>
+              <div><div class="att-count" id="live-pending-c" style="color:#F0D080">0</div><div class="att-count-lbl">Pending ⚠</div></div>
             </div>
           </div>
           <div class="att-class-info" id="live-class-info" style="margin-top:12px"></div>
@@ -462,6 +471,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
             <button class="btn btn-success" onclick="markAll('present')">✓ Mark All Present</button>
             <button class="btn btn-danger" onclick="markAll('absent')">✗ Mark All Absent</button>
             <button class="btn btn-ghost" onclick="stopTimer()">⏸ Pause Timer</button>
+            <button class="btn btn-ghost" id="toggle-limit-btn" onclick="toggleTimeLimit()">🔓 Remove 5-min Limit</button>
+            <button class="btn btn-ghost" onclick="refreshReviewQueue()">🔄 Review Queue</button>
+            <button class="btn btn-ghost" onclick="downloadCurrentSessionXlsx()">📥 Download Sheet (.xlsx)</button>
             <button class="btn btn-primary" onclick="submitAttendance()">💾 Save & Close Session</button>
           </div>
         </div>
@@ -474,6 +486,15 @@ tr:hover td{background:rgba(255,255,255,.01)}
             </div>
           </div>
           <div id="student-list-att"></div>
+        </div>
+
+        <!-- REVIEW QUEUE PANEL -->
+        <div class="card" id="review-queue-panel" style="display:none;margin-top:16px;border:1px solid rgba(240,208,128,.3)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-title" style="color:#F0D080">⚠ Review Queue <span id="review-count-badge" style="font-size:12px;font-weight:400;color:var(--muted)"></span></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">These students need your manual approval. Confirm they are in the room, then approve or reject.</div>
+          <div id="review-queue-list"></div>
         </div>
       </div>
 
@@ -491,6 +512,96 @@ tr:hover td{background:rgba(255,255,255,.01)}
       </div>
     </div>
 
+      <!-- AUDIT MODAL: shown after session close -->
+      <div id="audit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#1a0a0a;border:1px solid var(--gold);border-radius:16px;padding:28px;max-width:440px;width:92%;text-align:center">
+          <div style="font-size:2.2rem;margin-bottom:8px">🎲</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--gold);margin-bottom:6px">Random Spot Check</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Call out these students by name to confirm they are in the room.</div>
+          <div id="audit-names" style="margin-bottom:18px"></div>
+          <button class="btn btn-gold" style="width:100%;margin-bottom:8px" onclick="downloadClosedSessionXlsx()">📥 Download Complete Attendance Sheet (.xlsx)</button>
+          <button class="btn btn-outline" style="width:100%;margin-bottom:10px" onclick="viewClosedSessionDetails()">📋 View Complete Present &amp; Absent List</button>
+          <button class="btn btn-ghost" style="width:100%" onclick="document.getElementById('audit-modal').style.display='none'">✓ Done — Close</button>
+        </div>
+      </div>
+
+      <!-- SESSION DETAILS & ROSTER MODAL -->
+      <div class="modal-bg" id="session-details-modal">
+        <div class="modal" style="max-width:760px;width:95%">
+          <div class="modal-head">
+            <div>
+              <div class="card-title" id="sdm-title">Session Attendance Details</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px" id="sdm-subtitle">Class Roster &amp; Attendance Records</div>
+            </div>
+            <button class="modal-close" onclick="closeSessionDetailsModal()">✕</button>
+          </div>
+          <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+            <!-- Summary Info -->
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,.03);padding:12px 14px;border-radius:8px;border:1px solid var(--border)">
+              <div><span style="font-size:11px;color:var(--muted)">Date:</span> <strong id="sdm-date" style="font-size:12px;color:var(--cream)"></strong></div>
+              <div><span style="font-size:11px;color:var(--muted)">Class:</span> <strong id="sdm-class" style="font-size:12px;color:var(--cream)"></strong></div>
+              <div><span style="font-size:11px;color:var(--muted)">Time:</span> <strong id="sdm-time" style="font-size:12px;color:var(--cream)"></strong></div>
+              <div><span style="font-size:11px;color:var(--muted)">Room:</span> <strong id="sdm-room" style="font-size:12px;color:var(--cream)"></strong></div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+              <div style="background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);padding:10px;border-radius:8px;text-align:center">
+                <div style="font-size:10px;color:var(--gold);text-transform:uppercase;font-family:var(--mono)">Total Enrolled</div>
+                <div style="font-size:20px;font-weight:700;color:var(--cream)" id="sdm-stat-total">0</div>
+              </div>
+              <div style="background:rgba(46,125,50,.15);border:1px solid rgba(46,125,50,.35);padding:10px;border-radius:8px;text-align:center">
+                <div style="font-size:10px;color:#6EE89A;text-transform:uppercase;font-family:var(--mono)">Present</div>
+                <div style="font-size:20px;font-weight:700;color:#6EE89A" id="sdm-stat-present">0</div>
+              </div>
+              <div style="background:rgba(198,40,40,.15);border:1px solid rgba(198,40,40,.35);padding:10px;border-radius:8px;text-align:center">
+                <div style="font-size:10px;color:#F08080;text-transform:uppercase;font-family:var(--mono)">Absent</div>
+                <div style="font-size:20px;font-weight:700;color:#F08080" id="sdm-stat-absent">0</div>
+              </div>
+              <div style="background:rgba(255,255,255,.05);border:1px solid var(--border);padding:10px;border-radius:8px;text-align:center">
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-family:var(--mono)">Attendance %</div>
+                <div style="font-size:20px;font-weight:700;color:var(--gold)" id="sdm-stat-pct">0%</div>
+              </div>
+            </div>
+
+            <!-- Tabs and Download Button -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm btn-ghost" id="sdm-tab-present" onclick="switchSdmTab('present')">✅ Present (<span id="sdm-tab-p-count">0</span>)</button>
+                <button class="btn btn-sm btn-ghost" id="sdm-tab-absent" onclick="switchSdmTab('absent')">❌ Absent (<span id="sdm-tab-a-count">0</span>)</button>
+                <button class="btn btn-sm btn-ghost" id="sdm-tab-all" onclick="switchSdmTab('all')">👥 All Students (<span id="sdm-tab-all-count">0</span>)</button>
+              </div>
+              <button class="btn btn-gold btn-sm" id="sdm-btn-export" onclick="downloadModalSessionXlsx()">
+                📥 Download Excel (.xlsx)
+              </button>
+            </div>
+
+            <!-- Student Roster Table -->
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Roll No.</th>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Marked At</th>
+                    <th>Verification / Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="sdm-table-body">
+                  <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Loading student records…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-gold" onclick="downloadModalSessionXlsx()">📥 Download Excel (.xlsx)</button>
+            <button class="btn btn-ghost" onclick="closeSessionDetailsModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
     <!-- ANNOUNCEMENTS PAGE -->
     <div class="page" id="pg-announcements">
       <div class="sec-head">
@@ -506,11 +617,35 @@ tr:hover td{background:rgba(255,255,255,.01)}
         <div><div class="sec-label">My Students</div><div class="sec-title">Student Roster</div></div>
         <div style="display:flex;gap:8px">
           <input class="form-input" style="width:200px;padding:7px 11px;font-size:12px" placeholder="Search…" oninput="filterRoster(this.value)"/>
-          <select class="form-select" style="width:160px;padding:7px 11px;font-size:12px" onchange="filterByProg(this.value)">
+          <select class="form-select" id="roster-prog-filter" style="width:170px;padding:7px 11px;font-size:12px" onchange="applyRosterFilters()">
             <option value="">All Programmes</option>
-            <option>M.A. English</option>
-            <option>M.A. Psychology</option>
-            <option>M.A. Economics</option>
+            <option value="B.A. (Hons.) English">B.A. (Hons.) English</option>
+            <option value="B.A. (Hons.) Economics">B.A. (Hons.) Economics</option>
+            <option value="B.A. (Hons.) History">B.A. (Hons.) History</option>
+            <option value="B.A. (Hons.) Political Science">B.A. (Hons.) Political Science</option>
+            <option value="B.A. (Hons.) Psychology">B.A. (Hons.) Psychology</option>
+            <option value="B.A. (Hons.) Sociology">B.A. (Hons.) Sociology</option>
+            <option value="B.A. (Hons.) Hindi">B.A. (Hons.) Hindi</option>
+            <option value="B.A. (Hons.) Philosophy">B.A. (Hons.) Philosophy</option>
+            <option value="M.A. English">M.A. English</option>
+            <option value="M.A. Economics">M.A. Economics</option>
+            <option value="M.A. History">M.A. History</option>
+            <option value="M.A. Political Science">M.A. Political Science</option>
+            <option value="M.A. Psychology">M.A. Psychology</option>
+            <option value="M.A. Sociology">M.A. Sociology</option>
+            <option value="M.A. Hindi">M.A. Hindi</option>
+            <option value="M.A. Philosophy">M.A. Philosophy</option>
+            <option value="Ph.D.">Ph.D.</option>
+          </select>
+          <select class="form-select" id="roster-batch-filter" style="width:130px;padding:7px 11px;font-size:12px" onchange="applyRosterFilters()">
+            <option value="">All Batches</option>
+            <option value="2022-2026">2022–2026</option>
+            <option value="2023-2027">2023–2027</option>
+            <option value="2024-2028">2024–2028</option>
+            <option value="2025-2029">2025–2029</option>
+            <option value="2023-2025">2023–2025</option>
+            <option value="2024-2026">2024–2026</option>
+            <option value="2025-2027">2025–2027</option>
           </select>
         </div>
       </div>
@@ -629,6 +764,9 @@ let timerInterval = null;
 let timerLeft = 0;
 let sessionActive = false;
 let activeAttendanceSlotId = null;
+let currentSessionId = null;
+let reviewPollInterval = null;
+let timeLimitDisabled = false;
 
 /* ═══ NAVIGATION ═══ */
 const pages = {
@@ -728,22 +866,243 @@ function initDashboard() {
   renderSessionHistory();
 }
 /* ═══ ATTENDANCE ═══ */
-function startAttendance() {
-  const courseEl=document.getElementById('att-course');
-  activeAttendanceSlotId=Number(courseEl.value);
-  const slot=DB.timetable.find(s=>Number(s.id)===activeAttendanceSlotId);
-  if(!slot){toast('No valid timetable slot is selected','err');return;}
-  const topic=document.getElementById('att-topic').value||slot.subject||'General Class';
-  const dur=parseInt(document.getElementById('att-duration').value,10);
-  const students=DB.students.filter(s=>s.active&&s.prog===slot.programme&&s.batch===slot.batch);
-  if(!students.length){toast('No active students are assigned to this programme and batch','err');return;}
-  attStatus={};students.forEach(s=>attStatus[s.roll]=null);
-  document.getElementById('live-class-info').textContent=(slot.subject||'Class')+' · '+(slot.programme||'')+' '+(slot.batch||'')+' · '+topic;
-  document.getElementById('live-total-c').textContent=students.length;
-  document.getElementById('att-start-view').style.display='none';document.getElementById('att-live-view').style.display='block';document.getElementById('att-history-mini').style.display='none';document.getElementById('live-badge').style.display='inline-flex';document.getElementById('live-indicator').textContent='🔴 LIVE';sessionActive=true;
-  const dateEl=document.getElementById('att-date');if(dateEl&&!dateEl.value)dateEl.value=new Date().toLocaleDateString('en-CA');
-  renderStudentList();updateLiveCounts();
-  if(dur>0){timerLeft=dur;updateTimerDisplay();document.getElementById('att-timer-sub').textContent='Time Remaining';timerInterval=setInterval(()=>{timerLeft--;updateTimerDisplay();if(timerLeft<=0){clearInterval(timerInterval);toast('Timer ended. Review and save attendance.','ok');}},1000);}else{document.getElementById('timer-display').textContent='∞';document.getElementById('att-timer-sub').textContent='Manual Mode';}
+function updateToggleLimitBtn(disabled) {
+  timeLimitDisabled = !!disabled;
+  const btn = document.getElementById('toggle-limit-btn');
+  if (btn) btn.textContent = timeLimitDisabled ? '🔒 Restore 5-min Limit' : '🔓 Remove 5-min Limit';
+}
+
+async function toggleTimeLimit() {
+  if (!currentSessionId) { toast('No active session on server', 'err'); return; }
+  const token = localStorage.getItem('ushss_token');
+  const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+  try {
+    const res = await fetch('/api/faculty/attendance/' + currentSessionId + '/toggle-limit', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ time_limit_disabled: !timeLimitDisabled })
+    });
+    if (res.ok) {
+      updateToggleLimitBtn(!timeLimitDisabled);
+      toast(timeLimitDisabled ? '5-minute limit removed (open indefinitely)' : '5-minute limit enabled', 'ok');
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast(d.detail || 'Could not toggle time limit', 'err');
+    }
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function refreshReviewQueue() {
+  await refreshReviewQueueAndRecords();
+  toast('Review queue refreshed', 'ok');
+}
+
+async function refreshReviewQueueAndRecords() {
+  if (!currentSessionId || !sessionActive) return;
+  const token = localStorage.getItem('ushss_token');
+  const headers = {'Authorization': 'Bearer ' + token};
+  try {
+    // 1. Fetch live records
+    const recRes = await fetch('/api/faculty/attendance/' + currentSessionId + '/records', {headers});
+    if (recRes.ok) {
+      const d = await recRes.json();
+      const records = d.records || [];
+      records.forEach(r => {
+        const u = r.users || {};
+        const roll = u.enrollment_no || (DB.students.find(s => s.id === r.student_id) || {}).roll;
+        if (roll && r.status === 'present' && r.review_status === 'approved') {
+          attStatus[roll] = 'present';
+        }
+      });
+      renderStudentList();
+      updateLiveCounts();
+    }
+
+    // 2. Fetch pending review records
+    const qRes = await fetch('/api/faculty/attendance/' + currentSessionId + '/review', {headers});
+    if (qRes.ok) {
+      const qData = await qRes.json();
+      const pendingList = qData.records || [];
+      const pendingCountEl = document.getElementById('live-pending-c');
+      if (pendingCountEl) pendingCountEl.textContent = pendingList.length;
+      const countBadge = document.getElementById('review-count-badge');
+      if (countBadge) countBadge.textContent = pendingList.length ? `(${pendingList.length} pending)` : '';
+      const panel = document.getElementById('review-queue-panel');
+      const listEl = document.getElementById('review-queue-list');
+      if (panel && listEl) {
+        if (pendingList.length > 0) {
+          panel.style.display = 'block';
+          listEl.innerHTML = pendingList.map(r => {
+            const u = r.users || {};
+            const flags = (r.flags || '').split(',').filter(Boolean).map(f => `<span class="badge badge-amber" style="font-size:10px">${esc(f)}</span>`).join(' ');
+            const distStr = (r.gps_distance !== null && r.gps_distance !== undefined) ? `${Math.round(r.gps_distance)}m away` : 'No GPS';
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(u.full_name || 'Student')} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">(${esc(u.enrollment_no || '')})</span></div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px">Score: <strong style="color:${(r.suspicion_score||0)>=50?'#F08080':'#6EE89A'}">${Math.round(r.suspicion_score||0)}%</strong> · ${distStr} · Flags: ${flags || 'None'}</div>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-success btn-sm" onclick="reviewRecord(${r.id}, 'approved')">✓ Approve</button>
+                  <button class="btn btn-danger btn-sm" onclick="reviewRecord(${r.id}, 'rejected')">✗ Reject</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          panel.style.display = 'none';
+          listEl.innerHTML = '';
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Queue polling error:', e);
+  }
+}
+
+async function reviewRecord(recordId, decision) {
+  if (!currentSessionId) return;
+  const token = localStorage.getItem('ushss_token');
+  const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+  try {
+    const res = await fetch('/api/faculty/attendance/' + currentSessionId + '/review/' + recordId, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ decision })
+    });
+    if (res.ok) {
+      toast(`Attendance ${decision}`, 'ok');
+      await refreshReviewQueueAndRecords();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast(d.detail || 'Could not update record', 'err');
+    }
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function startAttendance() {
+  const courseEl = document.getElementById('att-course');
+  activeAttendanceSlotId = Number(courseEl.value);
+  const slot = DB.timetable.find(s => Number(s.id) === activeAttendanceSlotId);
+  if (!slot) { toast('No valid timetable slot is selected', 'err'); return; }
+  const topic = document.getElementById('att-topic').value || slot.subject || 'General Class';
+  const dur = parseInt(document.getElementById('att-duration').value, 10);
+  const students = DB.students.filter(s => s.active && s.prog === slot.programme && s.batch === slot.batch);
+  if (!students.length) { toast('No active students are assigned to this programme and batch', 'err'); return; }
+
+  const disableLimit = document.getElementById('att-disable-window') ? document.getElementById('att-disable-window').checked : false;
+  const dateEl = document.getElementById('att-date');
+  const date = (dateEl && dateEl.value) ? dateEl.value : new Date().toLocaleDateString('en-CA');
+
+  // Attempt initial GPS anchor fix
+  let anchorLat = null, anchorLon = null, anchorAcc = null;
+  if (navigator.geolocation) {
+    try {
+      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 }));
+      anchorLat = pos.coords.latitude;
+      anchorLon = pos.coords.longitude;
+      anchorAcc = pos.coords.accuracy;
+    } catch (_) {}
+  }
+
+  // Open session on server
+  const token = localStorage.getItem('ushss_token');
+  const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+  const openPayload = {
+    slot_id: activeAttendanceSlotId,
+    date: date,
+    time_limit_disabled: disableLimit,
+  };
+  if (anchorLat !== null && anchorLon !== null) {
+    openPayload.anchor_lat = anchorLat;
+    openPayload.anchor_lon = anchorLon;
+    openPayload.anchor_accuracy = anchorAcc;
+  }
+
+  currentSessionId = null;
+  try {
+    const openRes = await fetch('/api/faculty/attendance/open', {method: 'POST', headers, body: JSON.stringify(openPayload)});
+    const openData = await openRes.json().catch(() => ({}));
+    if (openRes.ok) {
+      currentSessionId = openData.session && openData.session.id;
+    } else if (openRes.status === 409) {
+      const sr = await fetch('/api/faculty/attendance/sessions', {headers});
+      const sessions = await sr.json().catch(() => []);
+      const existing = (Array.isArray(sessions) ? sessions : []).find(s => Number(s.slot_id) === activeAttendanceSlotId && String(s.date).slice(0,10) === date && s.is_open);
+      if (existing) currentSessionId = existing.id;
+      else throw new Error(openData.detail || 'Could not open attendance session');
+    } else {
+      throw new Error(openData.detail || 'Could not open attendance session');
+    }
+  } catch (e) {
+    toast(e.message || 'Could not open attendance session', 'err');
+    return;
+  }
+
+  // Configure UI state
+  attStatus = {};
+  students.forEach(s => attStatus[s.roll] = null);
+  document.getElementById('live-class-info').textContent = (slot.subject || 'Class') + ' · ' + (slot.programme || '') + ' ' + (slot.batch || '') + ' · ' + topic;
+  document.getElementById('live-total-c').textContent = students.length;
+  document.getElementById('live-pending-c').textContent = '0';
+  document.getElementById('att-start-view').style.display = 'none';
+  document.getElementById('att-live-view').style.display = 'block';
+  document.getElementById('att-history-mini').style.display = 'none';
+  document.getElementById('live-badge').style.display = 'inline-flex';
+  document.getElementById('live-indicator').textContent = '🔴 LIVE';
+  sessionActive = true;
+  updateToggleLimitBtn(disableLimit);
+
+  renderStudentList();
+  updateLiveCounts();
+
+  if (dur > 0) {
+    timerLeft = dur;
+    updateTimerDisplay();
+    document.getElementById('att-timer-sub').textContent = 'Time Remaining';
+    timerInterval = setInterval(() => {
+      timerLeft--;
+      updateTimerDisplay();
+      if (timerLeft <= 0) {
+        clearInterval(timerInterval);
+        toast('Timer ended. Review and save attendance.', 'ok');
+      }
+    }, 1000);
+  } else {
+    document.getElementById('timer-display').textContent = '∞';
+    document.getElementById('att-timer-sub').textContent = 'Manual Mode';
+  }
+
+  // Refine GPS anchor fixes in background
+  if (navigator.geolocation && currentSessionId) {
+    setTimeout(() => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        fetch('/api/faculty/attendance/' + currentSessionId + '/anchor', {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy })
+        }).catch(() => {});
+      }, null, { enableHighAccuracy: true });
+    }, 4000);
+    setTimeout(() => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        fetch('/api/faculty/attendance/' + currentSessionId + '/anchor', {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy })
+        }).catch(() => {});
+      }, null, { enableHighAccuracy: true });
+    }, 8000);
+  }
+
+  // Start polling queue and records
+  if (reviewPollInterval) clearInterval(reviewPollInterval);
+  reviewPollInterval = setInterval(refreshReviewQueueAndRecords, 4000);
+  refreshReviewQueueAndRecords();
 }
 
 function updateTimerDisplay() {
@@ -803,33 +1162,257 @@ function renderStudentList(filter = '') {
 function filterStudents(v) { renderStudentList(v.toLowerCase()); }
 
 async function submitAttendance() {
-  if(!activeAttendanceSlotId){toast('Select a timetable slot first','err');return;}
-  const slot=DB.timetable.find(s=>Number(s.id)===activeAttendanceSlotId);
-  if(!slot){toast('The selected timetable slot is no longer available','err');return;}
-  const students=DB.students.filter(s=>s.active&&s.prog===slot.programme&&s.batch===slot.batch);
-  const unmarked=students.filter(s=>!attStatus[s.roll]);
-  if(unmarked.length){toast('Mark every student present or absent before saving ('+unmarked.length+' unmarked)','err');return;}
-  const date=document.getElementById('att-date').value||new Date().toLocaleDateString('en-CA');
-  const token=localStorage.getItem('ushss_token');const headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'};
-  try{
+  if (!activeAttendanceSlotId) { toast('Select a timetable slot first', 'err'); return; }
+  const slot = DB.timetable.find(s => Number(s.id) === activeAttendanceSlotId);
+  if (!slot) { toast('The selected timetable slot is no longer available', 'err'); return; }
+  const students = DB.students.filter(s => s.active && s.prog === slot.programme && s.batch === slot.batch);
+  const unmarked = students.filter(s => !attStatus[s.roll]);
+  if (unmarked.length) { toast('Mark every student present or absent before saving (' + unmarked.length + ' unmarked)', 'err'); return; }
+  const date = document.getElementById('att-date').value || new Date().toLocaleDateString('en-CA');
+  const token = localStorage.getItem('ushss_token');
+  const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+
+  try {
     clearInterval(timerInterval);
-    let sessionId=null;
-    const openRes=await fetch('/api/faculty/attendance/open',{method:'POST',headers,body:JSON.stringify({slot_id:activeAttendanceSlotId,date})});
-    const openData=await openRes.json().catch(()=>({}));
-    if(openRes.ok){sessionId=openData.session&&openData.session.id;}
-    else if(openRes.status===409){const sr=await fetch('/api/faculty/attendance/sessions',{headers});const sessions=await sr.json().catch(()=>[]);const existing=(Array.isArray(sessions)?sessions:[]).find(s=>Number(s.slot_id)===activeAttendanceSlotId&&String(s.date).slice(0,10)===date&&s.is_open);if(existing)sessionId=existing.id;else throw new Error(openData.detail||'Could not open attendance session');}
-    else throw new Error(openData.detail||'Could not open attendance session');
-    if(!sessionId)throw new Error('The server did not return an attendance session ID');
-    const records=students.map(s=>({student_id:Number(s.id),status:attStatus[s.roll]}));
-    const saveRes=await fetch('/api/faculty/attendance/'+sessionId+'/records',{method:'POST',headers,body:JSON.stringify({records})});
-    const saveData=await saveRes.json().catch(()=>({}));if(!saveRes.ok)throw new Error(saveData.detail||'Could not save attendance records');
-    const closeRes=await fetch('/api/faculty/attendance/'+sessionId+'/close',{method:'PATCH',headers});
-    if(!closeRes.ok){const closeData=await closeRes.json().catch(()=>({}));console.warn('Attendance saved, but session close failed',closeData);}
-    const present=records.filter(r=>r.status==='present').length;
-    DB.sessions.unshift({id:sessionId,date,cls:(slot.programme||'')+' — '+(slot.batch||''),topic:slot.subject||'',present,total:records.length,duration:document.getElementById('att-duration').selectedOptions[0].text,is_open:false});
-    sessionActive=false;document.getElementById('att-start-view').style.display='block';document.getElementById('att-live-view').style.display='none';document.getElementById('att-history-mini').style.display='block';document.getElementById('live-badge').style.display='none';document.getElementById('live-indicator').textContent='';renderSessionHistory();updateFacultyStats();
-    toast('Attendance saved to the server — '+present+'/'+records.length+' present','ok');
-  }catch(e){toast(e.message||'Attendance could not be saved','err');}
+    if (reviewPollInterval) clearInterval(reviewPollInterval);
+
+    let sessionId = currentSessionId;
+    closedSessionId = sessionId;
+    if (!sessionId) {
+      const openRes = await fetch('/api/faculty/attendance/open', {method: 'POST', headers, body: JSON.stringify({slot_id: activeAttendanceSlotId, date})});
+      const openData = await openRes.json().catch(() => ({}));
+      if (openRes.ok) sessionId = openData.session && openData.session.id;
+      else if (openRes.status === 409) {
+        const sr = await fetch('/api/faculty/attendance/sessions', {headers});
+        const sessions = await sr.json().catch(() => []);
+        const existing = (Array.isArray(sessions) ? sessions : []).find(s => Number(s.slot_id) === activeAttendanceSlotId && String(s.date).slice(0,10) === date && s.is_open);
+        if (existing) sessionId = existing.id;
+        else throw new Error(openData.detail || 'Could not open attendance session');
+      } else throw new Error(openData.detail || 'Could not open attendance session');
+    }
+    if (!sessionId) throw new Error('The server did not return an attendance session ID');
+
+    // Save manually adjusted records
+    const records = students.map(s => ({student_id: Number(s.id), status: attStatus[s.roll]}));
+    const saveRes = await fetch('/api/faculty/attendance/' + sessionId + '/records', {method: 'POST', headers, body: JSON.stringify({records})});
+    const saveData = await saveRes.json().catch(() => ({}));
+    if (!saveRes.ok) throw new Error(saveData.detail || 'Could not save attendance records');
+
+    // Close session and receive audit sample
+    const closeRes = await fetch('/api/faculty/attendance/' + sessionId + '/close', {method: 'PATCH', headers});
+    const closeData = await closeRes.json().catch(() => ({}));
+    if (!closeRes.ok) {
+      console.warn('Attendance saved, but session close failed', closeData);
+    }
+
+    const present = records.filter(r => r.status === 'present').length;
+    DB.sessions.unshift({
+      id: sessionId,
+      date,
+      cls: (slot.programme || '') + ' — ' + (slot.batch || ''),
+      topic: slot.subject || '',
+      present,
+      total: records.length,
+      duration: document.getElementById('att-duration').selectedOptions[0].text,
+      is_open: false
+    });
+
+    sessionActive = false;
+    currentSessionId = null;
+    document.getElementById('att-start-view').style.display = 'block';
+    document.getElementById('att-live-view').style.display = 'none';
+    document.getElementById('att-history-mini').style.display = 'block';
+    document.getElementById('live-badge').style.display = 'none';
+    document.getElementById('live-indicator').textContent = '';
+    renderSessionHistory();
+    updateFacultyStats();
+
+    toast('Attendance saved — ' + present + '/' + records.length + ' present', 'ok');
+
+    // Display verbal audit check if sample was generated
+    if (closeData.audit_sample && closeData.audit_sample.length > 0) {
+      const modal = document.getElementById('audit-modal');
+      const namesEl = document.getElementById('audit-names');
+      if (modal && namesEl) {
+        namesEl.innerHTML = closeData.audit_sample.map(s => `
+          <div style="background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.4);border-radius:8px;padding:12px;margin-bottom:8px">
+            <div style="font-size:15px;font-weight:700;color:var(--cream)">${esc(s.full_name)}</div>
+            <div style="font-size:11px;color:var(--gold);font-family:var(--mono);margin-top:2px">Roll: ${esc(s.enrollment_no)}</div>
+          </div>
+        `).join('');
+        modal.style.display = 'flex';
+      }
+    }
+  } catch (e) {
+    toast(e.message || 'Attendance could not be saved', 'err');
+  }
+}
+
+/* ═══ ATTENDANCE EXPORT & ROSTER MODAL ═══ */
+let closedSessionId = null;
+let modalSessionData = null;
+let currentSdmTab = 'present';
+
+async function downloadSessionXlsx(sessionId) {
+  if (!sessionId) { toast('No attendance session selected', 'err'); return; }
+  const token = localStorage.getItem('ushss_token');
+  try {
+    toast('Generating Excel (.xlsx) file...', 'info');
+    const res = await fetch('/api/faculty/attendance/' + sessionId + '/export-xlsx', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Could not download Excel file');
+    }
+    let filename = `Attendance_Session_${sessionId}.xlsx`;
+    const cd = res.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) {
+      filename = match[1].trim();
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    toast(`Downloaded ${filename}`, 'ok');
+  } catch (e) {
+    toast(e.message || 'Download failed', 'err');
+  }
+}
+
+function downloadCurrentSessionXlsx() {
+  if (!currentSessionId) { toast('No active session currently open', 'err'); return; }
+  downloadSessionXlsx(currentSessionId);
+}
+
+function downloadClosedSessionXlsx() {
+  if (!closedSessionId) { toast('No recently closed session ID found', 'err'); return; }
+  downloadSessionXlsx(closedSessionId);
+}
+
+function downloadModalSessionXlsx() {
+  if (!modalSessionData || !modalSessionData.session) { toast('No session data loaded', 'err'); return; }
+  downloadSessionXlsx(modalSessionData.session.id);
+}
+
+function viewClosedSessionDetails() {
+  document.getElementById('audit-modal').style.display = 'none';
+  if (closedSessionId) {
+    openSessionDetailsModal(closedSessionId);
+  }
+}
+
+function closeSessionDetailsModal() {
+  document.getElementById('session-details-modal').style.display = 'none';
+  modalSessionData = null;
+}
+
+async function openSessionDetailsModal(sessionId) {
+  const modal = document.getElementById('session-details-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('sdm-table-body').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Loading student records from server…</td></tr>';
+
+  const token = localStorage.getItem('ushss_token');
+  try {
+    const res = await fetch('/api/faculty/attendance/' + sessionId + '/records', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to load session details');
+    }
+    const data = await res.json();
+    modalSessionData = data;
+    const sess = data.session || {};
+    const slot = sess.timetable_slots || {};
+
+    document.getElementById('sdm-title').textContent = (slot.subject || 'Class') + ' — Attendance Details';
+    document.getElementById('sdm-subtitle').textContent = (slot.programme || '') + ' ' + (slot.batch || '') + (slot.section ? ' (Sec ' + slot.section + ')' : '');
+    document.getElementById('sdm-date').textContent = sess.date || '—';
+    document.getElementById('sdm-class').textContent = (slot.programme || '') + ' ' + (slot.batch || '');
+    document.getElementById('sdm-time').textContent = (slot.start_time ? String(slot.start_time).slice(0,5) : '') + (slot.end_time ? ' - ' + String(slot.end_time).slice(0,5) : '');
+    document.getElementById('sdm-room').textContent = slot.room || 'TBA';
+
+    document.getElementById('sdm-stat-total').textContent = data.total || 0;
+    document.getElementById('sdm-stat-present').textContent = data.present || 0;
+    document.getElementById('sdm-stat-absent').textContent = data.absent || 0;
+    document.getElementById('sdm-stat-pct').textContent = (data.attendance_percentage ?? 0) + '%';
+
+    document.getElementById('sdm-tab-p-count').textContent = (data.present_students || []).length;
+    document.getElementById('sdm-tab-a-count').textContent = (data.absent_students || []).length;
+    document.getElementById('sdm-tab-all-count').textContent = data.total || 0;
+
+    currentSdmTab = 'present';
+    updateSdmTabUI();
+    renderSdmTable();
+  } catch (e) {
+    toast(e.message, 'err');
+    document.getElementById('sdm-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red)">Failed to load records: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function switchSdmTab(tab) {
+  currentSdmTab = tab;
+  updateSdmTabUI();
+  renderSdmTable();
+}
+
+function updateSdmTabUI() {
+  const tabs = ['present', 'absent', 'all'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('sdm-tab-' + t);
+    if (btn) {
+      if (t === currentSdmTab) {
+        btn.style.borderBottom = '2px solid var(--gold)';
+        btn.style.color = 'var(--gold)';
+        btn.style.fontWeight = '700';
+      } else {
+        btn.style.borderBottom = 'none';
+        btn.style.color = 'var(--muted)';
+        btn.style.fontWeight = '500';
+      }
+    }
+  });
+}
+
+function renderSdmTable() {
+  if (!modalSessionData) return;
+  const pList = modalSessionData.present_students || [];
+  const aList = modalSessionData.absent_students || [];
+  let listToRender = [];
+  if (currentSdmTab === 'present') listToRender = pList;
+  else if (currentSdmTab === 'absent') listToRender = aList;
+  else listToRender = [...pList, ...aList].sort((a,b) => String(a.roll).localeCompare(String(b.roll)));
+
+  const tbody = document.getElementById('sdm-table-body');
+  if (!listToRender.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No students found in this category (${esc(currentSdmTab)}).</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = listToRender.map((s, idx) => {
+    const isP = s.status === 'present';
+    const badge = isP
+      ? '<span class="badge badge-green" style="font-weight:700">✓ PRESENT</span>'
+      : '<span class="badge badge-red" style="font-weight:700">✗ ABSENT</span>';
+    return `
+      <tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${idx + 1}</td>
+        <td style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gold)">${esc(s.roll || s.enrollment_no)}</td>
+        <td style="font-size:13px;font-weight:600;color:var(--text)">${esc(s.name || s.full_name)}</td>
+        <td>${badge}</td>
+        <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${esc(s.marked_at || '—')}</td>
+        <td style="font-size:11px;color:${isP ? '#6EE89A' : 'var(--muted)'}">${esc(s.notes || s.verification || '—')}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderSessionHistory() {
@@ -842,7 +1425,12 @@ function renderSessionHistory() {
       <td style="font-size:12px;color:var(--muted)">${esc(s.topic)}</td>
       <td>${s.present}</td><td>${s.total - s.present}</td>
       <td><span class="badge ${cls}">${pct}%</span></td>
-      <td><button class="btn btn-ghost btn-sm">View</button></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-gold btn-sm" onclick="openSessionDetailsModal(${s.id})">👁 View</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadSessionXlsx(${s.id})" title="Download Excel (.xlsx)">📥</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -857,6 +1445,12 @@ function renderFullHistory() {
       <td style="font-size:12px;color:var(--muted)">${esc(s.duration)}</td>
       <td>${s.present}</td><td>${s.total}</td>
       <td><span class="badge ${pct>=75?'badge-green':pct>=50?'badge-amber':'badge-red'}">${pct}%</span></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-gold btn-sm" onclick="openSessionDetailsModal(${s.id})">👁 View</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadSessionXlsx(${s.id})" title="Download Excel (.xlsx)">📥</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -932,12 +1526,24 @@ function renderRoster(students) {
   }).join('');
 }
 
+let _rosterSearchText = '';
 function filterRoster(v) {
-  const f = v.toLowerCase();
-  renderRoster(DB.students.filter(s => s.name.toLowerCase().includes(f) || s.roll.includes(f)));
+  _rosterSearchText = (v || '').toLowerCase();
+  applyRosterFilters();
+}
+function applyRosterFilters() {
+  const pFilter = document.getElementById('roster-prog-filter')?.value || '';
+  const bFilter = document.getElementById('roster-batch-filter')?.value || '';
+  const filtered = DB.students.filter(s => {
+    const matchesSearch = !_rosterSearchText || s.name.toLowerCase().includes(_rosterSearchText) || s.roll.toLowerCase().includes(_rosterSearchText);
+    const matchesProg = !pFilter || s.prog === pFilter;
+    const matchesBatch = !bFilter || s.batch === bFilter;
+    return matchesSearch && matchesProg && matchesBatch;
+  });
+  renderRoster(filtered);
 }
 function filterByProg(v) {
-  renderRoster(v ? DB.students.filter(s => s.prog === v) : DB.students);
+  applyRosterFilters();
 }
 
 /* ═══ TOAST ═══ */

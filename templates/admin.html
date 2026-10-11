@@ -370,6 +370,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="sidebar-user-role" id="sb-admin-role">Admin</div>
       </div>
     </div>
+    <a href="/" class="nav-item" style="color:var(--cream);text-decoration:none;padding:7px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px" title="Visit University Website without signing out">
+      <span class="icon">🏛️</span> University Website
+    </a>
     <div class="nav-item" style="color:var(--red);cursor:pointer;padding:7px 10px" onclick="logoutAdmin()">
       <span class="icon">🚪</span> Sign Out
     </div>
@@ -384,9 +387,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="topbar-breadcrumb" id="topbar-crumb">USHSS / Admin / Overview</div>
     </div>
     <div class="topbar-actions">
+      <a href="/" class="btn btn-secondary" style="text-decoration:none" title="Visit main college website">🏛️ Website</a>
       <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="live-topbar"></span>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add User</button>
-       <button type="button" class="btn btn-secondary" onclick="openChangePasswordModal()">🔒 Change Password</button><button type="button" class="btn btn-secondary" onclick="logoutAdmin()">🚪 Sign Out</button>
+      <button type="button" class="btn btn-secondary" onclick="openChangePasswordModal()">🔒 Change Password</button>
+      <button type="button" class="btn btn-secondary" onclick="logoutAdmin()">🚪 Sign Out</button>
     </div>
   </div>
   <div class="content" id="content"></div>
@@ -422,37 +427,66 @@ tr:hover td{background:rgba(255,255,255,.02)}
         <div class="form-group full"><label class="form-label">Full Name <span class="required">*</span></label><input class="form-input" id="f-name" placeholder="e.g. Priya Sharma"/></div>
         <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="f-email" type="email" placeholder="email@ipu.ac.in"/></div>
         <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="f-phone" placeholder="+91 98xxx xxxxx"/></div>
-        <div class="form-group"><label class="form-label">Department</label>
+        <div class="form-group"><label class="form-label">Department / Course</label>
           <select class="form-select" id="f-dept">
-            <option value="">— Select —</option><option>Humanities</option><option>Social Sciences</option>
-            <option>Economics</option><option>Psychology</option><option>Political Science</option>
-            <option>Sociology</option><option>History</option><option>Philosophy</option><option>Administration</option>
-          </select>
-        </div>
-        <div class="form-group" id="row-domain"><label class="form-label">Faculty Domain</label>
-          <select class="form-select" id="f-domain">
-            <option value="">— Select —</option><option>English</option><option>Economics</option>
-            <option>History</option><option>Political Science</option><option>Psychology</option>
-            <option>Sociology</option><option>Hindi</option><option>Philosophy</option>
-          </select>
-        </div>
-        <div class="form-group" id="row-prog"><label class="form-label">Programme</label>
-          <select class="form-select" id="f-prog" onchange="populateBatchOptions();populateSemesterOptions(this.value);">
             <option value="">— Select —</option>
-            <option>B.A. (Hons.) English</option>
-            <option>B.A. (Hons.) Economics</option>
-            <option>M.A. English</option>
-            <option>M.A. Economics</option><option>M.A. Psychology</option><option>M.A. Sociology</option>
-            <option>M.A. Political Science</option><option>M.A. History</option><option>M.A. Philosophy</option><option>Ph.D.</option>
+            <option value="English">English</option>
+            <option value="Economics">Economics</option>
+            <option value="History">History</option>
+            <option value="Political Science">Political Science</option>
+            <option value="Psychology">Psychology</option>
+            <option value="Sociology">Sociology</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Philosophy">Philosophy</option>
+            <option value="Administration">Administration</option>
           </select>
         </div>
-        <div class="form-group" id="row-semester"><label class="form-label">Semester</label>\n          <select class="form-select" id="f-semester">\n            <option value="">— Select Semester —</option>\n            <option value="1">Semester 1</option><option value="2">Semester 2</option>\n            <option value="3">Semester 3</option><option value="4">Semester 4</option>\n            <option value="5">Semester 5</option><option value="6">Semester 6</option>\n            <option value="7">Semester 7</option><option value="8">Semester 8</option>\n          </select>\n        </div>\n        <div class="form-group" id="row-batch"><label class="form-label">Batch / Course Duration</label>
+        <div class="form-group" id="row-domain"><label class="form-label">Faculty Domain (Teaching Subject)</label>
+          <select class="form-select" id="f-domain">
+            <option value="">— Select —</option>
+            <option value="English">English</option>
+            <option value="Economics">Economics</option>
+            <option value="History">History</option>
+            <option value="Political Science">Political Science</option>
+            <option value="Psychology">Psychology</option>
+            <option value="Sociology">Sociology</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Philosophy">Philosophy</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-prog-type"><label class="form-label">Programme Type</label>
+          <select class="form-select" id="f-prog-type" onchange="adminOnProgTypeChange()">
+            <option value="">— Select —</option>
+            <option value="B.A. (Hons.)">B.A. (Hons.) — Bachelor of Arts (Honours)</option>
+            <option value="M.A.">M.A. — Master of Arts</option>
+            <option value="Ph.D.">Ph.D. — Doctor of Philosophy</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-prog"><label class="form-label">Programme (Full Course Name)</label>
+          <select class="form-select" id="f-prog" onchange="populateBatchOptions();populateSemesterOptions(document.getElementById('f-prog-type').value);">
+            <option value="">— Select Programme Type First —</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-semester"><label class="form-label">Semester</label>
+          <select class="form-select" id="f-semester">
+            <option value="">— Select Programme First —</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-batch"><label class="form-label">Batch (Admission Year)</label>
           <select class="form-select" id="f-batch" onchange="validateBatchForProgramme()">
             <option value="">— Select programme first —</option>
           </select>
           <div id="batch-help" style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px"></div>
         </div>
-        <div class="form-group" id="row-desig"><label class="form-label">Designation</label><input class="form-input" id="f-desig" placeholder="e.g. Professor"/></div>
+        <div class="form-group" id="row-section"><label class="form-label">Section</label>
+          <select class="form-select" id="f-section">
+            <option value="">— Select —</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="None">No Section</option>
+          </select>
+        </div>
+        <div class="form-group" id="row-desig"><label class="form-label">Designation</label><input class="form-input" id="f-desig" placeholder="e.g. Assistant Professor"/></div>
         <div class="form-group"><label class="form-label">Password <span class="required" id="pwd-req">*</span></label><input class="form-input" id="f-pwd" type="password" placeholder="Min 8 chars"/></div>
         <div class="form-group" id="row-active"><label class="form-label">Status</label>
           <select class="form-select" id="f-active"><option value="1">Active</option><option value="0">Inactive</option></select>
@@ -1808,11 +1842,20 @@ function openEditModal(id) {
   document.getElementById("f-phone").value=user.phone||"";
   document.getElementById("f-dept").value=user.department||"";
   document.getElementById("f-domain").value=user.domain||"";
-  document.getElementById("f-prog").value=user.programme||"";
-  document.getElementById("f-batch").value=user.batch||"";
-  const semesterSelect=document.getElementById("f-semester");
-  semesterSelect.innerHTML='<option value="">— Select Semester —</option>';
-  populateSemesterOptions(user.programme, user.semester||"");
+  // Infer prog-type from the stored programme string
+  const storedProg = user.programme||"";
+  let inferredType = "";
+  if(storedProg.startsWith("B.A.")) inferredType="B.A. (Hons.)";
+  else if(storedProg.startsWith("M.A.")) inferredType="M.A.";
+  else if(storedProg.startsWith("Ph.D.")) inferredType="Ph.D.";
+  document.getElementById("f-prog-type").value = inferredType;
+  adminOnProgTypeChange(); // populate course dropdown
+  document.getElementById("f-prog").value = storedProg;
+  // populate batch and semester
+  populateBatchOptions(user.batch||"");
+  document.getElementById("f-batch").value = user.batch||"";
+  populateSemesterOptions(inferredType, user.semester||"");
+  document.getElementById("f-section").value = user.section||"";
   document.getElementById("f-desig").value=user.designation||"";
   document.getElementById("f-pwd").value="";
   document.getElementById("f-active").value=String(user.is_active);
@@ -1828,69 +1871,109 @@ function closeModal() {
   editingId=null;
 }
 function closeModal2(id) { document.getElementById(id).classList.remove("open"); }
-function populateSemesterOptions(programme, selected=""){
-  const semester=document.getElementById("f-semester");
-  const duration=getProgrammeDuration(programme);
-  semester.innerHTML='<option value="">— Select Semester —</option>';
-  const maxSemesters=duration===4 ? 8 : duration===2 ? 4 : 0;
-  for(let i=1;i<=maxSemesters;i++){
-    const option=document.createElement("option");
-    option.value=String(i); option.textContent=`Semester ${i}`;
-    semester.appendChild(option);
+// ── Admin — USHSS Academic Structure (mirrors ushss_website.html) ──────────
+const ADMIN_USHSS_PROGRAMMES = {
+  "B.A. (Hons.)": {
+    duration: 4, semesters: 8,
+    courses: [
+      "B.A. (Hons.) English","B.A. (Hons.) Economics","B.A. (Hons.) History",
+      "B.A. (Hons.) Political Science","B.A. (Hons.) Psychology",
+      "B.A. (Hons.) Sociology","B.A. (Hons.) Hindi","B.A. (Hons.) Philosophy"
+    ]
+  },
+  "M.A.": {
+    duration: 2, semesters: 4,
+    courses: [
+      "M.A. English","M.A. Economics","M.A. History","M.A. Political Science",
+      "M.A. Psychology","M.A. Sociology","M.A. Hindi","M.A. Philosophy"
+    ]
+  },
+  "Ph.D.": { duration: 3, semesters: 6, courses: ["Ph.D. Humanities","Ph.D. Social Sciences"] }
+};
+
+function adminOnProgTypeChange() {
+  const type = document.getElementById("f-prog-type").value;
+  const prog = document.getElementById("f-prog");
+  prog.innerHTML = '<option value="">— Select Course —</option>';
+  if (type && ADMIN_USHSS_PROGRAMMES[type]) {
+    ADMIN_USHSS_PROGRAMMES[type].courses.forEach(c => {
+      const o = document.createElement("option"); o.value=c; o.textContent=c; prog.appendChild(o);
+    });
   }
-  semester.value=(selected && Number(selected)<=maxSemesters) ? String(selected) : "";
+  document.getElementById("f-batch").innerHTML = '<option value="">— Select programme first —</option>';
+  document.getElementById("f-semester").innerHTML = '<option value="">— Select Programme First —</option>';
+  if (document.getElementById("batch-help")) document.getElementById("batch-help").textContent = "";
 }
-function getProgrammeDuration(programme){
-  const p=(programme||"").toLowerCase();
-  if(p.includes("b.a.") || p.includes("b.a ") || p.includes("ba english") || p.includes("ba economics")) return 4;
-  if(p.includes("m.a.") || p.includes("m.a ") || p.includes("ma english") || p.includes("ma economics")) return 2;
-  return null;
+
+function populateSemesterOptions(progType, selected="") {
+  const semester = document.getElementById("f-semester");
+  const data = ADMIN_USHSS_PROGRAMMES[progType];
+  const maxSemesters = data ? data.semesters : 0;
+  semester.innerHTML = '<option value="">— Select Semester —</option>';
+  for (let i = 1; i <= maxSemesters; i++) {
+    const o = document.createElement("option"); o.value=String(i); o.textContent=`Semester ${i}`; semester.appendChild(o);
+  }
+  if (!maxSemesters) semester.innerHTML = '<option value="">— Select Programme First —</option>';
+  else semester.value = (selected && Number(selected)<=maxSemesters) ? String(selected) : "";
 }
-function populateBatchOptions(selected=""){
-  const programme=document.getElementById("f-prog").value;
-  const batch=document.getElementById("f-batch");
-  const help=document.getElementById("batch-help");
-  const duration=getProgrammeDuration(programme);
-  const currentYear=new Date().getFullYear();
-  batch.innerHTML="";
-  if(!duration){
-    batch.innerHTML='<option value="">— Select programme first —</option>';
-    help.textContent="";
+
+function getProgrammeDuration(progType) {
+  const data = ADMIN_USHSS_PROGRAMMES[progType];
+  return data ? data.duration : null;
+}
+
+function populateBatchOptions(selected="") {
+  const progType = document.getElementById("f-prog-type").value;
+  const batch = document.getElementById("f-batch");
+  const help = document.getElementById("batch-help");
+  const data = ADMIN_USHSS_PROGRAMMES[progType];
+  const duration = data ? data.duration : null;
+  const currentYear = new Date().getFullYear();
+  batch.innerHTML = "";
+  if (!duration) {
+    batch.innerHTML = '<option value="">— Select programme first —</option>';
+    if (help) help.textContent = "";
     return;
   }
-  batch.innerHTML='<option value="">— Select batch —</option>';
-  for(let start=2021;start<=currentYear+1;start++){
-    const end=start+duration;
-    const value=`${start}-${end}`;
-    const option=document.createElement("option");
-    option.value=value; option.textContent=value; batch.appendChild(option);
+  batch.innerHTML = '<option value="">— Select batch —</option>';
+  for (let start=2021; start<=currentYear+1; start++) {
+    const end = start+duration;
+    const value = `${start}-${end}`;
+    const o = document.createElement("option"); o.value=value; o.textContent=value; batch.appendChild(o);
   }
-  if(selected && !Array.from(batch.options).some(o=>o.value===String(selected))){
-    const option=document.createElement("option");
-    option.value=selected; option.textContent=selected+" (current)"; batch.appendChild(option);
+  if (selected && !Array.from(batch.options).some(o=>o.value===String(selected))) {
+    const o = document.createElement("option"); o.value=selected; o.textContent=selected+" (current)"; batch.appendChild(o);
   }
-  batch.value=selected||"";
-  help.textContent=duration===4 ? "B.A. programme: 4-year batch (e.g. 2025-2029)." : "M.A. programme: 2-year batch (e.g. 2025-2027).";
+  batch.value = selected||"";
+  if (help) help.textContent = duration===4 ? "B.A. programme: 4-year batch (e.g. 2025–2029)." : duration===2 ? "M.A. programme: 2-year batch (e.g. 2025–2027)." : "Ph.D. programme: 3-year batch.";
 }
-function validateBatchForProgramme(){
-  const duration=getProgrammeDuration(document.getElementById("f-prog").value);
-  const batch=document.getElementById("f-batch").value;
-  if(!batch||!duration) return true;
-  const m=batch.match(/^(\d{4})-(\d{4})$/);
+
+function validateBatchForProgramme() {
+  const progType = document.getElementById("f-prog-type").value;
+  const duration = getProgrammeDuration(progType);
+  const batch = document.getElementById("f-batch").value;
+  if (!batch||!duration) return true;
+  const m = batch.match(/^(\d{4})-(\d{4})$/);
   return !!m && Number(m[2])-Number(m[1])===duration;
 }
+
 function onRoleChange() {
-  const role=document.getElementById("f-role").value;
-  const labels={student:"Enrollment No.",faculty:"Faculty ID",cr:"CR Roll No.",admin:"Admin ID"};
+  const role = document.getElementById("f-role").value;
+  const labels = {student:"Enrollment No.",faculty:"Faculty ID",cr:"CR Roll No.",admin:"Admin ID"};
   document.getElementById("label-username").innerHTML=`${labels[role]||"Username"} <span class="required">*</span>`;
-  const showStu=role==="student"||role==="cr";
+  const showStu = role==="student"||role==="cr";
   const showDesig=role==="faculty"||role==="admin"||role==="cr";
   document.getElementById("row-domain").style.display=role==="faculty"?"flex":"none";
   document.getElementById("row-prog").style.display=showStu?"flex":"none";
   document.getElementById("row-batch").style.display=showStu?"flex":"none";
+  document.getElementById("row-prog-type").style.display=showStu?"flex":"none";
   document.getElementById("row-semester").style.display=showStu?"flex":"none";
+  document.getElementById("row-section").style.display=showStu?"flex":"none";
   document.getElementById("row-desig").style.display=showDesig?"flex":"none";
-  if(showStu){ populateBatchOptions(document.getElementById("f-batch").value); populateSemesterOptions(document.getElementById("f-prog").value, document.getElementById("f-semester").value); }
+  if(showStu){
+    populateBatchOptions(document.getElementById("f-batch").value);
+    populateSemesterOptions(document.getElementById("f-prog-type").value, document.getElementById("f-semester").value);
+  }
 }
 async function assignStudentAsCR(id,name){
   const user=(window.__supabaseUsers||[]).find(u=>Number(u.id)===Number(id));
@@ -1916,7 +1999,20 @@ async function saveUser() {
   const btn=document.getElementById("modal-save-btn");
   const wasEditing=!!editingId;
   try{
-    const data={full_name:name,email:document.getElementById("f-email").value.trim(),phone:document.getElementById("f-phone").value.trim(),department:document.getElementById("f-dept").value,domain:document.getElementById("f-domain").value,programme:document.getElementById("f-prog").value,batch:document.getElementById("f-batch").value,semester:document.getElementById("f-semester").value||undefined,designation:document.getElementById("f-desig").value.trim(),is_active:document.getElementById("f-active").value,password:pwd||undefined};
+    const data={
+      full_name: name,
+      email: document.getElementById("f-email").value.trim(),
+      phone: document.getElementById("f-phone").value.trim(),
+      department: document.getElementById("f-dept").value,
+      domain: document.getElementById("f-domain").value,
+      programme: document.getElementById("f-prog").value,
+      batch: document.getElementById("f-batch").value,
+      semester: document.getElementById("f-semester").value||undefined,
+      section: document.getElementById("f-section").value||undefined,
+      designation: document.getElementById("f-desig").value.trim(),
+      is_active: document.getElementById("f-active").value,
+      password: pwd||undefined
+    };
     btn.disabled=true;
     btn.textContent=wasEditing?"Saving...":"Creating...";
     if(wasEditing) await dbUpdateUser(editingId,data);

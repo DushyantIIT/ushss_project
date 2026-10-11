@@ -13,12 +13,14 @@ FACULTY rights:
 
 from datetime import date as DateType, datetime, timezone
 from typing import Optional
+import random
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from app.db import sb
 from app.deps import require_faculty
+from app.excel import build_attendance_xlsx, generate_attendance_filename
 
 router = APIRouter(prefix="/faculty", tags=["Faculty"])
 
@@ -112,12 +114,28 @@ def get_my_timetable(faculty: dict = Depends(require_faculty)):
 # ═══════════════════════════════════════════════════════════════
 
 class OpenSessionBody(BaseModel):
-    slot_id: int
-    date:    DateType
+    slot_id:             int
+    date:                DateType
+    anchor_lat:          Optional[float] = None
+    anchor_lon:          Optional[float] = None
+    anchor_accuracy:     Optional[float] = None
+    time_limit_disabled: bool = False
+    session_cap:         Optional[int] = None
+
+
+def _extract_subnet(ip: str) -> Optional[str]:
+    """Return the /24 subnet string for an IPv4 address, or None if not parseable."""
+    try:
+        parts = ip.split(".")
+        if len(parts) == 4:
+            return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
+    except Exception:
+        pass
+    return None
 
 
 @router.post("/attendance/open", status_code=201, summary="Open an attendance session")
-def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)):
+def open_session(body: OpenSessionBody, request: Request, faculty: dict = Depends(require_faculty)):
     """
     Faculty opens a session for one of their timetable slots on a given date.
     Students can mark attendance only while session is open.
@@ -141,6 +159,31 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
     if scheduled_day and scheduled_day.lower() != day_name.lower():
         raise HTTPException(400, f"Session date {body.date} is a {day_name}, but this timetable slot is scheduled for {scheduled_day}")
 
+    # Derive teacher's subnet for later student network matching
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or request.headers.get("X-Real-IP", "")
+        or (request.client.host if request.client else "")
+    )
+    teacher_subnet = _extract_subnet(client_ip) if client_ip else None
+
+    # Build session payload
+    session_payload: dict = {
+        "slot_id":             body.slot_id,
+        "faculty_id":          faculty["id"],
+        "date":                str(body.date),
+        "is_open":             True,
+        "time_limit_disabled": body.time_limit_disabled,
+        "teacher_subnet":      teacher_subnet,
+    }
+    if body.anchor_lat is not None and body.anchor_lon is not None:
+        session_payload["anchor_lat"]      = body.anchor_lat
+        session_payload["anchor_lon"]      = body.anchor_lon
+        session_payload["anchor_accuracy"] = body.anchor_accuracy
+        session_payload["anchor_source"]   = "teacher"
+    if body.session_cap is not None:
+        session_payload["session_cap"] = body.session_cap
+
     # Check if session already exists for this slot+date
     existing = sb.table("attendance_sessions") \
                  .select("id, is_open") \
@@ -160,20 +203,49 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
                   .execute()
             except Exception as exc:
                 print(f"REOPEN: could not remove absent records for session {sess['id']}: {exc}")
-            res = sb.table("attendance_sessions").update({
-                "is_open":    True,
-                "opened_at":  datetime.now(timezone.utc).isoformat(),
-                "closed_at":  None,
-            }).eq("id", sess["id"]).execute()
+            update_payload = {
+                "is_open":             True,
+                "opened_at":           datetime.now(timezone.utc).isoformat(),
+                "closed_at":           None,
+                "time_limit_disabled": body.time_limit_disabled,
+                "teacher_subnet":      teacher_subnet,
+            }
+            if body.anchor_lat is not None and body.anchor_lon is not None:
+                update_payload["anchor_lat"]      = body.anchor_lat
+                update_payload["anchor_lon"]      = body.anchor_lon
+                update_payload["anchor_accuracy"] = body.anchor_accuracy
+                update_payload["anchor_source"]   = "teacher"
+            res = sb.table("attendance_sessions").update(update_payload).eq("id", sess["id"]).execute()
+            # Record the anchor fix
+            if body.anchor_lat is not None and body.anchor_lon is not None:
+                try:
+                    sb.table("attendance_anchor_fixes").insert({
+                        "session_id":   sess["id"],
+                        "latitude":     body.anchor_lat,
+                        "longitude":    body.anchor_lon,
+                        "accuracy":     body.anchor_accuracy,
+                        "submitted_by": "teacher",
+                    }).execute()
+                except Exception as exc:
+                    print(f"ANCHOR FIX INSERT WARNING (reopen): {exc!r}")
             return {"message": "Session re-opened (absent records cleared)", "session": res.data[0]}
 
     # Create new session
-    res = sb.table("attendance_sessions").insert({
-        "slot_id":    body.slot_id,
-        "faculty_id": faculty["id"],
-        "date":       str(body.date),
-        "is_open":    True,
-    }).execute()
+    res = sb.table("attendance_sessions").insert(session_payload).execute()
+    new_session = res.data[0]
+
+    # Record the initial anchor fix
+    if body.anchor_lat is not None and body.anchor_lon is not None:
+        try:
+            sb.table("attendance_anchor_fixes").insert({
+                "session_id":   new_session["id"],
+                "latitude":     body.anchor_lat,
+                "longitude":    body.anchor_lon,
+                "accuracy":     body.anchor_accuracy,
+                "submitted_by": "teacher",
+            }).execute()
+        except Exception as exc:
+            print(f"ANCHOR FIX INSERT WARNING: {exc!r}")
 
     sb.table("audit_log").insert({
         "user_id": faculty["id"],
@@ -181,7 +253,7 @@ def open_session(body: OpenSessionBody, faculty: dict = Depends(require_faculty)
         "detail":  f"Faculty '{faculty['username']}' opened session for slot {body.slot_id} on {body.date}",
     }).execute()
 
-    return {"message": "Attendance session opened", "session": res.data[0]}
+    return {"message": "Attendance session opened", "session": new_session}
 
 
 @router.patch("/attendance/{sid}/close", summary="Close your attendance session")
@@ -201,6 +273,10 @@ def close_session(sid: int, faculty: dict = Depends(require_faculty)):
 
     # Mark all students in the class who did not mark attendance as "absent"
     slot = s.get("timetable_slots") or {}
+    if not slot and s.get("slot_id"):
+        sl_res = sb.table("timetable_slots").select("programme, batch, section").eq("id", s["slot_id"]).limit(1).execute()
+        if sl_res.data:
+            slot = sl_res.data[0]
     prog = slot.get("programme")
     batch = slot.get("batch")
     section = slot.get("section")
@@ -238,10 +314,178 @@ def close_session(sid: int, faculty: dict = Depends(require_faculty)):
         "detail":  f"Faculty '{faculty['username']}' closed session id={sid}",
     }).execute()
 
-    return {"message": "Session closed", "session": res.data[0]}
+    # Build random audit sample: 3–6 names from approved present students
+    audit_sample = []
+    try:
+        present_rows = sb.table("attendance_records") \
+            .select("student_id, users!attendance_records_student_id_fkey(full_name, enrollment_no)") \
+            .eq("session_id", sid) \
+            .eq("status", "present") \
+            .eq("review_status", "approved") \
+            .execute().data or []
+        sample_size = min(len(present_rows), random.randint(3, 6))
+        if sample_size > 0:
+            sample = random.sample(present_rows, sample_size)
+            audit_sample = [
+                {
+                    "full_name":     (r.get("users") or {}).get("full_name", ""),
+                    "enrollment_no": (r.get("users") or {}).get("enrollment_no", ""),
+                }
+                for r in sample
+            ]
+    except Exception as exc:
+        print(f"AUDIT SAMPLE WARNING session={sid}: {exc!r}")
+
+    return {
+        "message":      "Session closed",
+        "session":      res.data[0],
+        "audit_sample": audit_sample,
+    }
 
 
+# ═══════════════════════════════════════════════════════════════
+#  ANTI-CHEATING: ANCHOR FIX, REVIEW QUEUE, TOGGLE TIME LIMIT
+# ═══════════════════════════════════════════════════════════════
 
+class AnchorFixBody(BaseModel):
+    latitude:  float
+    longitude: float
+    accuracy:  Optional[float] = None
+
+
+@router.patch("/attendance/{sid}/anchor", summary="Submit an additional GPS anchor fix")
+def submit_anchor_fix(sid: int, body: AnchorFixBody, faculty: dict = Depends(require_faculty)):
+    """Teacher submits a new GPS fix. When 3+ teacher fixes are available,
+    the best-accuracy one is promoted as the session anchor."""
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id, is_open, anchor_lat, anchor_accuracy") \
+                .eq("id", sid).limit(1).execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+    s = session.data[0]
+    if faculty["role"] != "admin" and s["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only update your own sessions")
+    if not s["is_open"]:
+        raise HTTPException(400, "Session is already closed")
+
+    # Insert fix
+    sb.table("attendance_anchor_fixes").insert({
+        "session_id":   sid,
+        "latitude":     body.latitude,
+        "longitude":    body.longitude,
+        "accuracy":     body.accuracy,
+        "submitted_by": "teacher",
+    }).execute()
+
+    # Recalculate best anchor if 3+ teacher fixes exist
+    fixes = sb.table("attendance_anchor_fixes") \
+               .select("latitude, longitude, accuracy") \
+               .eq("session_id", sid) \
+               .eq("submitted_by", "teacher") \
+               .execute().data or []
+
+    if len(fixes) >= 3:
+        # Best = lowest accuracy value (meters) — filter out None
+        valid = [f for f in fixes if f.get("accuracy") is not None]
+        best  = min(valid, key=lambda f: f["accuracy"]) if valid else fixes[0]
+        res = sb.table("attendance_sessions").update({
+            "anchor_lat":      best["latitude"],
+            "anchor_lon":      best["longitude"],
+            "anchor_accuracy": best.get("accuracy"),
+            "anchor_source":   "teacher",
+        }).eq("id", sid).execute()
+        return {"message": "Anchor updated from best of 3+ fixes", "session": res.data[0]}
+
+    return {"message": "Anchor fix recorded", "fix_count": len(fixes)}
+
+
+class ToggleLimitBody(BaseModel):
+    time_limit_disabled: bool
+
+
+@router.patch("/attendance/{sid}/toggle-limit", summary="Toggle the 5-minute attendance window")
+def toggle_time_limit(sid: int, body: ToggleLimitBody, faculty: dict = Depends(require_faculty)):
+    """Teacher can enable or disable the 5-minute submission window while a session is open."""
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id, is_open") \
+                .eq("id", sid).limit(1).execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+    s = session.data[0]
+    if faculty["role"] != "admin" and s["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only modify your own sessions")
+    if not s["is_open"]:
+        raise HTTPException(400, "Session is already closed")
+
+    res = sb.table("attendance_sessions").update({
+        "time_limit_disabled": body.time_limit_disabled,
+    }).eq("id", sid).execute()
+    state = "disabled (no time limit)" if body.time_limit_disabled else "enabled (5-minute window)"
+    return {"message": f"Time limit {state}", "session": res.data[0]}
+
+
+@router.get("/attendance/{sid}/review", summary="View the review queue for a session")
+def get_review_queue(sid: int, faculty: dict = Depends(require_faculty)):
+    """Returns attendance records pending teacher review, ordered by suspicion score."""
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id") \
+                .eq("id", sid).limit(1).execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+    if faculty["role"] != "admin" and session.data[0]["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only view your own sessions")
+
+    records = sb.table("attendance_records") \
+                .select("id, student_id, status, review_status, flags, suspicion_score, "
+                        "gps_zone, gps_distance, time_delta_seconds, device_uuid, subnet_match, marked_at, "
+                        "users!attendance_records_student_id_fkey(full_name, enrollment_no)") \
+                .eq("session_id", sid) \
+                .eq("review_status", "pending") \
+                .order("suspicion_score", desc=True) \
+                .execute().data or []
+
+    return {"session_id": sid, "pending": len(records), "records": records}
+
+
+class ReviewDecisionBody(BaseModel):
+    decision: str  # 'approved' or 'rejected'
+
+
+@router.patch("/attendance/{sid}/review/{record_id}", summary="Approve or reject a flagged attendance record")
+def review_attendance(sid: int, record_id: int, body: ReviewDecisionBody, faculty: dict = Depends(require_faculty)):
+    """Teacher approves or rejects a pending attendance record."""
+    if body.decision not in ("approved", "rejected"):
+        raise HTTPException(422, "Decision must be 'approved' or 'rejected'")
+
+    session = sb.table("attendance_sessions") \
+                .select("id, faculty_id") \
+                .eq("id", sid).limit(1).execute()
+    if not session.data:
+        raise HTTPException(404, "Session not found")
+    if faculty["role"] != "admin" and session.data[0]["faculty_id"] != faculty["id"]:
+        raise HTTPException(403, "You can only review your own sessions")
+
+    record = sb.table("attendance_records") \
+               .select("id, session_id, student_id, review_status") \
+               .eq("id", record_id).eq("session_id", sid).limit(1).execute()
+    if not record.data:
+        raise HTTPException(404, "Attendance record not found")
+    if record.data[0]["review_status"] != "pending":
+        raise HTTPException(409, "This record has already been reviewed")
+
+    new_status = "present" if body.decision == "approved" else "absent"
+    res = sb.table("attendance_records").update({
+        "review_status": body.decision,
+        "status":        new_status,
+    }).eq("id", record_id).execute()
+
+    sb.table("audit_log").insert({
+        "user_id": faculty["id"],
+        "action":  f"ATTENDANCE_REVIEW_{body.decision.upper()}",
+        "detail":  f"Faculty '{faculty['username']}' {body.decision} record id={record_id} in session id={sid}",
+    }).execute()
+
+    return {"message": f"Record {body.decision}", "record": res.data[0]}
 
 class AttendanceRecordInput(BaseModel):
     student_id: int
@@ -329,30 +573,137 @@ def save_session_records(sid: int, body: BulkAttendanceBody, faculty: dict = Dep
     return {"message": "Attendance records saved", "session_id": sid, "saved": len(saved), "records": saved}
 
 
-@router.get("/attendance/{sid}/records", summary="View attendance records for a session")
+@router.get("/attendance/{sid}/records", summary="View complete attendance records for a session")
 def session_records(sid: int, faculty: dict = Depends(require_faculty)):
-    """View who marked attendance for a session."""
+    """View complete list of students present and absent for a session."""
     session = sb.table("attendance_sessions") \
-                .select("id, faculty_id, date, timetable_slots(subject, programme, batch)") \
+                .select("id, slot_id, faculty_id, date, opened_at, closed_at, is_open, timetable_slots(subject, programme, batch, section, start_time, end_time, room)") \
                 .eq("id", sid).limit(1).execute()
     if not session.data:
         raise HTTPException(404, "Session not found")
 
-    if faculty["role"] != "admin" and session.data[0]["faculty_id"] != faculty["id"]:
+    sess = session.data[0]
+    if faculty["role"] != "admin" and sess["faculty_id"] != faculty["id"]:
         raise HTTPException(403, "You can only view records for your own sessions")
 
+    slot = sess.get("timetable_slots") or {}
+    if not slot and sess.get("slot_id"):
+        sl_res = sb.table("timetable_slots").select("subject, programme, batch, section, start_time, end_time, room").eq("id", sess["slot_id"]).limit(1).execute()
+        if sl_res.data:
+            slot = sl_res.data[0]
+            sess["timetable_slots"] = slot
+
+    prog = slot.get("programme")
+    batch = slot.get("batch")
+    sec = slot.get("section")
+
+    # Fetch enrolled students in this class
+    q_stud = sb.table("users").select("id, username, full_name, enrollment_no, programme, batch, section").eq("role", "student").eq("is_active", True)
+    if prog:
+        q_stud = q_stud.eq("programme", prog)
+    if batch:
+        q_stud = q_stud.eq("batch", batch)
+    if sec:
+        q_stud = q_stud.eq("section", sec)
+    enrolled_students = q_stud.order("enrollment_no").execute().data or []
+
+    # Fetch marked records
     records = sb.table("attendance_records") \
-                .select("*, users!attendance_records_student_id_fkey(full_name, enrollment_no, programme, batch)") \
-                .eq("session_id", sid) \
-                .order("marked_at").execute()
+                .select("id, student_id, status, review_status, marked_at, gps_zone, gps_distance, flags, device_uuid, subnet_match") \
+                .eq("session_id", sid).execute().data or []
+    rec_by_student = {r["student_id"]: r for r in records}
+
+    present_students = []
+    absent_students = []
+
+    for st in enrolled_students:
+        rec = rec_by_student.get(st["id"])
+        is_present = bool(rec and rec.get("status") == "present" and rec.get("review_status") != "rejected")
+        time_str = ""
+        if rec and rec.get("marked_at"):
+            try:
+                time_str = datetime.fromisoformat(str(rec["marked_at"]).replace("Z", "+00:00")).strftime("%I:%M %p")
+            except Exception:
+                time_str = str(rec["marked_at"])
+
+        note = "Verified"
+        if rec:
+            parts = []
+            if rec.get("gps_distance") is not None:
+                parts.append(f"{int(rec['gps_distance'])}m from anchor")
+            if rec.get("flags"):
+                parts.append(f"Flags: {rec['flags']}")
+            if rec.get("review_status") == "pending":
+                parts.append("Pending Review")
+            if parts:
+                note = " · ".join(parts)
+
+        st_entry = {
+            "id": st["id"],
+            "student_id": st["id"],
+            "full_name": st.get("full_name") or st.get("username"),
+            "name": st.get("full_name") or st.get("username"),
+            "enrollment_no": st.get("enrollment_no") or st.get("username"),
+            "roll": st.get("enrollment_no") or st.get("username"),
+            "status": "present" if is_present else "absent",
+            "marked_at": time_str if is_present else "—",
+            "notes": note if is_present else "Did not mark attendance",
+            "verification": note if is_present else "Did not mark attendance",
+            "record": rec,
+        }
+
+        if is_present:
+            present_students.append(st_entry)
+        else:
+            absent_students.append(st_entry)
+
+    total_count = len(enrolled_students)
+    present_count = len(present_students)
+    absent_count = len(absent_students)
+    pct = round((present_count / total_count * 100), 1) if total_count else 0.0
 
     return {
-        "session":  session.data[0],
-        "records":  records.data or [],
-        "total":    len(records.data or []),
-        "present":  sum(1 for r in (records.data or []) if r["status"] == "present"),
-        "absent":   sum(1 for r in (records.data or []) if r["status"] == "absent"),
+        "session": sess,
+        "records": records,
+        "total": total_count,
+        "present": present_count,
+        "absent": absent_count,
+        "attendance_percentage": pct,
+        "present_students": present_students,
+        "absent_students": absent_students,
     }
+
+
+@router.get("/attendance/{sid}/export-xlsx", summary="Download attendance as Excel (.xlsx)")
+def export_attendance_xlsx(sid: int, faculty: dict = Depends(require_faculty)):
+    """Export session attendance report as an authentic .xlsx workbook."""
+    data = session_records(sid=sid, faculty=faculty)
+    sess = data["session"]
+    slot = sess.get("timetable_slots") or {}
+
+    meta = {
+        "subject": slot.get("subject"),
+        "programme": slot.get("programme"),
+        "batch": slot.get("batch"),
+        "section": slot.get("section"),
+        "date": sess.get("date"),
+        "start_time": slot.get("start_time"),
+        "end_time": slot.get("end_time"),
+        "room": slot.get("room"),
+        "faculty_name": faculty.get("full_name") or faculty.get("username"),
+    }
+
+    filename = generate_attendance_filename(meta)
+    xlsx_bytes = build_attendance_xlsx(meta, data["present_students"], data["absent_students"])
+
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition",
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

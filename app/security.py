@@ -34,7 +34,7 @@ elif SECRET_KEY == "dev-secret-change-in-production-must-be-32-chars" and IS_PRO
     )
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 480))  # 8 h
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 10080))  # 7 days default
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

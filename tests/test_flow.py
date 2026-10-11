@@ -244,6 +244,156 @@ class TestUSHSSPortal(unittest.TestCase):
         self.assertTrue(login_approved.json().get("success"))
         self.assertEqual(login_approved.json().get("redirect_url"), "/dashboard/student")
 
+    def test_09_anticheating_attendance_flow(self):
+        from datetime import date, datetime
+        from app.db import sb
+
+        # 1. Login faculty & student
+        fac_login = client.post("/api/login", json={
+            "username": "fac001", "password": "Faculty@123", "role": "faculty"
+        })
+        fac_token = fac_login.json()["token"]
+        fac_headers = {"Authorization": f"Bearer {fac_token}"}
+        fac_id = fac_login.json()["user"]["id"]
+
+        stu_login = client.post("/api/login", json={
+            "username": "2301001", "password": "Student@123", "role": "student"
+        })
+        stu_token = stu_login.json()["token"]
+        stu_headers = {"Authorization": f"Bearer {stu_token}"}
+        stu_id = stu_login.json()["user"]["id"]
+
+        cr_login = client.post("/api/login", json={
+            "username": "cr2301001", "password": "Cr@12345", "role": "cr"
+        })
+        cr_token = cr_login.json()["token"]
+        cr_headers = {"Authorization": f"Bearer {cr_token}"}
+
+        # 2. Insert a timetable slot for today
+        today = date.today()
+        day_name = today.strftime("%A")
+        slot_res = sb.table("timetable_slots").insert({
+            "subject": "Advanced Literature",
+            "day_of_week": day_name,
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "room": "Room 204",
+            "programme": "M.A. English",
+            "batch": "2023",
+            "department": "English",
+            "faculty_id": fac_id,
+        }).execute()
+        slot_id = slot_res.data[0]["id"]
+
+        # 3. Faculty opens session with GPS anchor & time_limit_disabled=True
+        anchor_lat, anchor_lon = 28.595016, 77.018942
+        open_res = client.post("/api/faculty/attendance/open", json={
+            "slot_id": slot_id,
+            "date": str(today),
+            "anchor_lat": anchor_lat,
+            "anchor_lon": anchor_lon,
+            "anchor_accuracy": 12.5,
+            "time_limit_disabled": True,
+        }, headers=fac_headers)
+        self.assertEqual(open_res.status_code, 201)
+        sess = open_res.json()["session"]
+        sid = sess["id"]
+        self.assertEqual(sess["anchor_lat"], anchor_lat)
+
+        # 4. Faculty submits refined anchor fix
+        fix_res = client.patch(f"/api/faculty/attendance/{sid}/anchor", json={
+            "latitude": 28.595020,
+            "longitude": 77.018940,
+            "accuracy": 8.0,
+        }, headers=fac_headers)
+        self.assertEqual(fix_res.status_code, 200)
+
+        # 5. Toggle time limit
+        toggle_res = client.patch(f"/api/faculty/attendance/{sid}/toggle-limit", json={
+            "time_limit_disabled": False,
+        }, headers=fac_headers)
+        self.assertEqual(toggle_res.status_code, 200)
+        self.assertFalse(toggle_res.json()["session"]["time_limit_disabled"])
+
+        # Toggle back to disabled for testing check-ins
+        client.patch(f"/api/faculty/attendance/{sid}/toggle-limit", json={
+            "time_limit_disabled": True,
+        }, headers=fac_headers)
+
+        # 6. Test GATE 2: GPS hard reject (>150m away)
+        far_res = client.post("/api/student/attendance/mark", json={
+            "session_id": sid,
+            "latitude": 28.605000, # ~1.1 km away
+            "longitude": 77.018942,
+            "device_uuid": "device-uuid-far",
+        }, headers=stu_headers)
+        self.assertEqual(far_res.status_code, 403)
+        self.assertIn("outside the classroom boundary", far_res.text)
+
+        # 7. Test clean pass (<50m) with device UUID
+        clean_res = client.post("/api/student/attendance/mark", json={
+            "session_id": sid,
+            "latitude": 28.595018, # ~0.2m away
+            "longitude": 77.018942,
+            "device_uuid": "shared-phone-device-xyz",
+        }, headers=stu_headers)
+        self.assertEqual(clean_res.status_code, 201)
+        self.assertFalse(clean_res.json().get("pending"))
+
+        # 8. Test GATE 3: Device UUID conflict (another student uses same device on same session)
+        conflict_res = client.post("/api/student/attendance/mark", json={
+            "session_id": sid,
+            "latitude": 28.595018,
+            "longitude": 77.018942,
+            "device_uuid": "shared-phone-device-xyz", # Same device as student 1!
+        }, headers=cr_headers)
+        self.assertEqual(conflict_res.status_code, 403)
+        self.assertIn("Another student has already used this device", conflict_res.text)
+
+        # 9. Test soft flag & Review Queue (CR marks with different device but in drift zone 50-150m)
+        drift_res = client.post("/api/student/attendance/mark", json={
+            "session_id": sid,
+            "latitude": 28.595800, # ~87m away
+            "longitude": 77.018942,
+            "device_uuid": "cr-unique-device-456",
+        }, headers=cr_headers)
+        self.assertEqual(drift_res.status_code, 201)
+
+        # 10. Check Review Queue endpoint
+        review_q = client.get(f"/api/faculty/attendance/{sid}/review", headers=fac_headers)
+        self.assertEqual(review_q.status_code, 200)
+
+        # 11. Faculty closes session -> audit_sample should be returned
+        close_res = client.patch(f"/api/faculty/attendance/{sid}/close", headers=fac_headers)
+        self.assertEqual(close_res.status_code, 200)
+        close_data = close_res.json()
+        self.assertIn("audit_sample", close_data)
+        self.assertIsInstance(close_data["audit_sample"], list)
+        self.assertGreater(len(close_data["audit_sample"]), 0)
+
+        # 12. Check complete present and absent rosters
+        roster_res = client.get(f"/api/faculty/attendance/{sid}/records", headers=fac_headers)
+        self.assertEqual(roster_res.status_code, 200)
+        roster_data = roster_res.json()
+        self.assertIn("present_students", roster_data)
+        self.assertIn("absent_students", roster_data)
+        self.assertGreater(len(roster_data["present_students"]), 0)
+        self.assertIn("attendance_percentage", roster_data)
+
+        # 13. Download attendance Excel (.xlsx) file
+        xlsx_res = client.get(f"/api/faculty/attendance/{sid}/export-xlsx", headers=fac_headers)
+        self.assertEqual(xlsx_res.status_code, 200)
+        self.assertEqual(
+            xlsx_res.headers["content-type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        cd_header = xlsx_res.headers.get("content-disposition", "")
+        self.assertIn(".xlsx", cd_header)
+        self.assertIn("Attendance", cd_header)
+        # Verify valid zip bytes (PK header)
+        self.assertTrue(xlsx_res.content.startswith(b"PK\x03\x04"))
+
 
 if __name__ == "__main__":
     unittest.main()
+

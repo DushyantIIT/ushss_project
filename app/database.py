@@ -163,7 +163,24 @@ def init_sqlite_db():
         is_open INTEGER DEFAULT 1,
         opened_at TEXT DEFAULT (datetime('now')),
         closed_at TEXT,
+        anchor_lat REAL,
+        anchor_lon REAL,
+        anchor_accuracy REAL,
+        anchor_source TEXT DEFAULT 'teacher',
+        time_limit_disabled INTEGER DEFAULT 0,
+        teacher_subnet TEXT,
+        session_cap INTEGER,
         UNIQUE (slot_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS attendance_anchor_fixes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        accuracy REAL,
+        submitted_by TEXT DEFAULT 'teacher',
+        created_at TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS attendance_records (
@@ -174,6 +191,14 @@ def init_sqlite_db():
         latitude REAL,
         longitude REAL,
         marked_at TEXT DEFAULT (datetime('now')),
+        device_uuid TEXT,
+        gps_zone INTEGER DEFAULT 0,
+        gps_distance REAL,
+        subnet_match INTEGER,
+        suspicion_score REAL DEFAULT 0,
+        flags TEXT,
+        review_status TEXT DEFAULT 'approved',
+        time_delta_seconds INTEGER,
         UNIQUE (session_id, student_id)
     );
 
@@ -240,6 +265,40 @@ def init_sqlite_db():
         uploaded_at TEXT DEFAULT (datetime('now'))
     );
     """)
+
+    # Safe migration for new attendance columns on existing sqlite databases
+    try:
+        existing_cols_sessions = {row[1] for row in cur.execute("PRAGMA table_info(attendance_sessions)").fetchall()}
+        for col, ctype in [
+            ("anchor_lat", "REAL"),
+            ("anchor_lon", "REAL"),
+            ("anchor_accuracy", "REAL"),
+            ("anchor_source", "TEXT DEFAULT 'teacher'"),
+            ("time_limit_disabled", "INTEGER DEFAULT 0"),
+            ("teacher_subnet", "TEXT"),
+            ("session_cap", "INTEGER"),
+        ]:
+            if col not in existing_cols_sessions:
+                cur.execute(f"ALTER TABLE attendance_sessions ADD COLUMN {col} {ctype}")
+
+        existing_cols_records = {row[1] for row in cur.execute("PRAGMA table_info(attendance_records)").fetchall()}
+        for col, ctype in [
+            ("latitude", "REAL"),
+            ("longitude", "REAL"),
+            ("device_uuid", "TEXT"),
+            ("gps_zone", "INTEGER DEFAULT 0"),
+            ("gps_distance", "REAL"),
+            ("subnet_match", "INTEGER"),
+            ("suspicion_score", "REAL DEFAULT 0"),
+            ("flags", "TEXT"),
+            ("review_status", "TEXT DEFAULT 'approved'"),
+            ("time_delta_seconds", "INTEGER"),
+        ]:
+            if col not in existing_cols_records:
+                cur.execute(f"ALTER TABLE attendance_records ADD COLUMN {col} {ctype}")
+    except Exception as mig_err:
+        print("SQLite column migration note:", mig_err)
+
     conn.commit()
     conn.close()
 

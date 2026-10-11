@@ -156,27 +156,58 @@ create table if not exists timetable_slots (
 --  ATTENDANCE SESSIONS  (faculty opens per class per date)
 -- ============================================================
 create table if not exists attendance_sessions (
-  id         bigserial primary key,
-  slot_id    bigint references timetable_slots(id) on delete cascade,
-  faculty_id bigint references users(id) on delete set null,
-  date       date    not null,
-  is_open    boolean not null default true,
-  opened_at  timestamptz not null default now(),
-  closed_at  timestamptz,
+  id                  bigserial primary key,
+  slot_id             bigint references timetable_slots(id) on delete cascade,
+  faculty_id          bigint references users(id) on delete set null,
+  date                date    not null,
+  is_open             boolean not null default true,
+  opened_at           timestamptz not null default now(),
+  closed_at           timestamptz,
+  -- Anti-cheating: GPS classroom anchor
+  anchor_lat          double precision,
+  anchor_lon          double precision,
+  anchor_accuracy     double precision,
+  anchor_source       text not null default 'teacher',
+  -- Anti-cheating: time window & network
+  time_limit_disabled boolean not null default false,
+  teacher_subnet      text,
+  session_cap         int,
   unique (slot_id, date)
+);
+
+-- ============================================================
+--  ATTENDANCE ANCHOR FIXES  (teacher GPS fixes to build anchor)
+-- ============================================================
+create table if not exists attendance_anchor_fixes (
+  id           bigserial primary key,
+  session_id   bigint references attendance_sessions(id) on delete cascade,
+  latitude     double precision not null,
+  longitude    double precision not null,
+  accuracy     double precision,
+  submitted_by text not null default 'teacher',
+  created_at   timestamptz not null default now()
 );
 
 -- ============================================================
 --  ATTENDANCE RECORDS  (student marks present in open session)
 -- ============================================================
 create table if not exists attendance_records (
-  id         bigserial primary key,
-  session_id bigint references attendance_sessions(id) on delete cascade,
-  student_id bigint references users(id) on delete cascade,
-  status     attendance_status not null default 'present',
-  latitude   double precision,
-  longitude  double precision,
-  marked_at  timestamptz not null default now(),
+  id                  bigserial primary key,
+  session_id          bigint references attendance_sessions(id) on delete cascade,
+  student_id          bigint references users(id) on delete cascade,
+  status              attendance_status not null default 'present',
+  latitude            double precision,
+  longitude           double precision,
+  marked_at           timestamptz not null default now(),
+  -- Anti-cheating fields
+  device_uuid         text,
+  gps_zone            int not null default 0,        -- 0=clean, 1=drift, 2=far
+  gps_distance        double precision,               -- meters from anchor
+  subnet_match        boolean,
+  suspicion_score     double precision not null default 0,
+  flags               text,                           -- comma-separated e.g. 'LATE,GPS_DRIFT'
+  review_status       text not null default 'approved', -- approved | pending | rejected
+  time_delta_seconds  int,
   unique (session_id, student_id)
 );
 
@@ -245,8 +276,9 @@ alter table faculty_directory   disable row level security;
 alter table events              disable row level security;
 alter table news_items          disable row level security;
 alter table timetable_slots     disable row level security;
-alter table attendance_sessions disable row level security;
-alter table attendance_records  disable row level security;
+alter table attendance_sessions      disable row level security;
+alter table attendance_anchor_fixes  disable row level security;
+alter table attendance_records       disable row level security;
 alter table announcements       disable row level security;
 alter table assignments         disable row level security;
 alter table study_materials     disable row level security;
@@ -260,7 +292,10 @@ create index if not exists idx_users_status      on users(status);
 create index if not exists idx_users_supabase_uid on users(supabase_uid);
 create index if not exists idx_users_programme   on users(programme, batch);
 create index if not exists idx_timetable_prog    on timetable_slots(programme, batch);
-create index if not exists idx_sessions_slot     on attendance_sessions(slot_id, date);
-create index if not exists idx_records_session   on attendance_records(session_id);
-create index if not exists idx_records_student   on attendance_records(student_id);
+create index if not exists idx_sessions_slot      on attendance_sessions(slot_id, date);
+create index if not exists idx_anchor_session     on attendance_anchor_fixes(session_id);
+create index if not exists idx_records_session    on attendance_records(session_id);
+create index if not exists idx_records_student    on attendance_records(student_id);
+create index if not exists idx_records_review     on attendance_records(session_id, review_status);
+create index if not exists idx_records_device     on attendance_records(device_uuid);
 create index if not exists idx_audit_ts          on audit_log(ts desc);
