@@ -211,6 +211,10 @@ def register(body: RegisterRequest, request: Request):
         if not body.enrollment_no:
             raise HTTPException(400, "Please enter your enrollment number.")
         enr_clean = body.enrollment_no.strip()
+        if enr_clean.isdigit() and len(enr_clean) != 11:
+            raise HTTPException(400, "Enrollment number must be exactly 11 digits (e.g. 02616401521).")
+        if not (IS_DEV and enr_clean.startswith("stu")) and not (enr_clean.isdigit() and len(enr_clean) == 11):
+            raise HTTPException(400, "Enrollment number must be exactly 11 digits (e.g. 02616401521).")
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
             if row_enr.get("status") == "approved":
@@ -224,7 +228,7 @@ def register(body: RegisterRequest, request: Request):
                     except Exception: pass
                 sb.table("users").delete().eq("id", row_enr["id"]).execute()
 
-    existing_un = sb.table("users").select("id, status, supabase_uid").eq("username", body.username).eq("role", body.role).execute().data or []
+    existing_un = sb.table("users").select("id, status, supabase_uid").eq("username", body.username.strip()).eq("role", body.role).execute().data or []
     for r in existing_un:
         if r.get("status") == "approved":
             raise HTTPException(409, f"This {body.role} ID/username is already registered. Please sign in instead.")
@@ -237,12 +241,20 @@ def register(body: RegisterRequest, request: Request):
                 except Exception: pass
             sb.table("users").delete().eq("id", r["id"]).execute()
 
-    existing_em = sb.table("users").select("id, status, supabase_uid").eq("email", body.email).execute().data or []
+    clean_email = str(body.email).strip().lower()
+    existing_em = sb.table("users").select("id, status, supabase_uid, email").execute().data or []
     for r in existing_em:
-        if r.get("status") == "approved":
-            raise HTTPException(409, "This email address is already registered. Please sign in or use a different email.")
-        elif r.get("status") == "pending":
-            raise HTTPException(409, "An account with this email address is already waiting for admin approval.")
+        if str(r.get("email", "")).strip().lower() == clean_email:
+            if r.get("status") == "approved":
+                raise HTTPException(409, "This email address is already registered. Please sign in or use a different email.")
+            elif r.get("status") == "pending":
+                raise HTTPException(409, "An account with this email address is already waiting for admin approval.")
+            elif r.get("status") == "rejected":
+                old_uid = r.get("supabase_uid")
+                if old_uid and not str(old_uid).startswith("local_"):
+                    try: sb.auth.admin.delete_user(old_uid)
+                    except Exception: pass
+                sb.table("users").delete().eq("id", r["id"]).execute()
         elif r.get("status") == "rejected":
             old_uid = r.get("supabase_uid")
             if old_uid and not str(old_uid).startswith("local_"):
