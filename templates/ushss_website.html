@@ -1337,10 +1337,17 @@ async function submitPortalRegister() {
     try {
       data = await res.json();
     } catch {
-      throw new Error(res.statusText || "Server error");
+      throw new Error("Unable to connect to the server. Please check your internet connection and try again.");
     }
     if (!res.ok || !data.success) {
-      const msg = (typeof data.detail === "string" && data.detail) || data.error || "Registration failed";
+      let msg = "Could not create account. Please try again.";
+      if (typeof data.detail === "string") {
+        msg = data.detail;
+      } else if (Array.isArray(data.detail) && data.detail.length > 0) {
+        msg = data.detail[0].msg || data.detail[0].message || msg;
+      } else if (data.error) {
+        msg = data.error;
+      }
       throw new Error(msg);
     }
 

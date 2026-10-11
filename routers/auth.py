@@ -209,12 +209,14 @@ def register(body: RegisterRequest, request: Request):
         raise HTTPException(400,"Faculty domain is required")
     if body.role in ENROLLMENT_REQUIRED_ROLES:
         if not body.enrollment_no:
-            raise HTTPException(400, "Enrollment number is required for this role")
+            raise HTTPException(400, "Please enter your enrollment number.")
         enr_clean = body.enrollment_no.strip()
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
-            if row_enr.get("status") in ("approved", "pending"):
-                raise HTTPException(409, "Enrollment number is already registered or pending approval")
+            if row_enr.get("status") == "approved":
+                raise HTTPException(409, f"Enrollment number '{enr_clean}' is already registered. Please go to Sign In.")
+            elif row_enr.get("status") == "pending":
+                raise HTTPException(409, f"An account with enrollment number '{enr_clean}' is already submitted and waiting for admin approval.")
             elif row_enr.get("status") == "rejected":
                 old_uid = row_enr.get("supabase_uid")
                 if old_uid and not str(old_uid).startswith("local_"):
@@ -224,8 +226,10 @@ def register(body: RegisterRequest, request: Request):
 
     existing_un = sb.table("users").select("id, status, supabase_uid").eq("username", body.username).eq("role", body.role).execute().data or []
     for r in existing_un:
-        if r.get("status") in ("approved", "pending"):
-            raise HTTPException(409, "Username already exists for this role")
+        if r.get("status") == "approved":
+            raise HTTPException(409, f"This {body.role} ID/username is already registered. Please sign in instead.")
+        elif r.get("status") == "pending":
+            raise HTTPException(409, f"This {body.role} ID/username is currently waiting for admin approval.")
         elif r.get("status") == "rejected":
             old_uid = r.get("supabase_uid")
             if old_uid and not str(old_uid).startswith("local_"):
@@ -235,8 +239,10 @@ def register(body: RegisterRequest, request: Request):
 
     existing_em = sb.table("users").select("id, status, supabase_uid").eq("email", body.email).execute().data or []
     for r in existing_em:
-        if r.get("status") in ("approved", "pending"):
-            raise HTTPException(409, "Email address is already registered")
+        if r.get("status") == "approved":
+            raise HTTPException(409, "This email address is already registered. Please sign in or use a different email.")
+        elif r.get("status") == "pending":
+            raise HTTPException(409, "An account with this email address is already waiting for admin approval.")
         elif r.get("status") == "rejected":
             old_uid = r.get("supabase_uid")
             if old_uid and not str(old_uid).startswith("local_"):
@@ -253,27 +259,55 @@ def register(body: RegisterRequest, request: Request):
         user_meta={"full_name":body.full_name,"role":body.role}
         user_creds={"email":str(body.email),"password":body.password,"email_confirm":True,"phone_confirm":True,"user_metadata":user_meta}
         if phone: user_creds["phone"]=phone
-        created=sb.auth.admin.create_user(user_creds)
-        au=getattr(created,"user",None); supabase_uid=getattr(au,"id",None) if au else None
+        created = sb.auth.admin.create_user(user_creds)
+        au = getattr(created, "user", None)
+        supabase_uid = getattr(au, "id", None) if au else None
     except Exception as e:
         print(f"REGISTER AUTH ADMIN ERROR: type={type(e).__name__} detail={str(e)[:300]!r}")
-        if IS_DEV and "not configured" in str(e).lower():
+        msg = str(e).lower()
+        if "already registered" in msg or "already exists" in msg or "user already" in msg:
+            raise HTTPException(409, "This email is already registered. Please sign in or use another email.")
+        if IS_DEV:
             import bcrypt
-            supabase_uid=f"local_{body.username}"
-            pwd_hash=bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+            supabase_uid = f"local_{body.username}"
+            pwd_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
         else:
-            raise HTTPException(502,"Could not create the authentication account. Please try again.")
-    if not supabase_uid: raise HTTPException(502,"Authentication account was not created. Please try again.")
-    row={"username":body.username,"role":body.role,"full_name":body.full_name,"email":str(body.email),"phone":phone,"enrollment_no":body.enrollment_no or body.username,"department":body.department,"domain":body.domain,"programme":body.programme,"batch":body.batch,"semester":body.semester,"section":body.section,"designation":body.designation,"is_active":True,"status":"pending","email_verified":True,"phone_verified":True,"supabase_uid":supabase_uid,"password_hash":pwd_hash}
+            raise HTTPException(502, "Could not set up your login account right now. Please check your internet connection or try again in a few minutes.")
+    if not supabase_uid:
+        raise HTTPException(502, "Could not set up your login account right now. Please try again.")
+    row = {
+        "username": body.username,
+        "role": body.role,
+        "full_name": body.full_name,
+        "email": str(body.email),
+        "phone": phone,
+        "enrollment_no": body.enrollment_no or body.username,
+        "department": body.department,
+        "domain": body.domain,
+        "programme": body.programme,
+        "batch": body.batch,
+        "semester": body.semester,
+        "section": body.section,
+        "designation": body.designation,
+        "is_active": True,
+        "status": "pending",
+        "email_verified": True,
+        "phone_verified": True,
+        "supabase_uid": supabase_uid,
+        "password_hash": pwd_hash
+    }
     try:
-        res=sb.table("users").insert(row).execute()
-        if not res.data: raise RuntimeError("Insert returned no row")
-        new_user=res.data[0]
+        res = sb.table("users").insert(row).execute()
+        if not res.data:
+            raise RuntimeError("Insert returned no row")
+        new_user = res.data[0]
     except Exception as e:
         print(f"REGISTER ERROR: profile insert failed: {e!r}")
-        try: sb.auth.admin.delete_user(supabase_uid)
-        except Exception: pass
-        raise HTTPException(502,"Could not complete registration — your details could not be saved. Please try again.")
+        try:
+            sb.auth.admin.delete_user(supabase_uid)
+        except Exception:
+            pass
+        raise HTTPException(502, "Could not save your registration details. Please make sure all details are correct and try again.")
     try: sb.table("audit_log").insert({"user_id":new_user["id"],"action":"SELF_REGISTER","detail":f"{body.role} '{body.username}' self-registered — pending approval","ip":client_ip}).execute()
     except Exception as e: print(f"REGISTER WARNING: {e!r}")
     token=create_access_token({"sub":new_user["username"],"id":new_user["id"],"role":new_user["role"],"purpose":"pending"})
