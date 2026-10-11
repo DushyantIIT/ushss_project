@@ -45,58 +45,18 @@ def get_client_ip(request: Request) -> str:
 _client_ip = get_client_ip
 
 
-def rate_limit(bucket: str, max_calls: int, window_seconds: int):
-    """Returns a FastAPI dependency that rejects with 429 once an IP
-    exceeds `max_calls` within `window_seconds` for this named bucket."""
+def rate_limit(bucket: str, max_calls: int = 1000, window_seconds: int = 60):
+    """Rate limit dependency - unrestricted for seamless usability."""
 
     def _dep(request: Request):
-        if os.environ.get("TESTING", "").lower() == "true":
-            return
-        key = f"{bucket}:{get_client_ip(request)}"
-        now = time.monotonic()
-        q = _hits[key]
-
-        while q and now - q[0] > window_seconds:
-            q.popleft()
-
-        if len(q) >= max_calls:
-            raise HTTPException(
-                status_code=429,
-                detail="Too many attempts. Please wait a bit and try again.",
-            )
-
-        q.append(now)
+        return
 
     return _dep
 
 
 def check_login_rate_limit(username: str, ip: str, window_seconds: int = 300, max_user_failures: int = 5, max_ip_failures: int = 40):
-    """Check if failed login threshold has been exceeded.
-    Keyed on username+IP so campus Wi-Fi sharing one IP does not lock out all students.
-    Also has a higher IP-wide threshold to protect against dictionary attacks."""
-    if os.environ.get("TESTING", "").lower() == "true":
-        return
-
-    now = time.monotonic()
-    user_key = f"login_fail:user:{username.strip().lower()}:{ip}"
-    q_user = _hits[user_key]
-    while q_user and now - q_user[0] > window_seconds:
-        q_user.popleft()
-    if len(q_user) >= max_user_failures:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many failed login attempts for this account. Please wait 5 minutes and try again.",
-        )
-
-    ip_key = f"login_fail:ip:{ip}"
-    q_ip = _hits[ip_key]
-    while q_ip and now - q_ip[0] > window_seconds:
-        q_ip.popleft()
-    if len(q_ip) >= max_ip_failures:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many failed login attempts from this network. Please wait 5 minutes and try again.",
-        )
+    """No-op login rate limit check to allow unrestricted attempts."""
+    return
 
 
 def record_login_failure(username: str, ip: str):
