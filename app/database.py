@@ -620,6 +620,15 @@ class SmartClient:
         self.real_sb = real_sb
         self.auth = SmartAuthProxy(real_sb.auth if real_sb else None)
 
+    @property
+    def storage(self):
+        """Expose Supabase Storage through the same proxy used for database tables."""
+        if self.real_sb is None:
+            raise RuntimeError(
+                "Supabase Storage is not configured: check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+            )
+        return self.real_sb.storage
+
     def table(self, name: str):
         return TableQueryBuilder(name, self.real_sb)
 
