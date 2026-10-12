@@ -1259,7 +1259,10 @@ function renderPage(page) {
     else if(page==="announcements") c.innerHTML=renderAnnouncements();
     else if(page==="audit") c.innerHTML=renderAudit();
     else if(page==="schema") c.innerHTML=renderSchema();
-    else c.innerHTML=renderUserTable(page);
+    else {
+      c.innerHTML=renderUserTable(page);
+      filterUserRows(searchQuery);
+    }
   } catch (e) {
     console.error("Admin page render failed:", page, e);
     c.innerHTML = `<div class="card"><div class="card-title">This tab could not be loaded</div><div class="card-sub" style="margin-top:8px">The dashboard recovered from a browser-cache or data error. Please click the tab again.</div><div style="margin-top:14px"><button class="btn btn-primary" onclick="renderPage('${page}')">↻ Reload Tab</button></div></div>`;
