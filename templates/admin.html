@@ -1694,21 +1694,17 @@ function renderUserTable(role) {
   });
   const filtered=statusFiltered.filter(u=>{
     if(role!=="student" || studentSemesterYearFilter==="") return true;
-    const value=studentSemesterYearFilter;
-    if(value.startsWith("semester:")) return String(u.semester||"").trim()===value.slice(9);
-    if(value.startsWith("year:")) return String(u.batch||"").trim()===value.slice(5);
-    return true;
+    return studentSemesterYearFilter.startsWith("semester:")
+      ? String(u.semester||"").trim()===studentSemesterYearFilter.slice(9)
+      : true;
   });
   const semesterOptions=[...new Set(users.map(u=>String(u.semester||"").trim()).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
-  const yearOptions=[...new Set(users.map(u=>String(u.batch||"").trim()).filter(Boolean))]
-    .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   const semesterYearFilterHtml=role==="student"?`
-      <select class="filter-select" aria-label="Filter students by semester or year" onchange="studentSemesterYearFilter=this.value;renderPage('student')">
-        <option value="" ${studentSemesterYearFilter===""?"selected":""}>All Semesters / Years</option>
+      <select class="filter-select" aria-label="Filter students by semester" onchange="studentSemesterYearFilter=this.value;renderPage('student')">
+        <option value="" ${studentSemesterYearFilter===""?"selected":""}>All Semesters</option>
         ${semesterOptions.map(v=>`<option value="semester:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="semester:"+v?"selected":""}>Semester ${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
-        ${yearOptions.map(v=>`<option value="year:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="year:"+v?"selected":""}>Year / Batch: ${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
-      </select>`:"";
+      </select>":"";
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
