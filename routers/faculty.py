@@ -883,6 +883,32 @@ def upload_material(body: FacultyMaterialUploadBody, faculty: dict = Depends(req
         raise HTTPException(500, "The file uploaded but its material record could not be saved. Please try again.")
 
 
+@router.delete("/materials/{mid}", summary="Delete a study material uploaded by this faculty member")
+def delete_material(mid: int, faculty: dict = Depends(require_faculty)):
+    if faculty.get("role") not in ("faculty", "admin"):
+        raise HTTPException(403, "Faculty only")
+    result = sb.table("study_materials").select("id,uploaded_by,file_url").eq("id", mid).limit(1).execute()
+    if not result.data:
+        raise HTTPException(404, "Study material not found")
+    item = result.data[0]
+    if faculty.get("role") != "admin" and str(item.get("uploaded_by")) != str(faculty.get("id")):
+        raise HTTPException(403, "You can only delete materials you uploaded")
+    storage_path = str(item.get("file_url") or "")
+    public_marker = "/storage/v1/object/public/ushss-study-materials/"
+    signed_marker = "/storage/v1/object/sign/ushss-study-materials/"
+    for marker in (public_marker, signed_marker):
+        if marker in storage_path:
+            storage_path = storage_path.split(marker, 1)[1].split("?", 1)[0]
+            break
+    if storage_path:
+        try:
+            sb.storage.from_("ushss-study-materials").remove([storage_path])
+        except Exception as exc:
+            print(f"FACULTY MATERIAL FILE DELETE WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+    sb.table("study_materials").delete().eq("id", mid).execute()
+    return {"message": "Study material deleted"}
+
+
 @router.get("/attendance/sessions", summary="View your attendance sessions")
 def attendance_sessions(faculty: dict = Depends(require_faculty)):
     q = sb.table("attendance_sessions").select(
