@@ -1713,7 +1713,7 @@ function renderUserTable(role) {
         ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">🤝 Assign CR</button>`
         : "";
       actions = `${crAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏ Edit</button>
-                 <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')}" title="Delete user">🗑</button>`;
+                 <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')" title="Delete user">🗑</button>`;
     }
 
     return `<tr>
