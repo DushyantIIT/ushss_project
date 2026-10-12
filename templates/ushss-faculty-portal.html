@@ -281,6 +281,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-section">Teaching</div>
     <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Attendance <span class="sb-count" id="live-badge" style="display:none">LIVE</span></div>
     <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">0</span></div>
+    <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📚</span> Study Materials <span class="sb-count" id="mat-cnt">0</span></div>
 
     <div class="sb-section">Records</div>
     <div class="sb-item" onclick="goPage('students',this)"><span class="ico">🎓</span> My Students</div>
@@ -611,6 +612,16 @@ tr:hover td{background:rgba(255,255,255,.01)}
       <div id="ann-list"></div>
     </div>
 
+    <!-- STUDY MATERIALS PAGE -->
+    <div class="page" id="pg-materials">
+      <div class="sec-head">
+        <div><div class="sec-label">Teaching Resources</div><div class="sec-title">Study Materials</div></div>
+        <button class="btn btn-primary" onclick="openMaterialModal()">+ Upload Material</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin:-8px 0 18px">Materials are shared with students and CRs in the selected programme and batch. Leave both blank to share with all classes.</p>
+      <div id="faculty-mat-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px"></div>
+    </div>
+
     <!-- STUDENTS PAGE -->
     <div class="page" id="pg-students">
       <div class="sec-head">
@@ -745,6 +756,28 @@ tr:hover td{background:rgba(255,255,255,.01)}
 </div>
 
 <!-- TOAST -->
+<!-- STUDY MATERIAL UPLOAD MODAL -->
+<div class="overlay" id="faculty-mat-modal">
+  <div class="modal">
+    <div class="modal-head"><h2>Upload Study Material</h2><button class="btn btn-ghost btn-sm" onclick="closeMaterialModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Title *</label><input class="form-input" id="faculty-mat-title" maxlength="180" placeholder="e.g. Unit 2 lecture notes"/></div>
+      <div class="form-group"><label class="form-label">Subject</label><input class="form-input" id="faculty-mat-subject" placeholder="Subject name"/></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="faculty-mat-desc" rows="3" placeholder="What should students know about this file?"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Programme (optional)</label><input class="form-input" id="faculty-mat-programme" placeholder="e.g. M.A. English"/></div>
+        <div class="form-group"><label class="form-label">Batch (optional)</label><input class="form-input" id="faculty-mat-batch" placeholder="e.g. 2025-2027"/></div>
+      </div>
+      <div class="form-group"><label class="form-label">File * (max 10 MB)</label><input class="form-input" id="faculty-mat-file" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.png,.jpg,.jpeg,.zip"/></div>
+      <div id="faculty-mat-file-name" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeMaterialModal()">Cancel</button>
+      <button class="btn btn-primary" id="faculty-mat-upload-btn" onclick="uploadFacultyMaterial()">⬆ Upload Material</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="tw"></div>
 
 <script>
@@ -755,7 +788,7 @@ function esc(s){
 }
 
 /* ═══ DATA STORE ═══ */
-const DB = { students:[], announcements:[], sessions:[], timetable:[] };
+const DB = { students:[], announcements:[], sessions:[], timetable:[], materials:[] };
 let facultyProfile=null;
 ;
 
@@ -773,6 +806,7 @@ const pages = {
   dashboard:   ["Dashboard","USHSS / Faculty / Overview"],
   attendance:  ["Attendance","USHSS / Faculty / Attendance"],
   announcements:["Announcements","USHSS / Faculty / Announcements"],
+  materials:   ["Study Materials","USHSS / Faculty / Study Materials"],
   students:    ["My Students","USHSS / Faculty / Students"],
   history:     ["Attendance History","USHSS / Faculty / History"],
   profile:     ["My Profile","USHSS / Faculty / Profile"],
@@ -821,7 +855,11 @@ async function loadFacultyData(){
   const initEl=document.getElementById('sb-init'); if(initEl)initEl.textContent=initials;
   DB.students=(data.students||[]).map(s=>({id:s.id,roll:s.enrollment_no||s.username,name:s.full_name,prog:s.programme||'',batch:s.batch||'',att:s.attendance_percentage??0,active:s.is_active}));
   DB.announcements=data.announcements||[];
+  const materialResponse=await fetch('/api/faculty/materials',{headers});
+  if(materialResponse.ok) DB.materials=await materialResponse.json();
   const annCntEl=document.getElementById('ann-cnt'); if(annCntEl)annCntEl.textContent=DB.announcements.length;
+  const matCntEl=document.getElementById('mat-cnt'); if(matCntEl)matCntEl.textContent=DB.materials.length;
+  renderFacultyMaterials();
   DB.sessions=(data.sessions||[]).map(s=>({id:s.id,date:s.date,cls:(s.timetable_slots||{}).programme+' — '+(s.timetable_slots||{}).batch,topic:(s.timetable_slots||{}).subject||'',present:s.present||0,total:s.total||0,duration:'',is_open:s.is_open}));
   DB.timetable=data.timetable||[];
   updateFacultyStats();
@@ -1478,6 +1516,41 @@ function renderAnnList() {
     DB.announcements.map(a => annCardHTML(a)).join('') :
     `<div class="empty"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`;
 }
+
+
+function openMaterialModal(){document.getElementById('faculty-mat-modal').classList.add('open');}
+function closeMaterialModal(){document.getElementById('faculty-mat-modal').classList.remove('open');}
+function renderFacultyMaterials(){
+  const el=document.getElementById('faculty-mat-grid');if(!el)return;
+  el.innerHTML=DB.materials.length?DB.materials.map(m=>`<div class="item-card">
+    <div class="item-card-top"><div class="item-title">📚 ${esc(m.title)}</div><span class="badge badge-blue">${esc(m.subject||'Study material')}</span></div>
+    <div class="item-body">${esc(m.description||'')}</div>
+    <div class="item-footer"><span class="item-time">${esc(m.programme||'All programmes')} · ${esc(m.batch||'All batches')}</span><span class="badge badge-gold">${esc(m.size||'File')}</span></div>
+    ${m.file_url?`<a class="btn btn-primary btn-sm" style="display:inline-flex;margin-top:10px;text-decoration:none" href="${esc(m.file_url)}" target="_blank" rel="noopener">⬇ Download / Preview</a>`:'<span class="item-time">File link unavailable</span>'}
+  </div>`).join(''):'<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📂</div><div>No study materials uploaded yet</div></div>';
+}
+async function uploadFacultyMaterial(){
+  const title=document.getElementById('faculty-mat-title').value.trim();
+  const file=document.getElementById('faculty-mat-file').files[0];
+  if(!title||!file){toast('Please enter a title and choose a file','err');return;}
+  if(file.size>10*1024*1024){toast('Files must be 10 MB or smaller','err');return;}
+  const btn=document.getElementById('faculty-mat-upload-btn');btn.disabled=true;btn.textContent='Uploading…';
+  try{
+    const fileData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Could not read selected file'));reader.readAsDataURL(file);});
+    const r=await fetch('/api/faculty/materials/upload',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({
+      title,description:document.getElementById('faculty-mat-desc').value.trim(),subject:document.getElementById('faculty-mat-subject').value.trim(),
+      programme:document.getElementById('faculty-mat-programme').value.trim(),batch:document.getElementById('faculty-mat-batch').value.trim(),
+      file_name:file.name,file_data:fileData
+    })});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Could not upload material');
+    DB.materials.unshift(d);document.getElementById('mat-cnt').textContent=DB.materials.length;renderFacultyMaterials();
+    ['faculty-mat-title','faculty-mat-subject','faculty-mat-desc','faculty-mat-programme','faculty-mat-batch','faculty-mat-file'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    document.getElementById('faculty-mat-file-name').textContent='';closeMaterialModal();toast('Study material shared with students and CRs','ok');
+    await loadFacultyData();
+  }catch(e){toast(e.message||'Could not upload material','err');}
+  finally{btn.disabled=false;btn.textContent='⬆ Upload Material';}
+}
+document.getElementById('faculty-mat-file')?.addEventListener('change',e=>{document.getElementById('faculty-mat-file-name').textContent=e.target.files[0]?.name||'';});
 
 function openAnnModal() { document.getElementById('ann-modal').classList.add('open'); }
 function closeAnnModal() { document.getElementById('ann-modal').classList.remove('open'); }
