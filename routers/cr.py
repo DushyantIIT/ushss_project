@@ -165,13 +165,15 @@ def delete_assignment(aid: int, cr: dict = Depends(require_student)):
 @router.get("/materials", summary="View class study materials")
 def get_materials(cr: dict = Depends(require_student)):
     _require_cr(cr)
-    q = sb.table("study_materials").select("*").eq("is_active", True)
+    rows = sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
     if cr["role"] != "admin":
-        if cr.get("programme"):
-            q = q.eq("programme", cr["programme"])
-        if cr.get("batch"):
-            q = q.eq("batch", cr["batch"])
-    rows = q.order("uploaded_at", desc=True).execute().data or []
+        programme = cr.get("programme")
+        batch = cr.get("batch")
+        rows = [
+            row for row in rows
+            if (not programme or not row.get("programme") or row.get("programme") == programme)
+            and (not batch or not row.get("batch") or row.get("batch") == batch)
+        ]
     for row in rows:
         path = row.get("file_url")
         if path and not str(path).startswith("http"):
