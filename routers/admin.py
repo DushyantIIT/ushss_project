@@ -1144,27 +1144,80 @@ def delete_faculty_dir(fid: int, admin: dict = Depends(require_admin)):
 
 @router.get("/stats", summary="Dashboard statistics")
 def stats(admin: dict = Depends(require_admin)):
-    users = sb.table("users").select("role, is_active").execute().data or []
+    """Return dashboard metrics without letting a secondary panel query crash the whole page.
+
+    The users query is required for meaningful core counts. If it fails, return a
+    retryable 503 rather than an opaque 500. Optional panels degrade independently.
+    """
+    from fastapi import status
+
+    try:
+        users = sb.table("users").select("role, is_active").execute().data or []
+    except Exception as e:
+        print(f"ADMIN STATS USERS QUERY FAILED: {type(e).__name__}: {str(e)[:180]}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Dashboard data is temporarily unavailable. Please retry in a few seconds.",
+            headers={"Retry-After": "3"},
+        )
+
     counts = {}
     for u in users:
-        counts[u["role"]] = counts.get(u["role"], 0) + 1
-    active = sum(1 for u in users if u["is_active"])
+        role = u.get("role") or "unknown"
+        counts[role] = counts.get(role, 0) + 1
+    active = sum(1 for u in users if u.get("is_active"))
 
-    recent = sb.table("users").select("*").not_.is_("last_login", "null") \
-               .order("last_login", desc=True).limit(10).execute().data or []
-    log    = sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute().data or []
+    def optional_query(label, query, default):
+        try:
+            return query().data or default
+        except Exception as e:
+            print(f"ADMIN STATS OPTIONAL QUERY FAILED ({label}): {type(e).__name__}: {str(e)[:180]}")
+            return default
 
-    timetable_count = len(sb.table("timetable_slots").select("id").execute().data or [])
-    attendance_sessions = sb.table("attendance_sessions").select("id,is_open").execute().data or []
-    attendance_records = sb.table("attendance_records").select("id").execute().data or []
-    announcements = sb.table("announcements").select("id,title,body,ts,target,priority").order("ts", desc=True).limit(10).execute().data or []
+    recent = optional_query(
+        "recent_logins",
+        lambda: sb.table("users").select("id,username,full_name,role,last_login")
+            .not_.is_("last_login", "null").order("last_login", desc=True).limit(10).execute(),
+        [],
+    )
+    log = optional_query(
+        "audit_log",
+        lambda: sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute(),
+        [],
+    )
+    timetable = optional_query(
+        "timetable_slots",
+        lambda: sb.table("timetable_slots").select("id").execute(),
+        [],
+    )
+    attendance_sessions = optional_query(
+        "attendance_sessions",
+        lambda: sb.table("attendance_sessions").select("id,is_open").execute(),
+        [],
+    )
+    attendance_records = optional_query(
+        "attendance_records",
+        lambda: sb.table("attendance_records").select("id").execute(),
+        [],
+    )
+    announcements = optional_query(
+        "announcements",
+        lambda: sb.table("announcements").select("id,title,body,ts,target,priority")
+            .order("ts", desc=True).limit(10).execute(),
+        [],
+    )
 
-    return {"counts": counts, "total": len(users), "active": active,
-            "recent_logins": recent, "log": log,
-            "timetable_count": timetable_count,
-            "attendance_sessions": attendance_sessions,
-            "attendance_records_count": len(attendance_records),
-            "announcements": announcements}
+    return {
+        "counts": counts,
+        "total": len(users),
+        "active": active,
+        "recent_logins": recent,
+        "log": log,
+        "timetable_count": len(timetable),
+        "attendance_sessions": attendance_sessions,
+        "attendance_records_count": len(attendance_records),
+        "announcements": announcements,
+    }
 
 
 @router.get("/audit", summary="Full audit log")
