@@ -1664,6 +1664,34 @@ function editAnn(id){
 }
 
 let searchQuery="",statusFilter="",studentSemesterYearFilter="";
+const selectedStudentIds = new Set();
+function updateStudentSelectionUI() {
+  const table=document.querySelector("#content .user-table");
+  if(!table) return;
+  const visibleRows=Array.from(table.querySelectorAll("tbody tr[data-student-id]")).filter(row=>row.style.display!=="none");
+  const selectedVisible=visibleRows.filter(row=>selectedStudentIds.has(row.dataset.studentId)).length;
+  const selectAll=table.querySelector("#select-all-students");
+  if(selectAll){selectAll.checked=visibleRows.length>0&&selectedVisible===visibleRows.length;selectAll.indeterminate=selectedVisible>0&&selectedVisible<visibleRows.length;}
+  const count=document.getElementById("student-selection-count");
+  if(count) count.textContent=selectedStudentIds.size ? selectedStudentIds.size+" selected" : "";
+}
+function toggleStudentSelection(id,checked) {
+  const key=String(id);
+  if(checked) selectedStudentIds.add(key); else selectedStudentIds.delete(key);
+  updateStudentSelectionUI();
+}
+function toggleVisibleStudentSelection(checked) {
+  const table=document.querySelector("#content .user-table");
+  if(!table) return;
+  table.querySelectorAll("tbody tr[data-student-id]").forEach(row=>{
+    if(row.style.display==="none") return;
+    const id=row.dataset.studentId;
+    if(checked) selectedStudentIds.add(id); else selectedStudentIds.delete(id);
+    const checkbox=row.querySelector(".student-row-checkbox");
+    if(checkbox) checkbox.checked=checked;
+  });
+  updateStudentSelectionUI();
+}
 // Filter already-rendered rows in place; never replace the input while typing.
 function filterUserRows(query) {
   const terms = String(query || "").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -1681,6 +1709,7 @@ function filterUserRows(query) {
   if (count) count.textContent = visible + (visible === 1 ? " record" : " records");
   const empty = document.getElementById("user-search-empty");
   if (empty) empty.style.display = visible === 0 ? "table-row" : "none";
+  updateStudentSelectionUI();
 }
 function handleUserSearch(input) {
   searchQuery = input.value;
@@ -1759,12 +1788,10 @@ function renderUserTable(role) {
                  <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')" title="Delete user">🗑</button>`;
     }
 
-    return `<tr data-search="${esc([u.full_name,u.username,u.email].filter(Boolean).join(" "))}">
+    return `<tr data-search="${esc([u.full_name,u.username,u.email].filter(Boolean).join(" "))}" ${role==="student"?`data-student-id="${Number(u.id)}"`:""}>
       <td class="mono" style="color:var(--muted)">#${Number(u.id)}</td>
       <td>
-        <div style="font-weight:600;color:var(--text)">${esc(u.full_name)}</div>
-        <div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.username)}</div>
-        ${superBadge}
+        ${role==="student"?`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input class="student-row-checkbox" type="checkbox" aria-label="Select ${esc(u.full_name)}" ${selectedStudentIds.has(String(u.id))?"checked":""} onchange="toggleStudentSelection(${Number(u.id)},this.checked)" style="margin-top:4px;accent-color:var(--gold)"><span><div style="font-weight:600;color:var(--text)">${esc(u.full_name)}</div><div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.username)}</div>${superBadge}</span></label>`:`<div style="font-weight:600;color:var(--text)">${esc(u.full_name)}</div><div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.username)}</div>${superBadge}`}
       </td>
       <td>${u.email?`<span style="font-size:12px">${esc(u.email)}</span>`:`<span style="color:var(--muted)">—</span>`}</td>
       ${hasStudentFields?`<td><div style="font-size:12px">${esc(u.programme||"—")}</div><div class="mono" style="font-size:11px;color:var(--muted)">${esc(u.batch||"")}</div><div style="font-size:11px;color:var(--gold);margin-top:2px">${u.semester?`Semester ${esc(u.semester)}`:"Semester —"}</div></td>`:""}
@@ -1792,12 +1819,12 @@ function renderUserTable(role) {
       </select>
       ${semesterYearFilterHtml}
 ${addUserButton}
-      <span id="user-record-count" style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
+      <span id="student-selection-count" style="font-size:12px;color:var(--gold)"></span><span id="user-record-count" style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
     <div class="table-wrap">
       <table class="user-table">
         <thead><tr>
-          <th>ID</th><th>Name / Username</th><th>Email</th>
+          <th>ID</th><th>${role==="student"?`<div style="display:flex;align-items:center;gap:8px"><input id="select-all-students" type="checkbox" aria-label="Select all visible students" onchange="toggleVisibleStudentSelection(this.checked)" style="accent-color:var(--gold)"><span>Name / Username</span></div>`:"Name / Username"}</th><th>Email</th>
           ${hasStudentFields?"<th>Programme / Batch</th>":""}
           ${hasFacultyFields?"<th>Designation</th>":""}
           ${role==="admin"?"<th>Admin Type</th>":""}
