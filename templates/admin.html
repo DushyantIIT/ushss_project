@@ -1684,6 +1684,17 @@ function editAnn(id){
 }
 
 let searchQuery="",statusFilter="",studentSemesterYearFilter="";
+// Keep the search input focused when live filtering rebuilds the user table.
+function handleUserSearch(input, role) {
+  searchQuery = input.value;
+  const cursor = input.selectionStart;
+  renderPage(role);
+  const nextInput = document.querySelector(".search-input-wrap input");
+  if (nextInput) {
+    nextInput.focus();
+    if (cursor !== null) nextInput.setSelectionRange(cursor, cursor);
+  }
+}
 function renderUserTable(role) {
   const users=dbGetUsers({role,search:searchQuery});
   const statusFiltered=statusFilter===""?users:users.filter(u=>{
@@ -1775,7 +1786,7 @@ function renderUserTable(role) {
     <div class="search-bar">
       <div class="search-input-wrap">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Search by name, username or email…" value="${searchQuery}" oninput="searchQuery=this.value;renderPage('${role}')"/>
+        <input type="text" placeholder="Search by name, username or email…" value="${esc(searchQuery)}" oninput="handleUserSearch(this,'${role}')"/>
       </div>
       <select class="filter-select" onchange="statusFilter=this.value;renderPage('${role}')">
         <option value="" ${statusFilter===""?"selected":""}>All Status</option>
