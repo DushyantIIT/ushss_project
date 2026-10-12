@@ -1144,79 +1144,100 @@ def delete_faculty_dir(fid: int, admin: dict = Depends(require_admin)):
 
 @router.get("/stats", summary="Dashboard statistics")
 def stats(admin: dict = Depends(require_admin)):
-    """Return dashboard metrics without letting a secondary panel query crash the whole page.
+    """Load core metrics with a retry and isolate optional dashboard panels.
 
-    The users query is required for meaningful core counts. If it fails, return a
-    retryable 503 rather than an opaque 500. Optional panels degrade independently.
+    Optional queries run concurrently so a slow panel does not delay every other
+    metric. A transient failure in the required users query is retried once.
     """
+    from concurrent.futures import ThreadPoolExecutor
+    from time import sleep
     from fastapi import status
 
-    try:
-        users = sb.table("users").select("role, is_active").execute().data or []
-    except Exception as e:
-        print(f"ADMIN STATS USERS QUERY FAILED: {type(e).__name__}: {str(e)[:180]}")
+    users = None
+    last_error = None
+    for attempt in range(2):
+        try:
+            users = sb.table("users").select("role, is_active").execute().data or []
+            break
+        except Exception as e:
+            last_error = e
+            print(
+                f"ADMIN STATS USERS QUERY FAILED (attempt {attempt + 1}/2): "
+                f"{type(e).__name__}: {str(e)[:180]}"
+            )
+            if attempt == 0:
+                sleep(0.25)
+
+    if users is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Dashboard data is temporarily unavailable. Please retry in a few seconds.",
             headers={"Retry-After": "3"},
-        )
+        ) from last_error
 
     counts = {}
-    for u in users:
-        role = u.get("role") or "unknown"
+    for user in users:
+        role = user.get("role") or "unknown"
         counts[role] = counts.get(role, 0) + 1
-    active = sum(1 for u in users if u.get("is_active"))
+    active = sum(1 for user in users if user.get("is_active"))
 
     def optional_query(label, query, default):
         try:
             return query().data or default
         except Exception as e:
-            print(f"ADMIN STATS OPTIONAL QUERY FAILED ({label}): {type(e).__name__}: {str(e)[:180]}")
+            print(
+                f"ADMIN STATS OPTIONAL QUERY FAILED ({label}): "
+                f"{type(e).__name__}: {str(e)[:180]}"
+            )
             return default
 
-    recent = optional_query(
-        "recent_logins",
-        lambda: sb.table("users").select("id,username,full_name,role,last_login")
-            .not_.is_("last_login", "null").order("last_login", desc=True).limit(10).execute(),
-        [],
-    )
-    log = optional_query(
-        "audit_log",
-        lambda: sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute(),
-        [],
-    )
-    timetable = optional_query(
-        "timetable_slots",
-        lambda: sb.table("timetable_slots").select("id").execute(),
-        [],
-    )
-    attendance_sessions = optional_query(
-        "attendance_sessions",
-        lambda: sb.table("attendance_sessions").select("id,is_open").execute(),
-        [],
-    )
-    attendance_records = optional_query(
-        "attendance_records",
-        lambda: sb.table("attendance_records").select("id").execute(),
-        [],
-    )
-    announcements = optional_query(
-        "announcements",
-        lambda: sb.table("announcements").select("id,title,body,ts,target,priority")
-            .order("ts", desc=True).limit(10).execute(),
-        [],
-    )
+    queries = {
+        "recent_logins": (
+            lambda: sb.table("users").select("id,username,full_name,role,last_login")
+                .not_.is_("last_login", "null").order("last_login", desc=True).limit(10).execute(),
+            [],
+        ),
+        "audit_log": (
+            lambda: sb.table("audit_log").select("*").order("ts", desc=True).limit(20).execute(),
+            [],
+        ),
+        "timetable_slots": (
+            lambda: sb.table("timetable_slots").select("id").execute(),
+            [],
+        ),
+        "attendance_sessions": (
+            lambda: sb.table("attendance_sessions").select("id,is_open").execute(),
+            [],
+        ),
+        "attendance_records": (
+            lambda: sb.table("attendance_records").select("id").execute(),
+            [],
+        ),
+        "announcements": (
+            lambda: sb.table("announcements").select("id,title,body,ts,target,priority")
+                .order("ts", desc=True).limit(10).execute(),
+            [],
+        ),
+    }
+
+    # Each panel has its own fallback; one failing query cannot fail the endpoint.
+    with ThreadPoolExecutor(max_workers=len(queries)) as executor:
+        futures = {
+            name: executor.submit(optional_query, name, query, default)
+            for name, (query, default) in queries.items()
+        }
+        results = {name: future.result() for name, future in futures.items()}
 
     return {
         "counts": counts,
         "total": len(users),
         "active": active,
-        "recent_logins": recent,
-        "log": log,
-        "timetable_count": len(timetable),
-        "attendance_sessions": attendance_sessions,
-        "attendance_records_count": len(attendance_records),
-        "announcements": announcements,
+        "recent_logins": results["recent_logins"],
+        "log": results["audit_log"],
+        "timetable_count": len(results["timetable_slots"]),
+        "attendance_sessions": results["attendance_sessions"],
+        "attendance_records_count": len(results["attendance_records"]),
+        "announcements": results["announcements"],
     }
 
 
