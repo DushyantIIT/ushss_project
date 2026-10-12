@@ -1209,7 +1209,25 @@ async function loadPortalData(){
   const value=(i,fallback)=>results[i].status==='fulfilled'?results[i].value:fallback;
   const profile=value(0,null),anns=value(1,[]),assignments=value(2,[]),materials=value(3,[]),
         history=value(4,{records:[],percentage:0,present:0,absent:0}),timetable=value(5,[]),openSessions=value(6,[]);
-  if(results.slice(1).some(r=>r.status==='rejected')) toast('Some sections could not load. Refresh or contact support if this continues.','err');
+  const portalEndpoints = [
+    '/api/student/profile',
+    '/api/student/announcements',
+    '/api/student/assignments',
+    '/api/student/materials',
+    '/api/student/attendance/history',
+    '/api/student/timetable',
+    '/api/student/attendance/open'
+  ];
+  const failedSections = results
+    .map((result, index) => result.status === 'rejected' ? portalEndpoints[index] : null)
+    .filter(Boolean);
+  if (failedSections.length) {
+    console.error('Student portal sections failed to load:', failedSections,
+      results.map((result, index) => result.status === 'rejected'
+        ? { endpoint: portalEndpoints[index], error: String(result.reason?.message || result.reason) }
+        : null).filter(Boolean));
+    toast('Could not load: ' + failedSections.map(path => path.replace('/api/student/', '')).join(', '), 'err');
+  }
   portalProfile=profile;
   const profileName = profile.full_name || profile.username || '—';
   function getCleanInitials(str) {
