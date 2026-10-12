@@ -1712,7 +1712,7 @@ function renderUserTable(role) {
       <select class="filter-select" aria-label="Filter students by semester" onchange="studentSemesterYearFilter=this.value;renderPage('student')">
         <option value="" ${studentSemesterYearFilter===""?"selected":""}>All Semesters</option>
         ${semesterOptions.map(v=>`<option value="semester:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="semester:"+v?"selected":""}>Semester ${semesterToRoman(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
-      </select>":"";
+      </select>`:"";
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
   const roleLabel={student:"Student",faculty:"Faculty",cr:"Class Representative",admin:"Administrator"};
