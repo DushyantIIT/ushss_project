@@ -1669,7 +1669,7 @@ async function changeMyPassword(){
     try { await loadFacultyData(); }
     catch(e) { console.debug('Faculty live sync will retry:',e); }
     finally { syncing=false; }
-  },600);
+  }, 10000);
 })();
 
 </script>
