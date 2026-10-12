@@ -990,10 +990,10 @@ async function changeMyPassword(){
           tbody.innerHTML = classmates.students.map((s, i) => `
             <tr>
               <td>${i + 1}</td>
-              <td>${s.full_name}</td>
-              <td>${s.enrollment_no || s.username}</td>
-              <td>${s.programme || '—'}</td>
-              <td>${s.batch || '—'}</td>
+              <td>${esc(s.full_name)}</td>
+              <td>${esc(s.enrollment_no || s.username)}</td>
+              <td>${esc(s.programme || '—')}</td>
+              <td>${esc(s.batch || '—')}</td>
               <td><span class="badge ${s.is_active ? 'badge-ok' : 'badge-off'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
             </tr>`).join('');
         }
@@ -1014,7 +1014,7 @@ async function changeMyPassword(){
     try { await loadCRData(); }
     catch(e) { console.debug('CR live sync will retry:',e); }
     finally { syncing=false; }
-  },600);
+  }, 10000);
 })();
 
 </script>
