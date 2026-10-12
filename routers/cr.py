@@ -262,7 +262,14 @@ def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_st
         result = sb.table("study_materials").insert(row).execute()
         if not result.data:
             raise RuntimeError("Material metadata insert returned no row")
-        return result.data[0]
+        saved = result.data[0]
+        try:
+            signed = sb.storage.from_(bucket).create_signed_url(storage_path, 3600)
+            saved["file_url"] = signed.get("signedURL") or signed.get("signedUrl") or ""
+        except Exception as exc:
+            print(f"CR MATERIAL SIGNED URL WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+            saved["file_url"] = ""
+        return saved
     except Exception as exc:
         try:
             sb.storage.from_(bucket).remove([storage_path])
