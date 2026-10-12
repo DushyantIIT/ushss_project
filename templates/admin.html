@@ -1712,7 +1712,10 @@ function renderUserTable(role) {
       const crAction = role==="student"
         ? `<button class="btn btn-success btn-sm" onclick="assignStudentAsCR(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">🤝 Assign CR</button>`
         : "";
-      actions = `${crAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏ Edit</button>
+      const removeCRAction = role==="cr"
+        ? `<button class="btn btn-amber btn-sm" onclick="removeCRRole(${Number(u.id)}, '${esc(u.full_name||"").replace(/'/g,"&#39;")}')">↩ Remove CR</button>`
+        : "";
+      actions = `${crAction}${removeCRAction}<button class="btn btn-ghost btn-sm" onclick="openEditModal(${Number(u.id)})">✏ Edit</button>
                  <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')" title="Delete user">🗑</button>`;
     }
 
@@ -1985,6 +1988,19 @@ async function assignStudentAsCR(id,name){
     updateBadges();
     renderPage("student");
   }catch(e){toast(e.message||"Could not assign student as CR","error");}
+}
+
+async function removeCRRole(id,name){
+  const user=(window.__supabaseUsers||[]).find(u=>Number(u.id)===Number(id));
+  if(!user || user.role!=="cr"){toast("This account is not currently a Class Representative","error");return;}
+  if(user.is_super_admin===true){toast("The Super Admin account cannot be changed","error");return;}
+  if(!confirm(`Remove CR responsibilities from "${name}" and return this account to a normal student? The student's existing account and academic records will be kept.`)) return;
+  try{
+    await dbUpdateUser(id,{role:"student",designation:""});
+    toast(`${name} is now a normal student`,"success");
+    updateBadges();
+    renderPage("cr");
+  }catch(e){toast(e.message||"Could not remove CR role","error");}
 }
 async function saveUser() {
   const role=document.getElementById("f-role").value;
