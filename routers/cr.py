@@ -285,8 +285,12 @@ def upload_material_file(body: UploadMaterialBody, cr: dict = Depends(require_st
         storage.upload(storage_path, content, file_options={"content-type": content_type, "upsert": "false"})
         file_url = storage_path
     except Exception as exc:
-        print(f"CR MATERIAL STORAGE ERROR: {type(exc).__name__}: {str(exc)[:200]}")
-        raise HTTPException(503, "File storage is unavailable. Please check the Supabase Storage bucket configuration.")
+        detail = str(exc).replace("\\n", " ")[:240]
+        print(f"CR MATERIAL STORAGE ERROR: {type(exc).__name__}: {detail}")
+        raise HTTPException(
+            503,
+            "Study-material storage is not ready. Run supabase/setup_study_materials_storage.sql in Supabase SQL Editor and confirm Render uses SUPABASE_SERVICE_ROLE_KEY. Storage error: " + detail
+        )
     row = {
         "title": body.title.strip(),
         "description": (body.description or "").strip(),
