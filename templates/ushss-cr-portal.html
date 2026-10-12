@@ -815,7 +815,7 @@ function renderMaterials(){
         <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:12px">${esc(m.subject)} · ${esc(m.ts)}</div>
         <div style="display:flex;gap:8px">
           ${m.file_url ? '<a class="btn btn-primary btn-sm" style="flex:1;justify-content:center;text-decoration:none" href="' + encodeURI(m.file_url) + '" target="_blank" rel="noopener">⬇ Download</a>' : '<button class="btn btn-primary btn-sm" style="flex:1;justify-content:center" disabled>⬇ No file</button>'}
-          <button class="btn btn-danger btn-sm" onclick="deleteMat(${Number(m.id)})">🗑</button>
+          ${(m.can_delete === true || (crProfile && String(m.uploaded_by) === String(crProfile.id))) ? '<button class="btn btn-danger btn-sm" onclick="deleteMat('+Number(m.id)+')">🗑 Delete</button>' : ''}
         </div>
       </div>
     `).join(''):
