@@ -1708,6 +1708,20 @@ function handleUserSearch(input) {
   searchQuery = input.value;
   filterUserRows(searchQuery);
 }
+function handleAttendanceSearch(input) {
+  attFilters.roll = input.value;
+  const needle = attFilters.roll.trim().toLocaleLowerCase();
+  const table = document.getElementById("attendance-record-table");
+  if (!table) return;
+  let visible = 0;
+  table.querySelectorAll("tbody tr[data-att-search]").forEach(row => {
+    const match = !needle || (row.dataset.attSearch || "").toLocaleLowerCase().includes(needle);
+    row.hidden = !match;
+    if (match) visible++;
+  });
+  const count = document.getElementById("attendance-filter-count");
+  if (count) count.textContent = visible + (visible === 1 ? " record" : " records") + " · live search";
+}
 function renderUserTable(role) {
   const users=dbGetUsers({role});
   const statusFiltered=statusFilter===""?users:users.filter(u=>{
@@ -2459,13 +2473,11 @@ function renderAttendance(){
   const records=all.map(attendanceViewRecord).filter(r=>{
     if(attFilters.date&&r.date!==attFilters.date) return false;
     if(attFilters.subject&&r.subject!==attFilters.subject) return false;
-    const q=(attFilters.roll||"").toLowerCase();
-    if(q&&!r.roll.toLowerCase().includes(q)&&!r.userName.toLowerCase().includes(q)) return false;
     if(attFilters.status&&r.status!==attFilters.status) return false;
     return true;
   });
   const pct=records.length?Math.round(records.filter(r=>r.status==="present").length/records.length*100):0;
-  const rows=records.length?records.map(r=>`<tr><td class="mono" style="color:var(--muted);font-size:11px">${r.date}</td>
+  const rows=records.length?records.map(r=>`<tr data-att-search="${esc([r.roll,r.userName].filter(Boolean).join(" "))}"><td class="mono" style="color:var(--muted);font-size:11px">${r.date}</td>
     <td><div style="font-weight:600;color:var(--text);font-size:12px">${r.userName}</div><div class="mono" style="font-size:10px;color:var(--muted)">${r.roll||"—"}</div></td>
     <td style="font-size:12px">${r.subject}</td><td style="font-size:12px;color:var(--muted)">${r.faculty}</td>
     <td><span class="badge ${r.status==="present"?"badge-active":"badge-inactive"}">${String(r.status).toUpperCase()}</span></td>
@@ -2482,10 +2494,10 @@ function renderAttendance(){
       <select class="filter-select" onchange="attFilters.date=this.value;renderPage('attendance')"><option value="">All Dates</option>${dates.map(d=>`<option value="${d}" ${attFilters.date===d?"selected":""}>${d}</option>`).join("")}</select>
       <select class="filter-select" onchange="attFilters.subject=this.value;renderPage('attendance')"><option value="">All Subjects</option>${subjects.map(s=>`<option value="${s}" ${attFilters.subject===s?"selected":""}>${s}</option>`).join("")}</select>
       <select class="filter-select" onchange="attFilters.status=this.value;renderPage('attendance')"><option value="">All Status</option><option value="present" ${attFilters.status==="present"?"selected":""}>Present</option><option value="absent" ${attFilters.status==="absent"?"selected":""}>Absent</option></select>
-      <input class="form-input" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px" placeholder="Search roll / name…" value="${attFilters.roll}" oninput="attFilters.roll=this.value;renderPage('attendance')"/>
+      <input class="form-input" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px" placeholder="Search roll / name…" value="${esc(attFilters.roll)}" oninput="handleAttendanceSearch(this)"/>
       <button class="btn btn-ghost btn-sm" onclick="attFilters={date:'',subject:'',roll:'',status:''};renderPage('attendance')">✕ Clear</button>
-      <span style="margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)">${records.length} records · ${pct}% present</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Faculty</th><th>Status</th><th>Marked</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      <span id="attendance-filter-count" style="margin-left:auto;font-size:12px;color:var(--muted);font-family:var(--mono)">${records.length} records · ${pct}% present</span></div>
+    <div class="table-wrap"><table id="attendance-record-table"><thead><tr><th>Date</th><th>Student</th><th>Subject</th><th>Faculty</th><th>Status</th><th>Marked</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function openAttEdit(id){
