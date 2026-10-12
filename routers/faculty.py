@@ -891,8 +891,7 @@ def delete_material(mid: int, faculty: dict = Depends(require_faculty)):
     if not result.data:
         raise HTTPException(404, "Study material not found")
     item = result.data[0]
-    if faculty.get("role") != "admin" and str(item.get("uploaded_by")) != str(faculty.get("id")):
-        raise HTTPException(403, "You can only delete materials you uploaded")
+    # Faculty/admin may moderate and remove study materials uploaded by either Faculty or CR.
     storage_path = str(item.get("file_url") or "")
     public_marker = "/storage/v1/object/public/ushss-study-materials/"
     signed_marker = "/storage/v1/object/sign/ushss-study-materials/"
