@@ -1684,19 +1684,29 @@ function editAnn(id){
 }
 
 let searchQuery="",statusFilter="",studentSemesterYearFilter="";
-// Keep the search input focused when live filtering rebuilds the user table.
-function handleUserSearch(input, role) {
+// Filter the already-rendered rows in place. Typing must never rebuild the page/template.
+function filterUserRows(query) {
+  const needle = String(query || "").trim().toLocaleLowerCase();
+  const table = document.querySelector("#content .user-table");
+  if (!table) return;
+  const rows = Array.from(table.querySelectorAll("tbody tr[data-search]"));
+  let visible = 0;
+  rows.forEach(row => {
+    const match = !needle || (row.dataset.search || "").toLocaleLowerCase().includes(needle);
+    row.hidden = !match;
+    if (match) visible++;
+  });
+  const count = document.getElementById("user-record-count");
+  if (count) count.textContent = visible + (visible === 1 ? " record" : " records");
+  const empty = document.getElementById("user-search-empty");
+  if (empty) empty.hidden = visible !== 0;
+}
+function handleUserSearch(input) {
   searchQuery = input.value;
-  const cursor = input.selectionStart;
-  renderPage(role);
-  const nextInput = document.querySelector(".search-input-wrap input");
-  if (nextInput) {
-    nextInput.focus();
-    if (cursor !== null) nextInput.setSelectionRange(cursor, cursor);
-  }
+  filterUserRows(searchQuery);
 }
 function renderUserTable(role) {
-  const users=dbGetUsers({role,search:searchQuery});
+  const users=dbGetUsers({role});
   const statusFiltered=statusFilter===""?users:users.filter(u=>{
     const st = u.status || (u.is_active ? "approved" : "inactive");
     return st === statusFilter || String(u.is_active) === statusFilter;
@@ -1725,7 +1735,7 @@ function renderUserTable(role) {
     ? ""
     : `<button class="btn btn-primary" onclick="openCreateModal('${role}')">+ Add ${roleLabel[role] || "User"}</button>`;
 
-  const rows=filtered.length?filtered.map(u=>{
+  const rows=filtered.map(u=>{
     const isSuperAdmin=u.is_super_admin===true;
     const safeName=(u.full_name||"").replace(/'/g,"\\'");
     const userStatus = u.status || (u.is_active ? "approved" : "inactive");
@@ -1764,7 +1774,7 @@ function renderUserTable(role) {
                  <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm(${Number(u.id)},'${esc(u.full_name||"").replace(/'/g,"&#39;")}')" title="Delete user">🗑</button>`;
     }
 
-    return `<tr>
+    return `<tr data-search="${esc([u.full_name,u.username,u.email].filter(Boolean).join(" "))}">
       <td class="mono" style="color:var(--muted)">#${Number(u.id)}</td>
       <td>
         <div style="font-weight:600;color:var(--text)">${esc(u.full_name)}</div>
@@ -1780,13 +1790,13 @@ function renderUserTable(role) {
       <td class="mono" style="font-size:11px;color:var(--muted)">${esc(u.last_login||"Never")}</td>
       <td><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${actions}</div></td>
     </tr>`;
-  }).join(""):`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No ${role}s found</div></div></td></tr>`;
+  }).join("") + `<tr id="user-search-empty" hidden><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div>No matching users found</div></div></td></tr>`;
 
   return `
     <div class="search-bar">
       <div class="search-input-wrap">
         <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Search by name, username or email…" value="${esc(searchQuery)}" oninput="handleUserSearch(this,'${role}')"/>
+        <input type="text" placeholder="Search by name, username or email…" value="${esc(searchQuery)}" oninput="handleUserSearch(this)"/>
       </div>
       <select class="filter-select" onchange="statusFilter=this.value;renderPage('${role}')">
         <option value="" ${statusFilter===""?"selected":""}>All Status</option>
@@ -1797,10 +1807,10 @@ function renderUserTable(role) {
       </select>
       ${semesterYearFilterHtml}
 ${addUserButton}
-      <span style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
+      <span id="user-record-count" style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="user-table">
         <thead><tr>
           <th>ID</th><th>Name / Username</th><th>Email</th>
           ${hasStudentFields?"<th>Programme / Batch</th>":""}
