@@ -319,7 +319,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="page active" id="pg-dashboard">
       <div class="fac-welcome">
         <div class="eyebrow">USHSS • Faculty Portal</div>
-        <h2>Good morning, <span id="dash-faculty-name">Faculty</span> 👋</h2>
+        <h2><span id="dash-faculty-designation">Faculty</span> <span id="dash-faculty-name">Name</span></h2>
         <p id="dash-faculty-sub">Your teaching dashboard — classes, attendance and students in one place.</p>
       </div>
       <div class="fac-quick-grid">
@@ -1591,9 +1591,11 @@ function logoutFaculty() {
     const u = await res.json();
 
     const dashName = document.getElementById('dash-faculty-name');
+    const dashDesignation = document.getElementById('dash-faculty-designation');
     const dashSub = document.getElementById('dash-faculty-sub');
-    if (dashName) dashName.textContent = getCleanFirstName(u.full_name || u.username);
-    if (dashSub) dashSub.textContent = [u.designation, u.department, u.domain].filter(Boolean).join(' · ') || 'Your teaching dashboard — classes, attendance and students in one place.';
+    if (dashName) dashName.textContent = u.full_name || u.username || 'Faculty';
+    if (dashDesignation) dashDesignation.textContent = u.designation || 'Faculty';
+    if (dashSub) dashSub.textContent = [u.department, u.domain].filter(Boolean).join(' · ') || 'Your teaching dashboard — classes, attendance and students in one place.';
     const nameEl   = document.getElementById('sb-name');
     const initEl   = document.getElementById('sb-init');
     const subEl    = document.querySelector('.sb-psub');
