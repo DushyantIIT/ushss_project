@@ -121,7 +121,7 @@ def list_users(
     is_active: Optional[bool] = Query(None),
     admin: dict = Depends(require_admin),
 ):
-    q = sb.table("users").select("*,full_name")
+    q = sb.table("users").select("*")
     # Admin management lists all accounts, including Super Admins.
     # Protected-account permissions are enforced separately by update/delete endpoints.
     if role:      q = q.eq("role", role)
