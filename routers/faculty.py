@@ -14,6 +14,11 @@ FACULTY rights:
 from datetime import date as DateType, datetime, timezone
 from typing import Optional
 import random
+import base64
+import os
+import re
+import mimetypes
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel
@@ -789,9 +794,90 @@ def get_announcements(faculty: dict = Depends(require_faculty)):
 def get_assignments(faculty: dict = Depends(require_faculty)):
     return sb.table("assignments").select("*").eq("is_active", True).order("due_date").execute().data or []
 
+class FacultyMaterialUploadBody(BaseModel):
+    title: str
+    description: Optional[str] = None
+    subject: Optional[str] = None
+    programme: Optional[str] = None
+    batch: Optional[str] = None
+    file_name: str
+    file_data: str
+
+
 @router.get("/materials", summary="View study materials")
 def get_materials(faculty: dict = Depends(require_faculty)):
-    return sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    rows = sb.table("study_materials").select("*").eq("is_active", True).order("uploaded_at", desc=True).execute().data or []
+    for row in rows:
+        path = row.get("file_url")
+        if path and not str(path).startswith("http"):
+            try:
+                signed = sb.storage.from_("ushss-study-materials").create_signed_url(str(path), 3600)
+                row["file_url"] = signed.get("signedURL") or signed.get("signedUrl") or ""
+            except Exception as exc:
+                print(f"FACULTY MATERIAL SIGNED URL WARNING: {type(exc).__name__}: {str(exc)[:160]}")
+                row["file_url"] = ""
+    return rows
+
+
+@router.post("/materials/upload", status_code=201, summary="Upload study material for students and CRs")
+def upload_material(body: FacultyMaterialUploadBody, faculty: dict = Depends(require_faculty)):
+    if faculty.get("role") not in ("faculty", "admin"):
+        raise HTTPException(403, "Faculty only")
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(400, "A material title is required")
+    try:
+        encoded = body.file_data.split(",", 1)[1] if body.file_data.startswith("data:") and "," in body.file_data else body.file_data
+        content = base64.b64decode(encoded, validate=True)
+    except Exception:
+        raise HTTPException(400, "The uploaded file data is invalid")
+    if not content:
+        raise HTTPException(400, "The uploaded file is empty")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Files must be 10 MB or smaller")
+    allowed = {".pdf", ".docx", ".doc", ".pptx", ".ppt", ".txt", ".xlsx", ".xls", ".png", ".jpg", ".jpeg", ".zip"}
+    ext = os.path.splitext(body.file_name)[1].lower()
+    if ext not in allowed:
+        raise HTTPException(400, "Unsupported file type. Use PDF, Word, PowerPoint, Excel, text, image, or ZIP files.")
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(body.file_name))[:160] or "material.bin"
+    content_type = mimetypes.guess_type(safe_name)[0] or "application/octet-stream"
+    bucket = "ushss-study-materials"
+    try:
+        try:
+            sb.storage.create_bucket(bucket, options={"public": False, "file_size_limit": 10 * 1024 * 1024})
+        except Exception:
+            pass
+        storage_path = f"{faculty['id']}/{uuid4().hex}_{safe_name}"
+        storage = sb.storage.from_(bucket)
+        storage.upload(storage_path, content, file_options={"content-type": content_type, "upsert": "false"})
+    except Exception as exc:
+        print(f"FACULTY MATERIAL STORAGE ERROR: {type(exc).__name__}: {str(exc)[:200]}")
+        raise HTTPException(503, "File storage is unavailable. Please check the Supabase Storage bucket configuration.")
+    row = {
+        "title": title,
+        "description": (body.description or "").strip(),
+        "subject": (body.subject or "").strip() or None,
+        "programme": (body.programme or "").strip() or None,
+        "batch": (body.batch or "").strip() or None,
+        "file_name": safe_name,
+        "file_url": storage_path,
+        "size": f"{len(content) / (1024 * 1024):.2f} MB",
+        "uploaded_by": str(faculty["id"]),
+        "is_active": True,
+    }
+    try:
+        result = sb.table("study_materials").insert(row).execute()
+        if not result.data:
+            raise RuntimeError("Material metadata insert returned no row")
+        return result.data[0]
+    except Exception as exc:
+        try:
+            sb.storage.from_(bucket).remove([storage_path])
+        except Exception:
+            pass
+        print(f"FACULTY MATERIAL METADATA ERROR: {type(exc).__name__}: {str(exc)[:200]}")
+        raise HTTPException(500, "The file uploaded but its material record could not be saved. Please try again.")
+
 
 @router.get("/attendance/sessions", summary="View your attendance sessions")
 def attendance_sessions(faculty: dict = Depends(require_faculty)):
