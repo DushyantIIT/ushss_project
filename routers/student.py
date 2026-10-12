@@ -17,6 +17,7 @@ from typing import Optional
 from datetime import date as DateType, datetime, timezone, timedelta
 import math
 import os
+import re
 
 from app.db import sb
 from app.deps import require_student
@@ -538,30 +539,46 @@ def attendance_history(
 #  SHARED CLASS CONTENT
 # ═══════════════════════════════════════════════════════════════
 
+def _normalise_announcement_text(value: Optional[str]) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _announcement_visible_to_user(target: Optional[str], user: dict) -> bool:
+    raw = str(target or "").strip()
+    if not raw:
+        return True
+    programme = _normalise_announcement_text(user.get("programme"))
+    batch = _normalise_announcement_text(user.get("batch"))
+    semester = _normalise_announcement_text(user.get("semester"))
+    universal = {"all", "all students", "all classmates", "all students and crs", "student", "students"}
+    for item in [part.strip() for part in raw.split(",") if part.strip()]:
+        item_norm = _normalise_announcement_text(item)
+        if item_norm in universal:
+            return True
+        if item_norm in {"faculty", "cr", "specific students"}:
+            continue
+        sem_match = re.search(r"(?:semester|sem)\s*(i{1,3}|iv|v|vi|vii|viii|ix|x|\d+)\s*$", item.lower())
+        target_base = item[:sem_match.start()].strip(" -–—|,") if sem_match else item
+        target_norm = _normalise_announcement_text(target_base)
+        if sem_match:
+            roman_to_int = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6", "vii": "7", "viii": "8", "ix": "9", "x": "10"}
+            wanted = roman_to_int.get(sem_match.group(1).lower(), sem_match.group(1).lower())
+            actual_match = re.search(r"(?:semester|sem)?\s*(i{1,3}|iv|v|vi|vii|viii|ix|x|\d+)\s*$", str(user.get("semester") or "").lower())
+            actual = actual_match.group(1).lower() if actual_match else semester
+            actual = roman_to_int.get(actual, actual)
+            if not actual or actual != wanted:
+                continue
+        if programme and target_norm == programme:
+            return True
+        if programme and batch and target_norm == f"{programme} {batch}":
+            return True
+    return False
+
+
 @router.get("/announcements", summary="View announcements for your class")
 def get_announcements(student: dict = Depends(require_student)):
-    res = sb.table("announcements").select("*").order("ts", desc=True).execute()
-    rows = res.data or []
-    stud_prog = (student.get("programme") or "").strip().lower()
-    stud_batch = (student.get("batch") or "").strip().lower()
-
-    def matches_target(ann_target: Optional[str]) -> bool:
-        if not ann_target:
-            return True
-        t = str(ann_target).strip().lower()
-        if t in ("all", "student", "students"):
-            return True
-        tokens = [tok.strip() for tok in t.split(",") if tok.strip()]
-        for tok in tokens:
-            if tok in ("all", "student", "students"):
-                return True
-            if stud_prog and tok == stud_prog:
-                return True
-            if stud_prog and stud_batch and tok == f"{stud_prog} {stud_batch}":
-                return True
-        return False
-
-    return [a for a in rows if matches_target(a.get("target"))]
+    rows = sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
+    return [a for a in rows if _announcement_visible_to_user(a.get("target"), student)]
 
 @router.get("/assignments", summary="View assignments for your class")
 def get_assignments(student: dict = Depends(require_student)):
