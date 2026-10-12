@@ -84,22 +84,63 @@ def _require_cr(cr: dict):
     if cr["role"] not in ("cr", "admin"):
         raise HTTPException(403, "Class Representatives only")
 
+def _normalise_announcement_text(value: Optional[str]) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _announcement_visible_to_cr(target: Optional[str], cr: dict) -> bool:
+    raw = str(target or "").strip()
+    if not raw:
+        return True
+    programme = _normalise_announcement_text(cr.get("programme"))
+    batch = _normalise_announcement_text(cr.get("batch"))
+    semester = _normalise_announcement_text(cr.get("semester"))
+    universal = {"all", "all students", "all classmates", "all students and crs", "student", "students"}
+    for item in [part.strip() for part in raw.split(",") if part.strip()]:
+        item_norm = _normalise_announcement_text(item)
+        if item_norm in universal:
+            return True
+        if item_norm in {"faculty", "specific students"}:
+            continue
+        sem_match = re.search(r"(?:semester|sem)\s*(i{1,3}|iv|v|vi|vii|viii|ix|x|\d+)\s*$", item.lower())
+        target_base = item[:sem_match.start()].strip(" -–—|,") if sem_match else item
+        target_norm = _normalise_announcement_text(target_base)
+        if sem_match:
+            roman_to_int = {"i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6", "vii": "7", "viii": "8", "ix": "9", "x": "10"}
+            wanted = roman_to_int.get(sem_match.group(1).lower(), sem_match.group(1).lower())
+            actual_match = re.search(r"(?:semester|sem)?\s*(i{1,3}|iv|v|vi|vii|viii|ix|x|\d+)\s*$", str(cr.get("semester") or "").lower())
+            actual = actual_match.group(1).lower() if actual_match else semester
+            actual = roman_to_int.get(actual, actual)
+            if not actual or actual != wanted:
+                continue
+        if programme and target_norm == programme:
+            return True
+        if programme and batch and target_norm == f"{programme} {batch}":
+            return True
+    return False
+
+
 @router.get("/announcements", summary="View class announcements")
 def get_announcements(cr: dict = Depends(require_student)):
     _require_cr(cr)
     rows = sb.table("announcements").select("*").order("ts", desc=True).execute().data or []
     if cr["role"] == "admin":
         return rows
-    prog = (cr.get("programme") or "").strip().lower()
-    return [a for a in rows if str(a.get("target") or "").lower() in ("all", "student", "students", "", prog)]
+    return [a for a in rows if _announcement_visible_to_cr(a.get("target"), cr)]
+
 
 @router.post("/announcements", status_code=201, summary="Create a persistent class announcement")
 def create_announcement(body: AnnouncementBody, cr: dict = Depends(require_student)):
     _require_cr(cr)
+    requested_target = (body.target or "").strip()
+    if requested_target.lower() in {"class", "all classmates", "specific students"}:
+        target = " ".join(part for part in [str(cr.get("programme") or "").strip(), str(cr.get("batch") or "").strip()] if part) or "all"
+    else:
+        target = requested_target or " ".join(part for part in [str(cr.get("programme") or "").strip(), str(cr.get("batch") or "").strip()] if part) or "all"
     row = {
         "title": body.title.strip(),
         "body": (body.body or "").strip(),
-        "target": body.target or cr.get("programme") or "all",
+        "target": target,
         "priority": body.priority or "normal",
         "created_by": cr["id"],
         "ts": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
