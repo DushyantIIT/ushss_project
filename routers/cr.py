@@ -216,6 +216,8 @@ def get_materials(cr: dict = Depends(require_student)):
             and (not batch or not row.get("batch") or row.get("batch") == batch)
         ]
     for row in rows:
+        # Only the uploader (or an admin) can delete from the CR portal.
+        row["can_delete"] = cr.get("role") == "admin" or str(row.get("uploaded_by")) == str(cr.get("id"))
         path = row.get("file_url")
         if path and not str(path).startswith("http"):
             try:
