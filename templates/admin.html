@@ -321,13 +321,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 (function(){
   const token = localStorage.getItem("ushss_token");
   if (!token) { window.location.replace("/"); return; }
+  let user = null;
   try {
-    const user = JSON.parse(localStorage.getItem("ushss_user") || "{}");
-    if (user.role && user.role !== "admin") {
-      const redirects = { student: "/dashboard/student", cr: "/dashboard/cr", faculty: "/dashboard/faculty" };
-      window.location.replace(redirects[user.role] || "/");
-    }
-  } catch(e) {}
+    user = JSON.parse(localStorage.getItem("ushss_user") || "null");
+  } catch (_) {}
+  // Fail closed: a missing or malformed cached identity must not open the admin UI.
+  if (!user || user.role !== "admin") {
+    const redirects = { student: "/dashboard/student", cr: "/dashboard/cr", faculty: "/dashboard/faculty" };
+    localStorage.removeItem("ushss_token");
+    localStorage.removeItem("ushss_user");
+    window.location.replace(redirects[user && user.role] || "/");
+  }
 })();
 
 
@@ -982,12 +986,19 @@ async function loadAdminProfile() {
       return false;
     }
     if (res.status === 403) {
-      console.warn("Admin profile endpoint denied access; preserving the current session.");
-      return true;
+      // The server rejected this identity for admin access. Clear cached credentials
+      // and fail closed rather than rendering an admin interface after denial.
+      logoutAdmin();
+      return false;
     }
     if (!res.ok) {
-      console.warn("Admin profile validation returned", res.status);
-      return true;
+      console.error("Admin profile validation failed with HTTP", res.status);
+      const message = document.createElement("div");
+      message.setAttribute("role", "alert");
+      message.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#f8f5ef;color:#6b1a1a;padding:24px;text-align:center;font:16px sans-serif";
+      message.textContent = "Admin access could not be verified. Please refresh and try again.";
+      document.body.appendChild(message);
+      return false;
     }
 
     const rawUser = localStorage.getItem("ushss_user");
