@@ -1472,7 +1472,7 @@ async function updateMyProfile(){
     try { await loadPortalData(); }
     catch(e) { console.debug('Student live sync will retry:',e); }
     finally { syncing=false; }
-  },600);
+  }, 10000);
 })();
 
 </script>
