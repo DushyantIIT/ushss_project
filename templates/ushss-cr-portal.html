@@ -454,7 +454,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
         </div>
         <div class="form-group"><label class="form-label">Visible To</label>
           <select class="form-select" id="ann-vis">
-            <option>All Classmates</option><option>Specific Students</option>
+            <option value="class">All Classmates in My Programme &amp; Batch</option>
           </select>
         </div>
       </div>
@@ -718,20 +718,25 @@ const annTypeIcon={info:'📢',reminder:'⏰',urgent:'🚨'};
 const annTypeBadge={info:'badge-blue',reminder:'badge-amber',urgent:'badge-red'};
 function renderAnn(){
   document.getElementById('ann-list').innerHTML=DB.announcements.length?
-    DB.announcements.map(a=>`
+    DB.announcements.map(a=>{
+      const priority=a.priority||a.type||'normal';
+      const type=priority==='urgent'?'urgent':priority==='important'||priority==='reminder'?'reminder':'info';
+      const target=a.target||a.vis||'My Class';
+      const canDelete=crProfile&&String(a.created_by)===String(crProfile.id);
+      return `
       <div class="item-card">
         <div class="item-card-top">
-          <div class="item-title">${annTypeIcon[a.type]||'📢'} ${esc(a.title)}</div>
-          <span class="badge ${annTypeBadge[a.type]||'badge-blue'}">${esc(a.type).toUpperCase()}</span>
+          <div class="item-title">${annTypeIcon[type]||'📢'} ${esc(a.title)}</div>
+          <span class="badge ${annTypeBadge[type]||'badge-blue'}">${esc(type.toUpperCase())}</span>
         </div>
         <div class="item-body">${esc(a.body)}</div>
         <div class="item-footer">
-          <span class="item-time">🕒 ${esc(a.ts)}</span>
-          <span class="badge badge-gold" style="font-size:9px">👥 ${esc(a.vis)}</span>
-          <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn(${Number(a.id)})">🗑</button>
+          <span class="item-time">🕒 ${esc(a.ts||'')}</span>
+          <span class="badge badge-gold" style="font-size:9px">👥 ${esc(target)}</span>
+          ${canDelete?'<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="deleteAnn('+Number(a.id)+')">🗑</button>':''}
         </div>
-      </div>
-    `).join(''):
+      </div>`;
+    }).join(''):
     `<div class="empty"><div class="empty-icon">📢</div><div>No announcements yet</div></div>`;
 }
 
@@ -740,7 +745,7 @@ async function postAnn(){
   const b=document.getElementById('ann-b').value.trim();
   if(!t||!b){toast('Title and message required','err');return;}
   try{
-    const r=await fetch('/api/cr/announcements',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({title:t,body:b,target:document.getElementById('ann-vis').value||null,priority:'normal'})});
+    const r=await fetch('/api/cr/announcements',{method:'POST',headers:{'Authorization':'Bearer '+localStorage.getItem('ushss_token'),'Content-Type':'application/json'},body:JSON.stringify({title:t,body:b,target:document.getElementById('ann-vis').value||'class',priority:document.getElementById('ann-type').value==='urgent'?'urgent':document.getElementById('ann-type').value==='reminder'?'important':'normal'})});
     const d=await r.json(); if(!r.ok) throw new Error(d.detail||'Could not post announcement');
     DB.announcements.unshift(d); document.getElementById('ann-cnt').textContent=DB.announcements.length;
     closeModal('ann-modal'); renderAnn(); document.getElementById('ann-t').value=''; document.getElementById('ann-b').value=''; toast('Announcement posted!','ok');
