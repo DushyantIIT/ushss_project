@@ -1698,12 +1698,20 @@ function renderUserTable(role) {
       ? String(u.semester||"").trim()===studentSemesterYearFilter.slice(9)
       : true;
   });
+  const semesterToRoman=value=>{
+    const n=Number(value);
+    if(!Number.isInteger(n)||n<1||n>3999) return String(value);
+    const numerals=[[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]];
+    let remaining=n,result="";
+    for(const [amount,symbol] of numerals) while(remaining>=amount){result+=symbol;remaining-=amount;}
+    return result;
+  };
   const semesterOptions=[...new Set(users.map(u=>String(u.semester||"").trim()).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   const semesterYearFilterHtml=role==="student"?`
       <select class="filter-select" aria-label="Filter students by semester" onchange="studentSemesterYearFilter=this.value;renderPage('student')">
         <option value="" ${studentSemesterYearFilter===""?"selected":""}>All Semesters</option>
-        ${semesterOptions.map(v=>`<option value="semester:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="semester:"+v?"selected":""}>Semester ${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
+        ${semesterOptions.map(v=>`<option value="semester:${v.replace(/&/g,"&amp;").replace(/"/g,"&quot;")}" ${studentSemesterYearFilter==="semester:"+v?"selected":""}>Semester ${semesterToRoman(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</option>`).join("")}
       </select>":"";
   const hasStudentFields=role==="student"||role==="cr";
   const hasFacultyFields=role==="faculty";
