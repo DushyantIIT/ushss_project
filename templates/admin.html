@@ -1689,20 +1689,23 @@ function editAnn(id){
 let searchQuery="",statusFilter="",studentSemesterYearFilter="";
 // Filter the already-rendered rows in place. Typing must never rebuild the page/template.
 function filterUserRows(query) {
-  const needle = String(query || "").trim().toLocaleLowerCase();
+  // Match every typed word across name, username, and email. Keep filtering in place.
+  const terms = String(query || "").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
   const table = document.querySelector("#content .user-table");
   if (!table) return;
   const rows = Array.from(table.querySelectorAll("tbody tr[data-search]"));
   let visible = 0;
   rows.forEach(row => {
-    const match = !needle || (row.dataset.search || "").toLocaleLowerCase().includes(needle);
-    row.hidden = !match;
+    const haystack = (row.dataset.search || "").toLocaleLowerCase();
+    const match = terms.every(term => haystack.includes(term));
+    // Use inline display so table-row CSS cannot override the hidden state.
+    row.style.display = match ? "" : "none";
     if (match) visible++;
   });
   const count = document.getElementById("user-record-count");
   if (count) count.textContent = visible + (visible === 1 ? " record" : " records");
   const empty = document.getElementById("user-search-empty");
-  if (empty) empty.hidden = visible !== 0;
+  if (empty) empty.style.display = visible === 0 ? "table-row" : "none";
 }
 function handleUserSearch(input) {
   searchQuery = input.value;
@@ -1716,7 +1719,7 @@ function handleAttendanceSearch(input) {
   let visible = 0;
   table.querySelectorAll("tbody tr[data-att-search]").forEach(row => {
     const match = !needle || (row.dataset.attSearch || "").toLocaleLowerCase().includes(needle);
-    row.hidden = !match;
+    row.style.display = match ? "" : "none";
     if (match) visible++;
   });
   const count = document.getElementById("attendance-filter-count");
