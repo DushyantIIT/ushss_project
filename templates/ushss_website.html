@@ -1377,6 +1377,22 @@ async function submitPortalRegister() {
   }
 }
 
+// Allow Enter to submit the sign-in form from either credential field.
+["portal-id", "portal-password"].forEach(id => {
+  const input = document.getElementById(id);
+  if (input) {
+    input.addEventListener("keydown", event => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const loginPanel = document.getElementById("panel-login");
+      const overlay = document.getElementById("portal-login-overlay");
+      if (overlay?.classList.contains("open") && loginPanel && loginPanel.style.display !== "none") {
+        submitPortalLogin();
+      }
+    });
+  }
+});
+
 document.getElementById("portal-login-overlay").addEventListener("click", e => {
   if (e.target.id === "portal-login-overlay") closePortalLogin();
 });
