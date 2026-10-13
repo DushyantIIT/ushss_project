@@ -161,6 +161,13 @@ def rejected_page(request: Request):
 
 from fastapi.responses import FileResponse, PlainTextResponse
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    # Serve a small inline SVG so browsers never request a missing static file.
+    from fastapi.responses import Response
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#17365D"/><path d="M16 15h32v5H21v10h23v5H21v14h-5z" fill="#fff"/><path d="M28 35h20v5H28z" fill="#D7B56D"/></svg>"""
+    return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
+
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
     content = "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /api/\n"
