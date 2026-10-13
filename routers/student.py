@@ -489,7 +489,7 @@ def attendance_history(
     with subject name, date, and present/absent status.
     """
     res = sb.table("attendance_records").select(
-        "id, session_id, status, marked_at, latitude, longitude, "
+        "id, session_id, status, review_status, marked_at, latitude, longitude, "
         "attendance_sessions(id, slot_id, faculty_id, date, timetable_slots(subject, start_time, end_time, room), users(full_name))"
     ).eq("student_id", student["id"]).order("marked_at", desc=True).execute()
 
