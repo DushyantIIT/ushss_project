@@ -45,40 +45,35 @@ def get_profile(student: dict = Depends(require_student)):
 
 @router.patch("/profile", summary="Update your profile")
 def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_student)):
-    """Allows student to update their profile details."""
+    """Students may edit contact details only; identity and enrolment are admin-controlled."""
+    if body.email is not None or body.programme is not None or body.batch is not None:
+        raise HTTPException(
+            403,
+            "Email, programme, and batch changes must be handled by the department administrator."
+        )
+
     updates = {}
     if body.full_name is not None:
-        if "<" in body.full_name or ">" in body.full_name:
-            raise HTTPException(400, "Full name cannot contain HTML characters (< or >)")
-        updates["full_name"] = body.full_name.strip()
-    if body.email is not None:
-        updates["email"] = body.email.strip()
+        full_name = body.full_name.strip()
+        if not full_name or "<" in full_name or ">" in full_name:
+            raise HTTPException(400, "Enter a valid full name without HTML characters.")
+        updates["full_name"] = full_name
     if body.phone is not None:
-        updates["phone"] = body.phone.strip()
-    if body.programme is not None:
-        updates["programme"] = body.programme.strip()
-    if body.batch is not None:
-        updates["batch"] = body.batch.strip()
+        phone = body.phone.strip()
+        if len(phone) > 32 or any(ch in phone for ch in "<>"):
+            raise HTTPException(400, "Enter a valid phone number.")
+        updates["phone"] = phone or None
 
     if not updates:
-        student.pop("password_hash", None)
-        return {"message": "No changes provided", "student": student}
+        safe_student = dict(student)
+        safe_student.pop("password_hash", None)
+        return {"message": "No changes provided", "student": safe_student}
 
     uid = student["id"]
     try:
-        if updates.get("email"):
-            supa_uid = student.get("supabase_uid")
-            if not supa_uid:
-                u_row = sb.table("users").select("supabase_uid").eq("id", uid).limit(1).execute().data
-                if u_row:
-                    supa_uid = u_row[0].get("supabase_uid")
-            if supa_uid:
-                try:
-                    sb.auth.admin.update_user_by_id(supa_uid, {"email": updates["email"]})
-                except Exception as auth_err:
-                    print(f"Could not update Supabase Auth email for user {uid}: {auth_err}")
-
-        sb.table("users").update(updates).eq("id", uid).execute()
+        result = sb.table("users").update(updates).eq("id", uid).execute()
+        # Some PostgREST configurations do not return updated rows unless selected;
+        # verify that the account still exists before reporting success.
         updated_res = sb.table("users").select("*").eq("id", uid).limit(1).execute()
         if not updated_res.data:
             raise HTTPException(404, "Student user not found")
