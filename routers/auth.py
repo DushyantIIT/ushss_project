@@ -163,8 +163,21 @@ def login(body: LoginRequest, request: Request):
         print(f"LOGIN WARNING: audit log: {e!r}")
 
     token = create_access_token({"sub": user["username"], "id": user["id"], "role": user["role"], "purpose": "access"})
-    user.pop("password_hash", None)
-    return LoginResponse(success=True, token=token, redirect_url=ROLE_REDIRECTS.get(user_role, "/"), user=user)
+    # Return an explicit allowlist instead of the full database row. This keeps
+    # internal fields such as supabase_uid, password_hash, and future columns
+    # from leaking through the login response.
+    safe_user_fields = (
+        "id", "username", "role", "full_name", "email", "phone",
+        "enrollment_no", "department", "programme", "batch", "semester",
+        "section", "designation", "is_active",
+    )
+    safe_user = {key: user[key] for key in safe_user_fields if key in user}
+    return LoginResponse(
+        success=True,
+        token=token,
+        redirect_url=ROLE_REDIRECTS.get(user_role, "/"),
+        user=safe_user,
+    )
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1)
