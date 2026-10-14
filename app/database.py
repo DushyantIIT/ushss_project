@@ -16,21 +16,29 @@ import bcrypt
 
 load_dotenv()
 
-SUPABASE_URL: str = (
-    os.getenv("SUPABASE_URL")
-    or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-    or ""
-)
-SUPABASE_KEY: str = (
-    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    or os.getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
-    or ""
-)
+SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").strip()
+# Privileged database access must use a server-only service-role key.
+# Never substitute a browser publishable/anon key for backend credentials.
+SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 
-USE_SQLITE_FALLBACK: bool = (
-    os.getenv("USE_SQLITE_FALLBACK", "").strip() == "1"
-    or not bool(SUPABASE_URL and SUPABASE_KEY)
+IS_PROD: bool = bool(
+    os.getenv("RENDER")
+    or os.getenv("RENDER_SERVICE_ID")
+    or os.getenv("ENVIRONMENT", "").lower() == "production"
 )
+_SQLITE_REQUESTED: bool = os.getenv("USE_SQLITE_FALLBACK", "").strip() == "1"
+
+if IS_PROD and _SQLITE_REQUESTED:
+    raise RuntimeError("FATAL: USE_SQLITE_FALLBACK=1 is not allowed in production.")
+if IS_PROD and not (SUPABASE_URL and SUPABASE_KEY):
+    raise RuntimeError(
+        "FATAL: Production requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. "
+        "Configure both in Render; SQLite/publishable-key fallback is disabled."
+    )
+
+USE_SQLITE_FALLBACK: bool = _SQLITE_REQUESTED or not bool(SUPABASE_URL and SUPABASE_KEY)
+if IS_PROD:
+    USE_SQLITE_FALLBACK = False
 
 _real_sb: Client = None
 if SUPABASE_URL and SUPABASE_KEY:
