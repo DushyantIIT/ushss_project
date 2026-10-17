@@ -24,7 +24,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.database import ping_db
 from app.seed import seed
-from routers import auth, admin, student, faculty, cr, password_reset, public
+from routers import auth, admin, student, faculty, cr, password_reset, public, chat
 
 
 @asynccontextmanager
@@ -126,6 +126,7 @@ app.include_router(student.router,        prefix="/api")
 app.include_router(faculty.router,        prefix="/api")
 app.include_router(cr.router,             prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
+app.include_router(chat.router,           prefix="/api")
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def home(request: Request):
@@ -150,6 +151,10 @@ def faculty_dashboard(request: Request):
 @app.api_route("/dashboard/cr", methods=["GET", "HEAD"], include_in_schema=False)
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
+
+@app.api_route("/dashboard/chat", methods=["GET", "HEAD"], include_in_schema=False)
+def chat_dashboard(request: Request):
+    return templates.TemplateResponse(request, "chat.html")
 
 @app.api_route("/waiting", methods=["GET", "HEAD"], include_in_schema=False)
 def waiting_page(request: Request):
