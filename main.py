@@ -152,6 +152,10 @@ def faculty_dashboard(request: Request):
 def cr_dashboard(request: Request):
     return templates.TemplateResponse(request, "ushss-cr-portal.html")
 
+@app.api_route("/dashboard/chat", methods=["GET", "HEAD"], include_in_schema=False)
+def chat_dashboard(request: Request):
+    return templates.TemplateResponse(request, "chat.html")
+
 @app.api_route("/waiting", methods=["GET", "HEAD"], include_in_schema=False)
 def waiting_page(request: Request):
     return templates.TemplateResponse(request, "waiting.html")
