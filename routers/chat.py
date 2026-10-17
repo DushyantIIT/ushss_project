@@ -80,6 +80,10 @@ def _conversation(conversation_id: str, user: dict) -> dict:
         raise HTTPException(403, "You are not a member of this conversation")
     return conversation
 
+@router.get("/me")
+def chat_me(user: dict = Depends(get_current_user)):
+    return {"id": str(user["id"]), "role": user.get("role")}
+
 class DirectChatBody(BaseModel):
     recipient_id: str = Field(min_length=1, max_length=128)
 
