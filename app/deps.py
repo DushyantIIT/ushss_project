@@ -9,6 +9,8 @@ FastAPI JWT dependencies — role guards using Supabase.
   require_student   — student / cr / admin  (view timetable, mark attendance)
 """
 
+import time
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -36,29 +38,41 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     except JWTError:
         raise exc
 
-    try:
-        # Use a list query instead of .single(): distinguish "no matching
-        # account" from a database/network failure. Only the former means
-        # the token's user is no longer valid.
-        res = (
-            sb.table("users")
-            .select("*")
-            .eq("id", user_id)
-            .eq("is_active", True)
-            .limit(1)
-            .execute()
+    # Render logs show intermittent Supabase transport failures during this
+    # lookup. Retry this read-only query briefly before reporting an outage.
+    # Never turn a database error into an authentication success, and never
+    # retry writes (which could duplicate changes).
+    last_error = None
+    res = None
+    for attempt in range(3):
+        try:
+            res = (
+                sb.table("users")
+                .select("*")
+                .eq("id", user_id)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+            last_error = None
+            break
+        except Exception as error:
+            last_error = error
+            if attempt < 2:
+                time.sleep(0.2 * (attempt + 1))
+
+    if last_error is not None:
+        print(
+            f"AUTH USER LOOKUP FAILED after retries: "
+            f"{type(last_error).__name__}: {str(last_error)[:180]}"
         )
-    except Exception as error:
-        # A temporary Supabase/database failure is a service problem, not an
-        # invalid token. Returning 503 prevents clients from wiping sessions.
-        print(f"AUTH USER LOOKUP FAILED: {type(error).__name__}: {str(error)[:180]}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service temporarily unavailable. Please retry.",
             headers={"Retry-After": "3"},
         )
 
-    if not res.data:
+    if not res or not res.data:
         raise exc
 
     user = res.data[0]
@@ -98,4 +112,3 @@ def require_student(user: dict = Depends(get_current_user)) -> dict:
     if user["role"] not in ("student", "cr", "admin"):
         raise HTTPException(403, "Student access required.")
     return user
-
