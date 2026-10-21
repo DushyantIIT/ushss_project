@@ -1279,3 +1279,39 @@ def mark_read(mid: int, admin: dict = Depends(require_admin)):
         raise HTTPException(404, "Message not found")
     sb.table("contact_messages").update({"is_read": True}).eq("id", mid).execute()
     return {"message": "Marked as read"}
+
+# ADMIN CHAT REVIEW — protected by the standard admin dependency
+@router.get("/chat/conversations", summary="List chat conversations for administrators")
+def admin_chat_conversations(admin: dict = Depends(require_admin)):
+    conversations = sb.table("chat_conversations").select("*").order("created_at", desc=True).execute().data or []
+    members = sb.table("chat_members").select("conversation_id,user_id").execute().data or []
+    users = sb.table("users").select("id,full_name,role,username").execute().data or []
+    user_map = {str(u.get("id")): u for u in users}
+    grouped = {}
+    for member in members:
+        uid = str(member.get("user_id"))
+        person = user_map.get(uid, {})
+        grouped.setdefault(str(member.get("conversation_id")), []).append({
+            "id": uid, "full_name": person.get("full_name") or person.get("username") or uid,
+            "role": person.get("role") or "unknown"
+        })
+    latest = sb.table("interconnected_chat_messages").select("id,conversation_id,sender_id,body,created_at").order("created_at", desc=True).limit(1000).execute().data or []
+    latest_by_conv = {}
+    for message in latest:
+        latest_by_conv.setdefault(str(message.get("conversation_id")), message)
+    rows = [{**c, "members": grouped.get(str(c.get("id")), []), "last_message": latest_by_conv.get(str(c.get("id")))} for c in conversations]
+    return {"conversations": rows, "total": len(rows)}
+
+@router.get("/chat/conversations/{conversation_id}/messages", summary="Review a conversation's messages")
+def admin_chat_messages(conversation_id: str, admin: dict = Depends(require_admin)):
+    exists = sb.table("chat_conversations").select("id").eq("id", conversation_id).limit(1).execute().data
+    if not exists:
+        raise HTTPException(404, "Conversation not found")
+    messages = sb.table("interconnected_chat_messages").select("id,conversation_id,sender_id,body,created_at").eq("conversation_id", conversation_id).order("created_at").limit(500).execute().data or []
+    users = sb.table("users").select("id,full_name,role,username").execute().data or []
+    user_map = {str(u.get("id")): u for u in users}
+    for message in messages:
+        person = user_map.get(str(message.get("sender_id")), {})
+        message["sender_name"] = person.get("full_name") or person.get("username") or str(message.get("sender_id") or "Unknown")
+        message["sender_role"] = person.get("role") or "unknown"
+    return {"messages": messages, "total": len(messages)}
