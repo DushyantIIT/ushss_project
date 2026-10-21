@@ -156,6 +156,10 @@ def cr_dashboard(request: Request):
 def chat_dashboard(request: Request):
     return templates.TemplateResponse(request, "chat.html")
 
+@app.api_route("/dashboard/admin/chats", methods=["GET", "HEAD"], include_in_schema=False)
+def admin_chat_management_page(request: Request):
+    return templates.TemplateResponse(request, "admin_chats.html")
+
 @app.api_route("/waiting", methods=["GET", "HEAD"], include_in_schema=False)
 def waiting_page(request: Request):
     return templates.TemplateResponse(request, "waiting.html")
