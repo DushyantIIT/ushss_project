@@ -9,6 +9,7 @@ when USE_SQLITE_FALLBACK=1 is explicitly enabled for local development.
 
 import os
 import sqlite3
+import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -424,7 +425,32 @@ class TableQueryBuilder:
                         q = q.limit(self._limit_num)
                     if self._is_single:
                         q = q.single()
-                    res = q.execute()
+                    # Retry transient transport/socket errors on reads only.
+                    # Retrying writes could create duplicate messages or records.
+                    last_read_error = None
+                    res = None
+                    for attempt in range(3):
+                        try:
+                            res = q.execute()
+                            last_read_error = None
+                            break
+                        except Exception as read_error:
+                            last_read_error = read_error
+                            transient = any(
+                                marker in str(read_error).lower()
+                                for marker in (
+                                    "resource temporarily unavailable",
+                                    "errno 11",
+                                    "connection reset",
+                                    "timed out",
+                                    "temporary failure",
+                                )
+                            )
+                            if not transient or attempt == 2:
+                                raise
+                            time.sleep(0.2 * (attempt + 1))
+                    if last_read_error is not None:
+                        raise last_read_error
                     if res is not None:
                         return res
                 elif self._action == "insert":
