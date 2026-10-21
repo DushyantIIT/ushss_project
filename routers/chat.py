@@ -111,7 +111,7 @@ def list_conversations(user: dict = Depends(get_current_user)):
         if not conv:
             continue
         c = conv[0]
-        last = sb.table("chat_messages").select("id,body,sender_id,created_at").eq("conversation_id", c["id"]).order("created_at", desc=True).limit(1).execute().data or []
+        last = sb.table("interconnected_chat_messages").select("id,body,sender_id,created_at").eq("conversation_id", c["id"]).order("created_at", desc=True).limit(1).execute().data or []
         c["last_message"] = last[0] if last else None
         c["last_read_at"] = membership.get("last_read_at")
         result.append(c)
@@ -169,7 +169,7 @@ def create_class_group(body: GroupChatBody, user: dict = Depends(get_current_use
 @router.get("/{conversation_id}/messages")
 def get_messages(conversation_id: str, before: Optional[str] = Query(default=None), user: dict = Depends(get_current_user)):
     _conversation(conversation_id, user)
-    q = sb.table("chat_messages").select("id,conversation_id,sender_id,body,created_at").eq("conversation_id", conversation_id)
+    q = sb.table("interconnected_chat_messages").select("id,conversation_id,sender_id,body,created_at").eq("conversation_id", conversation_id)
     if before:
         q = q.lt("created_at", before)
     rows = q.order("created_at", desc=True).limit(100).execute().data or []
@@ -187,5 +187,5 @@ def send_message(conversation_id: str, body: MessageBody, user: dict = Depends(g
         member = sb.table("chat_members").select("id").eq("conversation_id", conversation_id).eq("user_id", str(user["id"])).limit(1).execute()
         if not member.data:
             raise HTTPException(403, "Join the conversation before sending messages")
-    row = sb.table("chat_messages").insert({"conversation_id":conversation_id,"sender_id":str(user["id"]),"body":text,"created_at":datetime.now(timezone.utc).isoformat()}).execute().data
+    row = sb.table("interconnected_chat_messages").insert({"conversation_id":conversation_id,"sender_id":str(user["id"]),"body":text,"created_at":datetime.now(timezone.utc).isoformat()}).execute().data
     return row[0]
