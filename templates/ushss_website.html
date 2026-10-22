@@ -317,12 +317,15 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
 .fade-up-delay-1{transition-delay:.1s}
 .fade-up-delay-2{transition-delay:.2s}
 .fade-up-delay-3{transition-delay:.3s}
+
+.skip-link{position:fixed;top:-60px;left:12px;z-index:10000;background:var(--maroon);color:#fff;padding:12px 16px}.skip-link:focus{top:0}:focus-visible{outline:3px solid var(--gold);outline-offset:3px}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}#back-to-top{position:fixed;right:18px;bottom:18px;z-index:90;width:46px;height:46px;border:0;border-radius:50%;background:var(--maroon);color:#fff;font-size:20px;cursor:pointer;display:none}#back-to-top.visible{display:block}
 </style>
 </head>
 <body>
 
 <!-- NAV -->
-<nav id="navbar">
+<a class="skip-link" href="#home">Skip to main content</a>
+<nav id="navbar" aria-label="Main navigation">
   <a class="nav-brand" href="#home">
     <div class="nav-logo">GGS</div>
     <div class="nav-title">
@@ -339,7 +342,7 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
     <li id="nav-auth-item"><button class="nav-login-btn" type="button" onclick="openPortalLogin()">Login</button></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
   </ul>
-  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+  <button class="hamburger" type="button" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
 </nav>
@@ -1530,6 +1533,7 @@ function logoutFromHome() {
 checkExistingAuth();
 document.addEventListener("DOMContentLoaded", checkExistingAuth);
 </script>
+<button id="back-to-top" type="button" aria-label="Back to top" onclick="window.scrollTo(0,0)">↑</button><script>const backTopButton=document.getElementById("back-to-top");window.addEventListener("scroll",function(){backTopButton.classList.toggle("visible",window.scrollY>500)},{passive:true});</script>
 </body>
 </html>
 
