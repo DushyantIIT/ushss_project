@@ -173,7 +173,12 @@ def get_messages(conversation_id: str, before: Optional[str] = Query(default=Non
     if before:
         q = q.lt("created_at", before)
     rows = q.order("created_at", desc=True).limit(100).execute().data or []
-    sb.table("chat_members").update({"last_read_at":datetime.now(timezone.utc).isoformat()}).eq("conversation_id", conversation_id).eq("user_id", str(user["id"])).execute()
+    # Updating the read receipt is auxiliary; a transient Supabase transport error
+    # must not prevent the user from opening and reading the conversation.
+    try:
+        sb.table("chat_members").update({"last_read_at":datetime.now(timezone.utc).isoformat()}).eq("conversation_id", conversation_id).eq("user_id", str(user["id"])).execute()
+    except Exception as exc:
+        print(f"Chat read-receipt update skipped for conversation {conversation_id}: {type(exc).__name__}: {str(exc)[:160]}")
     return {"messages": list(reversed(rows))}
 
 @router.post("/{conversation_id}/messages", status_code=201)
