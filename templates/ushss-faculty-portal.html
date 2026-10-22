@@ -242,6 +242,16 @@ tr:hover td{background:rgba(255,255,255,.01)}
   th,td{padding:9px 10px}
 }
 
+
+/* User-selectable appearance shared across portal pages */
+#ushss-theme-switch{position:fixed;right:18px;bottom:18px;z-index:99999;display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--border2,#CFC6B5);border-radius:10px;background:var(--surface,#fff);color:var(--ink,var(--text,#222));box-shadow:0 4px 18px rgba(0,0,0,.18);font:500 12px 'DM Sans',sans-serif}
+#ushss-theme-switch select{max-width:110px;border:1px solid var(--border2,#CFC6B5);border-radius:7px;padding:6px;background:var(--surface,#fff);color:inherit;font:inherit}
+:root[data-ushss-theme="light"]{--bg:#FAF8F4;--surface:#FFFFFF;--surface2:#F5F1EA;--surface3:#EDE8DE;--border:#E0D9CC;--border2:#CFC6B5;--maroon:#6B1A1A;--maroon-d:#4A0E0E;--maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;--ink:#1A1209;--ink-mid:#3D2B1F;--text:#1A1209;--cream:#F5F0E8;--muted:#8A7B6E;color-scheme:light}
+:root[data-ushss-theme="dark"]{--bg:#111214;--surface:#191b1f;--surface2:#22252a;--surface3:#2b2f35;--border:#343941;--border2:#454b55;--maroon:#9c4545;--maroon-d:#321717;--maroon-l:#b85d5d;--gold:#d7b65c;--gold-l:#f0d58b;--gold-pale:rgba(215,182,92,.12);--ink:#f3eee7;--ink-mid:#e5d9cb;--text:#e8e4dc;--cream:#f3eee7;--muted:#b3a596;color-scheme:dark}
+:root[data-ushss-theme="dark"] body{background:var(--bg);color:var(--text)}
+:root[data-ushss-theme="dark"] input,:root[data-ushss-theme="dark"] textarea,:root[data-ushss-theme="dark"] select{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+:root[data-ushss-theme="light"] body{background:var(--bg);color:var(--ink)}
+@media(prefers-color-scheme:dark){:root[data-ushss-theme="system"]{--bg:#111214;--surface:#191b1f;--surface2:#22252a;--surface3:#2b2f35;--border:#343941;--border2:#454b55;--maroon:#9c4545;--maroon-d:#321717;--maroon-l:#b85d5d;--gold:#d7b65c;--gold-l:#f0d58b;--gold-pale:rgba(215,182,92,.12);--ink:#f3eee7;--ink-mid:#e5d9cb;--text:#e8e4dc;--cream:#f3eee7;--muted:#b3a596;color-scheme:dark}:root[data-ushss-theme="system"] body{background:var(--bg);color:var(--text)}:root[data-ushss-theme="system"] input,:root[data-ushss-theme="system"] textarea,:root[data-ushss-theme="system"] select{background:var(--surface2);color:var(--text);border-color:var(--border2)}}
 </style>
 </head>
 <script>
@@ -1774,5 +1784,7 @@ async function changeMyPassword(){
   <span aria-hidden="true" style="font-size:20px;line-height:1">💬</span><span>Chats</span>
 </a>
 
+
+<script>(function(){var key='ushss_global_theme';function apply(v){if(['light','dark','system'].indexOf(v)<0)v='system';document.documentElement.setAttribute('data-ushss-theme',v);try{localStorage.setItem(key,v)}catch(e){}var s=document.getElementById('ushss-theme-choice');if(s)s.value=v}var initial='system';try{initial=localStorage.getItem(key)||'system'}catch(e){}apply(initial);document.addEventListener('DOMContentLoaded',function(){if(document.getElementById('ushss-theme-switch'))return;var box=document.createElement('div');box.id='ushss-theme-switch';box.innerHTML='<label for="ushss-theme-choice">Appearance</label><select id="ushss-theme-choice" aria-label="Choose appearance"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>';document.body.appendChild(box);var s=document.getElementById('ushss-theme-choice');s.value=document.documentElement.getAttribute('data-ushss-theme')||'system';s.addEventListener('change',function(){apply(this.value)})})})();</script>
 </body>
 </html>
