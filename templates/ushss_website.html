@@ -319,6 +319,42 @@ footer{background:var(--ink);padding:4rem 0 2rem;color:rgba(250,247,242,.6)}
 .fade-up-delay-3{transition-delay:.3s}
 
 .skip-link{position:fixed;top:-60px;left:12px;z-index:10000;background:var(--maroon);color:#fff;padding:12px 16px}.skip-link:focus{top:0}:focus-visible{outline:3px solid var(--gold);outline-offset:3px}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}#back-to-top{position:fixed;right:18px;bottom:18px;z-index:90;width:46px;height:46px;border:0;border-radius:50%;background:var(--maroon);color:#fff;font-size:20px;cursor:pointer;display:none}#back-to-top.visible{display:block}
+
+/* Mobile registration modal: keep the entire form reachable by scrolling */
+.portal-login-overlay.open{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+}
+.portal-login-card{
+  flex:0 0 auto;
+  margin:auto;
+  max-height:none;
+}
+@media(max-width:600px){
+  .portal-login-overlay{
+    align-items:flex-start;
+    justify-content:center;
+    padding:12px 10px;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .portal-login-overlay.open{display:flex}
+  .portal-login-card,
+  .portal-login-card.wide{
+    width:100%;
+    max-width:560px;
+    margin:0 auto;
+    padding:1.25rem 1rem;
+    max-height:none;
+    overflow:visible;
+  }
+  .portal-login-title{font-size:1.7rem;padding-right:2rem}
+  .portal-reg-grid{grid-template-columns:minmax(0,1fr)}
+  .portal-reg-grid .full{grid-column:1}
+}
+
 </style>
 </head>
 <body>
