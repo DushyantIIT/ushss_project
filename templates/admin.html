@@ -1750,7 +1750,7 @@ async function promoteSelectedStudents() {
         failed.push((student.full_name||student.username)+": "+(error.message||"Update failed"));
       }
     }
-    await loadAdminUsers();
+    await fetchAdminUsers();
     renderPage("student");
     if(failed.length) toast(succeeded+" promoted; "+failed.length+" not promoted. "+failed.slice(0,3).join("; "),"error");
     else toast(succeeded+" student(s) promoted to the next semester","success");
