@@ -1709,12 +1709,12 @@ function toggleVisibleStudentSelection(checked) {
 
 function parseSemesterNumber(value) {
   const raw=String(value??"").trim().toUpperCase();
-  if(/^\\d+$/.test(raw)) return Number(raw);
+  if(/^\d+$/.test(raw)) return Number(raw);
   const values={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8};
   return values[raw]||NaN;
 }
 function formatSemesterValue(value, original) {
-  if(/^\\d+$/.test(String(original??"").trim())) return String(value);
+  if(/^\d+$/.test(String(original??"").trim())) return String(value);
   const values=["I","II","III","IV","V","VI","VII","VIII"];
   return values[value-1]||String(value);
 }
@@ -1733,8 +1733,10 @@ async function promoteSelectedStudents() {
   try {
     for(const student of eligible){
       const current=parseSemesterNumber(student.semester);
-      if(!Number.isInteger(current)||current<1||current>=8){
-        failed.push((student.full_name||student.username)+" (invalid/max semester)");
+      const programme=String(student.programme||"").toLowerCase();
+      const maxSemester=(programme.includes("m.a")||programme.startsWith("ma ")||programme==="ma")?4:8;
+      if(!Number.isInteger(current)||current<1||current>=maxSemester){
+        failed.push((student.full_name||student.username)+" (invalid semester or already at maximum "+maxSemester+")");
         continue;
       }
       const next=formatSemesterValue(current+1,student.semester);
