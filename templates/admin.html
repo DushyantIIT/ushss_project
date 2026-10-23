@@ -1706,6 +1706,60 @@ function toggleVisibleStudentSelection(checked) {
   });
   updateStudentSelectionUI();
 }
+
+function parseSemesterNumber(value) {
+  const raw=String(value??"").trim().toUpperCase();
+  if(/^\\d+$/.test(raw)) return Number(raw);
+  const values={I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8};
+  return values[raw]||NaN;
+}
+function formatSemesterValue(value, original) {
+  if(/^\\d+$/.test(String(original??"").trim())) return String(value);
+  const values=["I","II","III","IV","V","VI","VII","VIII"];
+  return values[value-1]||String(value);
+}
+async function promoteSelectedStudents() {
+  const ids=[...selectedStudentIds];
+  if(!ids.length){toast("Select at least one student first","error");return;}
+  const students=dbGetUsers({role:"student"});
+  const byId=new Map(students.map(u=>[String(u.id),u]));
+  const eligible=ids.map(id=>byId.get(id)).filter(u=>u&&u.role==="student"&&!u.is_super_admin);
+  if(!eligible.length){toast("No eligible students selected","error");return;}
+  const names=eligible.map(u=>u.full_name||u.username||("Student #"+u.id));
+  if(!confirm("Promote "+eligible.length+" selected student(s) to the next semester?\n\n"+names.join(", "))) return;
+  const button=document.getElementById("promote-selected-students");
+  if(button){button.disabled=true;button.textContent="Promoting…";}
+  let succeeded=0,failed=[];
+  try {
+    for(const student of eligible){
+      const current=parseSemesterNumber(student.semester);
+      if(!Number.isInteger(current)||current<1||current>=8){
+        failed.push((student.full_name||student.username)+" (invalid/max semester)");
+        continue;
+      }
+      const next=formatSemesterValue(current+1,student.semester);
+      try {
+        const response=await fetch("/api/admin/users/"+encodeURIComponent(student.id),{
+          method:"PUT",headers:authHeaders(),body:JSON.stringify({semester:next})
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.detail||"Update failed");
+        succeeded++;
+        selectedStudentIds.delete(String(student.id));
+      } catch(error) {
+        failed.push((student.full_name||student.username)+": "+(error.message||"Update failed"));
+      }
+    }
+    await loadAdminUsers();
+    renderPage("student");
+    if(failed.length) toast(succeeded+" promoted; "+failed.length+" not promoted. "+failed.slice(0,3).join("; "),"error");
+    else toast(succeeded+" student(s) promoted to the next semester","success");
+  } finally {
+    const currentButton=document.getElementById("promote-selected-students");
+    if(currentButton){currentButton.disabled=false;currentButton.textContent="⬆ Promote Selected";}
+  }
+}
+
 // Filter already-rendered rows in place; never replace the input while typing.
 function filterUserRows(query) {
   const terms = String(query || "").toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -1833,6 +1887,7 @@ function renderUserTable(role) {
       </select>
       ${semesterYearFilterHtml}
 ${addUserButton}
+      ${role==="student"?`<button id="promote-selected-students" class="btn btn-success" onclick="promoteSelectedStudents()">⬆ Promote Selected</button>`:""}
       <span id="student-selection-count" style="font-size:12px;color:var(--gold)"></span><span id="user-record-count" style="margin-left:auto;font-size:12px;color:var(--muted)">${filtered.length} records</span>
     </div>
     <div class="table-wrap">
