@@ -1135,6 +1135,21 @@ async function submitPortalLogin() {
     }
     if (!res.ok || !data.success) {
       const msg = (typeof detail === "string" && detail) || data.error || "Login failed";
+      // The API intentionally returns a generic 401 for invalid credentials.
+      // Clear the password immediately so a failed attempt is not left visible
+      // in the field, including when the user had toggled Show.
+      if (res.status === 401) {
+        const passwordInput = document.getElementById("portal-password");
+        const passwordToggle = document.getElementById("toggle-login-password");
+        if (passwordInput) {
+          passwordInput.value = "";
+          passwordInput.type = "password";
+        }
+        if (passwordToggle) {
+          passwordToggle.textContent = "Show";
+          passwordToggle.setAttribute("aria-label", "Show password");
+        }
+      }
       throw new Error(msg);
     }
     err.style.display = "none";
