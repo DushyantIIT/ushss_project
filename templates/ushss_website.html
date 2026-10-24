@@ -1090,7 +1090,8 @@ function toggleRegistrationPassword(inputId, buttonId) {
 
 async function submitPortalLogin() {
   const uid = document.getElementById("portal-id").value.trim();
-  const pwd = document.getElementById("portal-password").value.trim();
+  const passwordInput = document.getElementById("portal-password");
+  const pwd = passwordInput.value;
   const err = document.getElementById("portal-login-error");
   const btn = document.querySelector(".portal-signin");
   if (!uid || !pwd) {
@@ -1142,8 +1143,20 @@ async function submitPortalLogin() {
     closePortalLogin();
     window.location.href = data.redirect_url || "/";
   } catch (e) {
+    // Clear the password after a failed sign-in so it cannot be accidentally
+    // resubmitted or left visible in the form. Keep the username for retry.
+    passwordInput.value = "";
+    const toggle = document.getElementById("toggle-login-password");
+    if (passwordInput.type !== "password") {
+      passwordInput.type = "password";
+      if (toggle) {
+        toggle.textContent = "Show";
+        toggle.setAttribute("aria-label", "Show password");
+      }
+    }
     err.style.display = "block";
     err.textContent = e.message;
+    passwordInput.focus();
   } finally {
     btn.disabled = false;
     btn.textContent = "Sign In";
