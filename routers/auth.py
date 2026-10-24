@@ -16,6 +16,28 @@ from app.rate_limit import (
     clear_login_failures,
 )
 
+# Retry only idempotent Supabase reads. Never retry writes or authentication
+# attempts, because their side effects/semantics may not be safe to repeat.
+def _execute_read_with_retry(query, attempts: int = 3):
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            return query.execute()
+        except Exception as error:
+            last_error = error
+            if attempt < attempts - 1:
+                import time
+                time.sleep(0.2 * (attempt + 1))
+    print(
+        f"AUTH DATABASE READ FAILED after {attempts} attempts: "
+        f"{type(last_error).__name__}: {str(last_error)[:180]}"
+    )
+    raise HTTPException(
+        status_code=503,
+        detail="Authentication service temporarily unavailable. Please retry.",
+        headers={"Retry-After": "3"},
+    )
+
 router = APIRouter(tags=["Auth"])
 VALID_ROLES = ("student", "faculty", "cr", "admin")
 SELF_REGISTER_ROLES = ("student", "faculty")
@@ -49,7 +71,7 @@ def login(body: LoginRequest, request: Request):
     q = sb.table("users").select("*").eq("username", body.username)
     if body.role is not None:
         q = q.eq("role", body.role)
-    res = q.limit(1).execute()
+    res = _execute_read_with_retry(q.limit(1))
     if res.data and (res.data[0].get("status") or "approved") == "approved":
         user = res.data[0]
     elif body.role in ("student", "cr", None):
@@ -57,7 +79,7 @@ def login(body: LoginRequest, request: Request):
         q_enr = sb.table("users").select("*").eq("enrollment_no", body.username)
         if body.role is not None:
             q_enr = q_enr.eq("role", body.role)
-        res_enr = q_enr.limit(1).execute()
+        res_enr = _execute_read_with_retry(q_enr.limit(1))
         if res_enr.data and (res_enr.data[0].get("status") or "approved") == "approved":
             user = res_enr.data[0]
 
@@ -66,12 +88,12 @@ def login(body: LoginRequest, request: Request):
         q_other = sb.table("users").select("*").eq("username", body.username)
         if body.role is not None:
             q_other = q_other.eq("role", body.role)
-        res_other = q_other.limit(1).execute()
+        res_other = _execute_read_with_retry(q_other.limit(1))
         if not res_other.data and body.role in ("student", "cr", None):
             q_other = sb.table("users").select("*").eq("enrollment_no", body.username)
             if body.role is not None:
                 q_other = q_other.eq("role", body.role)
-            res_other = q_other.limit(1).execute()
+            res_other = _execute_read_with_retry(q_other.limit(1))
         if res_other.data:
             user = res_other.data[0]
 
@@ -268,12 +290,6 @@ def register(body: RegisterRequest, request: Request):
                     try: sb.auth.admin.delete_user(old_uid)
                     except Exception: pass
                 sb.table("users").delete().eq("id", r["id"]).execute()
-        elif r.get("status") == "rejected":
-            old_uid = r.get("supabase_uid")
-            if old_uid and not str(old_uid).startswith("local_"):
-                try: sb.auth.admin.delete_user(old_uid)
-                except Exception: pass
-            sb.table("users").delete().eq("id", r["id"]).execute()
     phone = body.phone.strip() if body.phone else None
     if phone:
         if phone.isdigit() and len(phone)==10: phone="+91"+phone
@@ -344,12 +360,33 @@ def check_username(username:str,role:str):
     return {"available":not bool(sb.table("users").select("id").eq("username",username.strip()).eq("role",role).execute().data)}
 
 @router.get("/registration-status")
-def registration_status(token:str=Depends(oauth2_scheme)):
+def registration_status(token: str = Depends(oauth2_scheme)):
     try:
-        p=decode_token(token); uid=p.get("id")
-        if not uid: raise HTTPException(401,"Invalid or expired token")
-    except JWTError: raise HTTPException(401,"Invalid or expired token")
-    res=sb.table("users").select("status,rejection_reason,full_name,email,role,email_verified,phone_verified").eq("id",uid).limit(1).execute()
-    if not res.data: raise HTTPException(404,"Account not found")
-    row=res.data[0]
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(401, "Invalid or expired token")
+
+    # This endpoint is used by the waiting/registration flow only. Do not let
+    # reset or ordinary access tokens query registration metadata.
+    if payload.get("purpose") != "pending":
+        raise HTTPException(401, "A pending-registration token is required.")
+    if payload.get("role") not in SELF_REGISTER_ROLES:
+        raise HTTPException(403, "Registration status is not available for this account.")
+
+    uid = payload.get("id")
+    if not uid:
+        raise HTTPException(401, "Invalid or expired token")
+
+    res = _execute_read_with_retry(
+        sb.table("users")
+        .select("status,rejection_reason,full_name,email,role,email_verified,phone_verified")
+        .eq("id", uid)
+        .limit(1)
+    )
+    if not res.data:
+        raise HTTPException(404, "Account not found")
+    row = res.data[0]
+    # Prevent accidental cross-account disclosure if a malformed token is issued.
+    if row.get("role") not in SELF_REGISTER_ROLES:
+        raise HTTPException(403, "Registration status is not available for this account.")
     return row
