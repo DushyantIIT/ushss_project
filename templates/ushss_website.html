@@ -1158,19 +1158,20 @@ async function submitPortalLogin() {
     closePortalLogin();
     window.location.href = data.redirect_url || "/";
   } catch (e) {
-    // Clear the password after a failed sign-in so it cannot be accidentally
-    // resubmitted or left visible in the form. Keep the username for retry.
+    // Always clear the password after a rejected login attempt (including
+    // an incorrect password or role mismatch). Keep the username so the user
+    // can correct the password without re-entering their ID.
     passwordInput.value = "";
+    passwordInput.setAttribute("autocomplete", "new-password");
     const toggle = document.getElementById("toggle-login-password");
-    if (passwordInput.type !== "password") {
-      passwordInput.type = "password";
-      if (toggle) {
-        toggle.textContent = "Show";
-        toggle.setAttribute("aria-label", "Show password");
-      }
+    passwordInput.type = "password";
+    if (toggle) {
+      toggle.textContent = "Show";
+      toggle.setAttribute("aria-label", "Show password");
     }
     err.style.display = "block";
-    err.textContent = e.message;
+    err.textContent = e.message || "Login failed. Please check your credentials and try again.";
+    passwordInput.focus();
     passwordInput.focus();
   } finally {
     btn.disabled = false;
