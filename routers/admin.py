@@ -712,32 +712,26 @@ class TimetableUpdate(BaseModel):
     faculty_id:  Optional[int] = None
 
 
-# Timetable slots can have class-specific durations (15 minutes to 3 hours).
-# Morning and afternoon periods stay separate so no class crosses the lunch break.
+# Timetable times are fixed; admins may edit class details but cannot create custom periods.
+FIXED_TIMETABLE_PAIRS = {
+    ("09:00", "10:00"), ("10:00", "11:00"),
+    ("11:00", "12:00"), ("12:00", "13:00"),
+    ("13:30", "14:30"), ("14:30", "15:30"),
+    ("15:30", "16:30"), ("16:30", "17:30"),
+}
+
+
 def _validate_timetable_slot(start_time: str, end_time: str, day_of_week: str) -> None:
     day = (day_of_week or "").strip().lower()
     if day not in {"monday", "tuesday", "wednesday", "thursday", "friday"}:
         raise HTTPException(400, "Timetable day must be Monday through Friday.")
 
-    try:
-        start = datetime.strptime(str(start_time)[:5], "%H:%M")
-        end = datetime.strptime(str(end_time)[:5], "%H:%M")
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Start and end times must use HH:MM format.")
-
-    duration = (end - start).total_seconds() / 60
-    if duration < 15 or duration > 180:
-        raise HTTPException(400, "Class duration must be between 15 minutes and 3 hours.")
-
-    start_min = start.hour * 60 + start.minute
-    end_min = end.hour * 60 + end.minute
-    morning_ok = start_min >= 9 * 60 and end_min <= 13 * 60
-    afternoon_ok = start_min >= 13 * 60 + 30 and end_min <= 17 * 60 + 30
-    if not (morning_ok or afternoon_ok):
+    start = str(start_time or "")[:5]
+    end = str(end_time or "")[:5]
+    if (start, end) not in FIXED_TIMETABLE_PAIRS:
         raise HTTPException(
             400,
-            "Classes must be between 9:00 AM and 1:00 PM or 1:30 PM and 5:30 PM, "
-            "without overlapping the 1:00–1:30 PM break."
+            "Please use one of the fixed timetable slots. Custom class times are not allowed."
         )
 
 
