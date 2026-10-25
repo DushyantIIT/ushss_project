@@ -2404,10 +2404,26 @@ function saveTTDraftGroups(rows) {
   try { localStorage.setItem(TT_DRAFT_GROUPS_KEY, JSON.stringify(rows)); }
   catch (_) { toast("Could not save empty timetable draft in this browser", "error"); }
 }
-function ttRememberDraftGroup(programme, group, batch) {
+function ttRememberDraftGroup(programme, group, batch, meta = {}) {
   const rows = ttDraftGroups().filter(x => !(x.programme === programme && x.group === group));
-  rows.push({programme, group, batch: batch || "General"});
+  rows.push({programme, group, batch: batch || "General", course: meta.course || "", semester: meta.semester || "", section: meta.section || ""});
   saveTTDraftGroups(rows);
+}
+function adminTimetableGroup(slot) {
+  if (!slot) return "General";
+  // New-format rows keep the academic dimensions separately in the database.
+  if (slot.course && slot.batch && slot.semester) {
+    const section = slot.section || "None";
+    return slot.course + " · " + slot.batch + " · Sem " + slot.semester + " · Section " + section;
+  }
+  // Preserve compatibility with older rows whose section stored the display label.
+  return slot.section || slot.batch || "General";
+}
+function adminTimetableGroupMeta(programme, group) {
+  const draft = ttDraftGroups().find(x => x.programme === programme && x.group === group);
+  if (draft) return draft;
+  const existing = adminTimetableSlots().find(s => s.programme === programme && adminTimetableGroup(s) === group);
+  return existing ? {course: existing.course || "", batch: existing.batch || "", semester: existing.semester || "", section: existing.section || ""} : {};
 }
 function ttForgetDraftGroup(programme, group) {
   saveTTDraftGroups(ttDraftGroups().filter(x => !(x.programme === programme && x.group === group)));
@@ -2416,7 +2432,7 @@ function adminTimetableSlots() {
   return Array.isArray(window.__supabaseTimetable) ? window.__supabaseTimetable : [];
 }
 function adminSectionNames(prog) {
-  const vals = adminTimetableSlots().filter(s=>s.programme===prog).map(s=>s.section || s.batch || "General");
+  const vals = adminTimetableSlots().filter(s=>s.programme===prog).map(adminTimetableGroup);
   return [...new Set(vals)];
 }
 function adminTimePair(i) {
@@ -2432,7 +2448,7 @@ function adminSlotFor(prog, section, day, timeIdx) {
   const pair=adminTimePair(timeIdx), dayName=adminDayName(day);
   return adminTimetableSlots().find(s =>
     s.programme===prog &&
-    (s.section || s.batch || "General")===section &&
+    adminTimetableGroup(s)===section &&
     String(s.day_of_week).toLowerCase()===dayName.toLowerCase() &&
     String(s.start_time).slice(0,5)===pair[0] &&
     String(s.end_time).slice(0,5)===pair[1]
@@ -2496,7 +2512,7 @@ function renderTimetable() {
     gridHTML=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
       <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--cream)">${ttCurrentProg}</span>
       <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">/ ${ttCurrentSection}</span>
-      <span style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.filter(s=>s.programme===ttCurrentProg&&(s.section||s.batch||"General")===ttCurrentSection).length} slots</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.filter(s=>s.programme===ttCurrentProg&&adminTimetableGroup(s)===ttCurrentSection).length} slots</span>
       <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
@@ -2535,8 +2551,8 @@ async function saveTTCell(){
     }else{
       const facText=document.getElementById("tt-faculty").value.trim().toLowerCase();
       const faculty=(dbGetUsers({role:"faculty"}).find(u=>(u.full_name||"").toLowerCase()===facText || (u.username||"").toLowerCase()===facText));
-      const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,batch:existing?.batch||document.getElementById("tt-new-batch")?.value||"",section:ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_id:faculty?.id||existing?.faculty_id||null};
-      if(!payload.batch) payload.batch="General";
+      const groupMeta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection);
+      const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,course:groupMeta.course||existing?.course||null,batch:groupMeta.batch||existing?.batch||"General",semester:groupMeta.semester||existing?.semester||null,section:groupMeta.section||existing?.section||ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_id:faculty?.id||existing?.faculty_id||null};
       if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       else await adminApiJson("/api/admin/timetable",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     }
@@ -2557,7 +2573,7 @@ function createNewTimetable(){
   }
   const group = course + " · " + batch + " · Sem " + semester + " · Section " + sec;
   const alreadyExists=adminSectionNames(prog).includes(group);
-  if(!alreadyExists) ttRememberDraftGroup(prog,group,batch);
+  if(!alreadyExists) ttRememberDraftGroup(prog,group,batch,{course,semester,section:sec});
   ttCurrentProg=prog; ttCurrentSection=group;
   closeModal2("tt-new-modal"); renderPage("timetable");
   toast(alreadyExists?"Opening existing timetable":"Timetable created — add classes to save it to the server","success");
@@ -2566,7 +2582,7 @@ function createNewTimetable(){
 function deleteTimetable(prog,sec){
   deleteCallback=async()=>{
     try{
-      const targets=adminTimetableSlots().filter(s=>s.programme===prog&&(s.section||s.batch||"General")===sec);
+      const targets=adminTimetableSlots().filter(s=>s.programme===prog&&adminTimetableGroup(s)===sec);
       for(const s of targets) await adminApiJson("/api/admin/timetable/"+s.id,{method:"DELETE"});
       ttForgetDraftGroup(prog,sec);
       if(ttCurrentProg===prog && ttCurrentSection===sec){ ttCurrentSection=""; const p=adminTimetableSlots().filter(s=>s.programme!==prog)[0]?.programme||""; ttCurrentProg=p; }
