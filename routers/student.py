@@ -124,7 +124,7 @@ def get_my_subjects(student: dict = Depends(require_student)):
             name = str(slot.get("subject") or "").strip()
             if name and name.lower() not in seen:
                 seen.add(name.lower()); subjects.append({"subject": name, "source": "timetable", "category": "Scheduled Subject"})
-    offers = sb.table("elective_offerings").select("id,programme,course,batch,semester,section,subjects_offered(id,subject,course_code,paper_id,paper_category)").eq("is_open", True).eq("programme", student.get("programme") or "").eq("course", student.get("course") or "").eq("batch", student.get("batch") or "").eq("semester", str(student.get("semester") or "")).execute().data or []
+    offers = sb.table("elective_offerings").select("id,programme,course,batch,semester,section,subjects_offered(id,subject,course_code,paper_id,paper_category)").eq("is_open", True).eq("programme", student.get("programme") or "").eq("course", student.get("course") or "").eq("batch", student.get("batch") or "").execute().data or []
     choices = sb.table("student_elective_choices").select("elective_offering_id").eq("student_id", student["id"]).execute().data or []
     chosen = {x["elective_offering_id"] for x in choices}
     electives = []
