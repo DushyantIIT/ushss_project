@@ -1356,12 +1356,14 @@ function renderMonthlySummary(){
 function renderTimetable(){
   const days=['Monday','Tuesday','Wednesday','Thursday','Friday'];
   const colors={'Postcolonial Literature':'rgba(107,26,26,.08)','Literary Theory':'rgba(26,91,168,.08)','Linguistics':'rgba(30,122,61,.08)','Modern Fiction':'rgba(107,45,154,.08)','Library/Study':'transparent'};
-  document.getElementById('tt-body').innerHTML=DB.timetable.map(row=>`
+  const body=document.getElementById('tt-body');
+  if(!body)return;
+  body.innerHTML=DB.timetable.length?DB.timetable.map(row=>`
     <tr>
       <td style="font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap">${row[0]}</td>
-      ${row.slice(1).map(cell=>`<td style="background:${colors[cell]||'transparent'};font-size:12px;${cell==='—'?'color:var(--muted)':cell==='Library/Study'?'color:var(--muted);font-style:italic':'color:var(--ink-mid);font-weight:600'}">${cell}</td>`).join('')}
+      ${row.slice(1).map(cell=>`<td style="background:${colors[cell]||'transparent'};font-size:12px;${cell==='—'?'color:var(--muted)':cell==='Library/Study'?'color:var(--muted);font-style:italic':'color:var(--ink-mid);font-weight:600'}">${esc(cell)}</td>`).join('')}
     </tr>
-  `).join('');
+  `).join(''):`<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted)">No published timetable is available for your assigned programme, batch, semester and section yet. If this looks incorrect, ask the admin to check your profile details and publish your timetable.</td></tr>`;
 }
 
 /* COUNTS */
