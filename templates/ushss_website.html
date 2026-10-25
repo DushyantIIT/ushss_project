@@ -1362,8 +1362,7 @@ async function submitPortalRegister() {
       const subject = /economics/i.test(dept) ? "economics" : (/english/i.test(dept) ? "english" : "");
       const requiredCode = courseCodeBySelection[prog + "|" + subject];
       if (requiredCode && cleanEnr.slice(6, 9) !== requiredCode) {
-        err.textContent = "Your enrollment number must contain course code " + requiredCode +
-          " in digits 7–9 for " + dept + ".";
+        err.textContent = "Invalid Enrollment Number";
         err.style.display = "block";
         return;
       }
