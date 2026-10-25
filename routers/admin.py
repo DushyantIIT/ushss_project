@@ -741,8 +741,9 @@ def _time_minutes(value: str) -> int:
 
 
 def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None,
-                        room=None, programme=None, batch=None, section=None,
-                        exclude_id=None):
+                        room=None, programme=None, course=None, batch=None,
+                        semester=None, section=None, exclude_id=None):
+    """Prevent resource clashes while allowing different classes to run in parallel."""
     start_min, end_min = _time_minutes(start_time), _time_minutes(end_time)
     for slot in existing_slots:
         if exclude_id is not None and str(slot.get("id")) == str(exclude_id):
@@ -755,10 +756,15 @@ def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None,
             return f"Faculty is already assigned to '{slot.get('subject')}' during this time."
         if room and (slot.get("room") or "").strip().lower() == room.strip().lower():
             return f"Room '{room}' is already booked for '{slot.get('subject')}' during this time."
-        same_class = (
-            str(slot.get("programme") or "").strip().lower() == str(programme or "").strip().lower()
-            and str(slot.get("batch") or "").strip().lower() == str(batch or "").strip().lower()
-            and str(slot.get("section") or "").strip().lower() == str(section or "").strip().lower()
+        # A cohort is defined by its programme, course, batch, semester and section.
+        # Different cohorts may have classes at the same time; the same cohort may not.
+        same_class = all(
+            str(slot.get(field) or "").strip().casefold()
+            == str(value or "").strip().casefold()
+            for field, value in (
+                ("programme", programme), ("course", course), ("batch", batch),
+                ("semester", semester), ("section", section)
+            )
         )
         if same_class:
             return f"This class overlaps with '{slot.get('subject')}' in the timetable."
@@ -792,8 +798,8 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
     )
     conflict = _timetable_conflict(
         day_slots, body.start_time, body.end_time, faculty_id=body.faculty_id,
-        room=body.room, programme=body.programme, batch=body.batch,
-        section=body.section
+        room=body.room, programme=body.programme, course=body.course,
+        batch=body.batch, semester=body.semester, section=body.section
     )
     if conflict:
         raise HTTPException(409, conflict)
@@ -865,7 +871,9 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     eff_faculty = updates.get("faculty_id", current.get("faculty_id"))
     eff_room = updates.get("room", current.get("room"))
     eff_programme = updates.get("programme", current.get("programme"))
+    eff_course = updates.get("course", current.get("course"))
     eff_batch = updates.get("batch", current.get("batch"))
+    eff_semester = updates.get("semester", current.get("semester"))
     eff_section = updates.get("section", current.get("section"))
 
     if eff_faculty:
@@ -879,8 +887,8 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     )
     conflict = _timetable_conflict(
         day_slots, eff_start, eff_end, faculty_id=eff_faculty, room=eff_room,
-        programme=eff_programme, batch=eff_batch, section=eff_section,
-        exclude_id=slot_id
+        programme=eff_programme, course=eff_course, batch=eff_batch,
+        semester=eff_semester, section=eff_section, exclude_id=slot_id
     )
     if conflict:
         raise HTTPException(409, conflict)
