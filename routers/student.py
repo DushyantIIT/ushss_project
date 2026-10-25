@@ -124,10 +124,10 @@ def get_timetable(
         return match.group(1).strip() if match else ""
 
     def row_semester(row):
-        return row.get("semester") or legacy_group_part(row, r"\\bSem(?:ester)?\\s+([^·]+)")
+        return row.get("semester") or legacy_group_part(row, r"\bSem(?:ester)?\s+([^·]+)")
 
     def row_section(row):
-        return legacy_group_part(row, r"\\bSection\\s+([^·]+)") or row.get("section")
+        return legacy_group_part(row, r"\bSection\s+([^·]+)") or row.get("section")
 
     def row_course(row):
         return row.get("course") or str(row.get("section") or "").split(" · ", 1)[0]
