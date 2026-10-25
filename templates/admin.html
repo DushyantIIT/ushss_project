@@ -2576,7 +2576,7 @@ function openTTEdit(day,timeIdx){
   document.getElementById("tt-modal").classList.add("open");
 }
 
-async function saveTTCell(){
+async async function saveTTCell(){
   const {day,timeIdx}=ttEditing;
   const subject=document.getElementById("tt-subject").value;
   const pair=adminTimePair(timeIdx);
