@@ -561,6 +561,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
     <div class="nav-item" onclick="showPage('subjects-taught')" data-page="subjects-taught"><span class="icon">📖</span> Subjects Taught</div>
+    <div class="nav-item" onclick="showPage('student-subject-register')" data-page="student-subject-register"><span class="icon">🧾</span> Student–Subject Register</div>
     <div class="nav-item" onclick="showPage('attendance')" data-page="attendance"><span class="icon">✅</span> Attendance Editor<span class="nav-badge-live" id="live-nav-badge" style="display:none">LIVE</span></div>
     <div class="nav-item" onclick="showPage('announcements')" data-page="announcements"><span class="icon">📢</span> Announcements<span class="nav-badge" id="badge-ann">3</span></div>
 
@@ -2674,6 +2675,7 @@ function renderSubjectsOffered() {
       <label style="display:block"><span class="field-label">Subject Code *</span><input class="form-input" name="course_code" maxlength="50" required placeholder="Enter subject code"></label>
       <label style="display:block"><span class="field-label">Subject Name *</span><input class="form-input" name="subject" maxlength="200" required placeholder="Enter subject name"></label>
       <label style="display:block"><span class="field-label">Paper Category *</span><select class="form-select" name="paper_category" id="taughtSubjectPaperCategory" required><option value="">Select paper category</option></select></label>
+      <label style="display:block"><span class="field-label">Subject Status *</span><select class="form-select" name="is_elective" required><option value="false">Compulsory</option><option value="true">Elective</option></select><span class="card-sub">Set for each subject individually.</span></label>
       <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" id="taughtSubjectProgramme" required onchange="updateTaughtSubjectSemesters();updateTaughtSubjectPaperCategories()"><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
       <label style="display:block"><span class="field-label">Course *</span><select class="form-input" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
       <label style="display:block"><span class="field-label">Semester *</span><select class="form-input" name="semester" id="taughtSubjectSemester" required><option value="">Select semester</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>VII</option><option>VIII</option></select></label>
@@ -2704,8 +2706,7 @@ function renderSubjectsOffered() {
 async function loadElectiveOfferings(){
  const list=document.getElementById("elective-offerings-list"),select=document.getElementById("electiveSubjectChoice");if(!list||!select)return;
  const offered=Array.isArray(window.__offeredSubjects)?window.__offeredSubjects:[];
- const baElectiveCategories=new Set(["MSC","IDC","SEC","AEC","VAC"]);
- const electives=offered.filter(x=>x.paper_category==="Elective"||(String(x.programme||"").trim()==="B.A."&&baElectiveCategories.has(String(x.paper_category||"").trim().toUpperCase())));
+ const electives=offered.filter(x=>x.is_elective===true);
  const programmeSelect=document.getElementById("electiveProgramme"),semesterSelect=document.getElementById("electiveSemester");
  const updateElectiveSemesters=()=>{if(!programmeSelect||!semesterSelect)return;const max=programmeSelect.value==="M.A."?4:8;const roman=["I","II","III","IV","V","VI","VII","VIII"].slice(0,max);const prev=semesterSelect.value;semesterSelect.innerHTML=roman.map(v=>`<option value="${v}">${v}</option>`).join("");if(roman.includes(prev))semesterSelect.value=prev;};
  if(programmeSelect&&!programmeSelect.dataset.semesterBound){programmeSelect.addEventListener("change",updateElectiveSemesters);programmeSelect.dataset.semesterBound="1";} updateElectiveSemesters();
@@ -2715,6 +2716,7 @@ async function loadElectiveOfferings(){
   list.innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>Subject</th><th>Programme / Course</th><th>Batch / Semester</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+rows.map(x=>{const sub=x.subjects_offered||{};return '<tr><td><strong>'+String(sub.subject||"").replace(/[&<>"]/g,"")+'</strong><div class="card-sub">'+String(sub.paper_id||"")+' · '+String(sub.course_code||"")+'</div></td><td>'+x.programme+' / '+x.course+'</td><td>'+x.batch+' / '+x.semester+'</td><td>'+(x.section||"All")+'</td><td>'+(x.is_open?"Open":"Closed")+'</td><td><button class="btn btn-ghost btn-sm" onclick="viewElectiveStudents('+Number(x.id)+')">Student List</button> <button class="btn btn-ghost btn-sm" onclick="toggleElectiveOffering('+Number(x.id)+')">'+(x.is_open?"Close":"Reopen")+'</button> <button class="btn btn-danger btn-sm" onclick="deleteElectiveOffering('+Number(x.id)+')">Remove</button></td></tr>';}).join("")+'</tbody></table></div>':'<div style="padding:16px;color:var(--muted);font-size:13px">No department electives have been published yet.</div>';
  }catch(e){list.innerHTML='<div style="color:var(--red)">Could not load offerings: '+String(e.message||e)+'</div>';}
 }
+async function setSubjectElective(id,isElective){try{await adminApiJson("/api/admin/subjects-offered/"+Number(id)+"/elective-status",{method:"PATCH",body:JSON.stringify({is_elective:Boolean(isElective)})});toast("Subject status updated.","success");await loadOfferedSubjects();}catch(e){toast(e.message||"Could not update subject status.","error");}}
 async function publishElectiveOffering(event){
  event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());values.subject_offered_id=Number(values.subject_offered_id);
  try{await adminApiJson("/api/admin/elective-offerings",{method:"POST",body:JSON.stringify(values)});toast("Elective published for student selection.","success");event.currentTarget.reset();await loadElectiveOfferings();}catch(e){toast(e.message||"Could not publish elective.","error");}
