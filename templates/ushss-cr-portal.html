@@ -261,6 +261,26 @@ tr:hover td{background:rgba(255,255,255,.01)}
 :root[data-ushss-theme="light"] small,
 :root[data-ushss-theme="light"] td { color:var(--ink-mid); }
 
+
+/* Enforce consistent, high-contrast text across the entire page for the selected theme. */
+:root[data-ushss-theme="light"] body,
+:root[data-ushss-theme="light"] body *,
+:root[data-ushss-theme="light"] body *::before,
+:root[data-ushss-theme="light"] body *::after {
+  color:#171717 !important;
+}
+:root[data-ushss-theme="dark"] body,
+:root[data-ushss-theme="dark"] body *,
+:root[data-ushss-theme="dark"] body *::before,
+:root[data-ushss-theme="dark"] body *::after {
+  color:#F5F5F5 !important;
+}
+/* Keep placeholder text readable while retaining the same theme contrast. */
+:root[data-ushss-theme="light"] body input::placeholder,
+:root[data-ushss-theme="light"] body textarea::placeholder { color:#555555 !important; }
+:root[data-ushss-theme="dark"] body input::placeholder,
+:root[data-ushss-theme="dark"] body textarea::placeholder { color:#D0D0D0 !important; }
+
 </style>
 </head>
 <script>
