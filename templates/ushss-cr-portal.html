@@ -570,7 +570,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <!-- CR TIMETABLE -->
     <div class="page" id="pg-timetable">
       <div class="sec-head"><div><div class="sec-label">Class Schedule</div><div class="sec-title">My Timetable</div></div><button class="btn btn-ghost btn-sm" onclick="loadCRTimetable()">↻ Refresh</button></div>
-      <div class="card"><div class="table-wrap"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Programme</th><th>Course</th><th>Batch</th><th>Semester</th><th>Section</th><th>Room</th><th>Faculty</th></tr></thead><tbody id="cr-timetable-body"></tbody></table></div></div>
+      <div class="card"><div class="table-wrap"><table style="min-width:900px"><thead><tr id="cr-timetable-head"><th style="min-width:100px">Day / Time</th></tr></thead><tbody id="cr-timetable-body"></tbody></table></div></div>
     </div>
 
     <!-- ANNOUNCEMENTS -->
@@ -789,7 +789,7 @@ function goPage(id,el){
 /* SUPABASE DATA */
 async function loadCRTimetable(){
   const body=document.getElementById('cr-timetable-body');
-  if(body)body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading timetable…</td></tr>';
+  if(body)body.innerHTML='<tr><td colspan="2" style="text-align:center;padding:24px;color:var(--muted)">Loading timetable…</td></tr>';
   const token=localStorage.getItem('ushss_token');
   if(!token)return;
   try{
@@ -798,15 +798,22 @@ async function loadCRTimetable(){
     DB.timetable=await res.json();
     renderCRTimetable();
   }catch(e){
-    if(body)body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--red)">'+esc(e.message||'Could not load timetable')+'</td></tr>';
+    if(body)body.innerHTML='<tr><td colspan="2" style="text-align:center;padding:24px;color:var(--red)">'+esc(e.message||'Could not load timetable')+'</td></tr>';
     console.error('CR timetable load failed:',e);
   }
 }
 function renderCRTimetable(){
-  const body=document.getElementById('cr-timetable-body');
-  if(!body)return;
-  const rows=[...(DB.timetable||[])].sort((a,b)=>String(a.day_of_week||'').localeCompare(String(b.day_of_week||''))||String(a.start_time||'').localeCompare(String(b.start_time||'')));
-  body.innerHTML=rows.length?rows.map(s=>`<tr><td>${esc(s.day_of_week||'—')}</td><td>${esc(String(s.start_time||'').slice(0,5))}–${esc(String(s.end_time||'').slice(0,5))}</td><td>${esc(s.subject||'—')}</td><td>${esc(s.programme||'—')}</td><td>${esc(s.course||s.department||'—')}</td><td>${esc(s.batch||'—')}</td><td>${esc(s.semester||'—')}</td><td>${esc(s.section||'None')}</td><td>${esc(s.room||'—')}</td><td>${esc((s.users||{}).full_name||'—')}</td></tr>`).join(''):`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">No published timetable is available for your assigned class yet.</td></tr>`;
+  const body=document.getElementById('cr-timetable-body'),head=document.getElementById('cr-timetable-head');
+  if(!body||!head)return;
+  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const slots=[...(DB.timetable||[])].filter(s=>s.day_of_week&&s.start_time&&s.end_time);
+  const times=[...new Map(slots.map(s=>{const start=String(s.start_time).slice(0,5),end=String(s.end_time).slice(0,5);return [start+'|'+end,{start,end,label:start+'–'+end}]})).values()].sort((a,b)=>a.start.localeCompare(b.start));
+  head.innerHTML='<th style="min-width:100px">Day / Time</th>'+times.map(t=>'<th style="min-width:170px">'+esc(t.label)+'</th>').join('');
+  if(!slots.length){body.innerHTML='<tr><td colspan="2" style="text-align:center;padding:24px;color:var(--muted)">No published timetable is available for your assigned class yet.</td></tr>';return;}
+  body.innerHTML=days.map(day=>'<tr><th scope="row" style="white-space:nowrap;color:var(--maroon);background:var(--surface2)">'+day+'</th>'+times.map(t=>{
+    const matches=slots.filter(s=>String(s.day_of_week).toLowerCase()===day.toLowerCase()&&String(s.start_time).slice(0,5)===t.start&&String(s.end_time).slice(0,5)===t.end);
+    return '<td style="min-width:170px;vertical-align:top">'+(matches.length?matches.map(s=>'<div style="font-weight:700;color:var(--ink-mid);margin-bottom:4px">'+esc(s.subject||'Class')+'</div><div style="font-size:11px;color:var(--muted)">'+esc([s.programme,s.course||s.department,s.batch,s.semester?'Sem '+s.semester:'',s.section?'Sec '+s.section:'',s.room?'Room '+s.room:'',((s.users||{}).full_name)||''].filter(Boolean).join(' · '))+'</div>').join('<hr style="border:0;border-top:1px solid var(--border);margin:6px 0">'):'<span style="color:var(--muted)">—</span>')+'</td>';
+  }).join('')+'</tr>').join('');
 }
 async function loadCRData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
