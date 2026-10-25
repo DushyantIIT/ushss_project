@@ -2487,7 +2487,15 @@ function renderTimetable() {
     </div>`:"";
     const sectionTabs=sections.length?`<div class="tt-section-bar">
       <span style="font-size:11px;color:var(--muted);font-family:var(--mono);min-width:92px">SECTION / GROUP:</span>
-      ${sections.map(s=>`<button class="tt-section-tab ${s===ttCurrentSection?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</button>`).join("")}
+      ${sections.map(s=>{
+        const groupSlots=slots.filter(slot=>slot.programme===ttCurrentProg&&adminTimetableGroup(slot)===s);
+        const isPublished=groupSlots.length>0&&groupSlots.every(slot=>slot.published===true||slot.published===1||String(slot.published).toLowerCase()==="true");
+        const publishLabel=isPublished?"✓ Published":"Publish";
+        return `<div style="display:inline-flex;align-items:center;gap:5px;margin:2px 4px 2px 0">
+          <button class="tt-section-tab ${s===ttCurrentSection?"active":""}" onclick="ttSelectSection('${escAttr(s)}')">${s}</button>
+          <button class="btn btn-sm ${isPublished?"btn-ghost":"btn-primary"}" style="padding:6px 9px;font-size:10px;white-space:nowrap" ${groupSlots.length?"":"disabled title='Add at least one class before publishing'"} onclick="publishTimetable('${escAttr(ttCurrentProg)}','${escAttr(s)}')">${publishLabel}</button>
+        </div>`;
+      }).join("")}
       <div class="tt-section-add" onclick="openNewTimetableModal('${escAttr(ttCurrentProg)}')"><span>+</span> Add Section</div>
     </div>`:"";
     sectionBar=semesterBar+sectionTabs+`<div style="display:flex;justify-content:flex-end;margin:-4px 0 14px"><button class="btn btn-danger btn-sm" onclick="deleteTimetable('${escAttr(ttCurrentProg)}','${escAttr(ttCurrentSection)}')">🗑 Delete Selected Timetable</button></div>`;
@@ -2523,6 +2531,34 @@ function renderTimetable() {
   }
   return `<div class="sec-head"><div><div class="sec-label">Academic Schedule</div><div class="sec-title">Timetable Manager</div></div><span style="font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.length} database slots</span></div>
     <div class="tt-tab-bar">${progTabs}${addTab}</div>${sectionBar}${gridHTML}`;
+}
+
+async function publishTimetable(programme, group) {
+  const slots=adminTimetableSlots().filter(slot=>slot.programme===programme&&adminTimetableGroup(slot)===group);
+  if(!slots.length) {
+    toast("Add at least one class before publishing this timetable.", "error");
+    return;
+  }
+  if(slots.every(slot=>slot.published===true||slot.published===1||String(slot.published).toLowerCase()==="true")) {
+    toast("This timetable is already published.", "info");
+    return;
+  }
+  const btns=[...document.querySelectorAll(".tt-section-bar button")];
+  const btn=btns.find(button=>button.getAttribute("onclick")===`publishTimetable('${escAttr(programme)}','${escAttr(group)}')`);
+  if(btn){btn.disabled=true;btn.textContent="Publishing...";}
+  try {
+    const result=await adminApiJson("/api/admin/timetable/publish",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({programme,group})
+    });
+    window.__supabaseTimetable=await adminApiJson("/api/admin/timetable");
+    toast(result?.message||"Timetable published successfully.", "success");
+    renderPage("timetable");
+  } catch(error) {
+    toast(error.message||"Could not publish timetable.", "error");
+    if(btn){btn.disabled=false;btn.textContent="Publish";}
+  }
 }
 
 function openTTEdit(day,timeIdx){
