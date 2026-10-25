@@ -162,6 +162,7 @@ def init_sqlite_db():
         department TEXT,
         faculty_id INTEGER,
         published INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -276,8 +277,11 @@ def init_sqlite_db():
     );
     """)
 
-    # Safe migration for new attendance columns on existing sqlite databases
+    # Safe migration for new attendance and timetable columns on existing sqlite databases
     try:
+        existing_cols_timetable = {row[1] for row in cur.execute("PRAGMA table_info(timetable_slots)").fetchall()}
+        if "is_active" not in existing_cols_timetable:
+            cur.execute("ALTER TABLE timetable_slots ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
         existing_cols_sessions = {row[1] for row in cur.execute("PRAGMA table_info(attendance_sessions)").fetchall()}
         for col, ctype in [
             ("anchor_lat", "REAL"),
