@@ -251,7 +251,8 @@ def register(body: RegisterRequest, request: Request):
         if not (IS_DEV and enr_clean.startswith("stu")) and not (enr_clean.isdigit() and len(enr_clean) == 11):
             raise HTTPException(400, "Enrollment number must be exactly 11 digits (e.g. 02616401521).")
 
-        # Course code is the 7th–9th digits in the 11-digit enrollment number.
+        # The course code may appear anywhere in the middle of the 11-digit
+        # enrollment number, excluding the first 3 and last 2 digits.
         # Keep this server-side check authoritative; client-side validation is only UX.
         if body.role == "student":
             course_text = " ".join(
@@ -271,7 +272,7 @@ def register(body: RegisterRequest, request: Request):
                 elif "english" in course_text:
                     required_code = "109"
 
-            if required_code and enr_clean[6:9] != required_code:
+            if required_code and required_code not in enr_clean[3:-2]:
                 raise HTTPException(400, "Invalid Enrollment Number")
 
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
