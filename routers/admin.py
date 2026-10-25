@@ -739,6 +739,53 @@ def delete_subject_offered(subject_id: int, admin: dict = Depends(require_admin)
 
 
 # 
+
+
+class ElectiveOfferingCreate(BaseModel):
+    subject_offered_id: int
+    programme: str = Field(min_length=1, max_length=30)
+    course: str = Field(min_length=1, max_length=50)
+    batch: str = Field(min_length=1, max_length=50)
+    semester: str = Field(min_length=1, max_length=20)
+    section: Optional[str] = None
+
+@router.get("/elective-offerings")
+def list_elective_offerings(admin: dict = Depends(require_admin)):
+    return sb.table("elective_offerings").select("*, subjects_offered(id, subject, course_code, paper_id, paper_category)").order("programme").order("course").order("semester").execute().data or []
+
+@router.post("/elective-offerings", status_code=201)
+def create_elective_offering(body: ElectiveOfferingCreate, admin: dict = Depends(require_admin)):
+    subjects = sb.table("subjects_offered").select("*").eq("id", body.subject_offered_id).limit(1).execute().data or []
+    if not subjects:
+        raise HTTPException(404, "Subject catalogue entry not found.")
+    subject = subjects[0]
+    if subject.get("paper_category") != "Elective":
+        raise HTTPException(400, "Only subjects marked Elective can be offered for student selection.")
+    if subject.get("programme") != body.programme or subject.get("course") != body.course or str(subject.get("semester")) != str(body.semester):
+        raise HTTPException(400, "Programme, course and semester must match the catalogue subject.")
+    payload = body.model_dump()
+    payload["section"] = (payload.get("section") or "").strip() or None
+    payload["created_by"] = admin.get("id")
+    try:
+        return (sb.table("elective_offerings").insert(payload).execute().data or [])[0]
+    except Exception as exc:
+        if "duplicate" in str(exc).lower() or "23505" in str(exc):
+            raise HTTPException(409, "This elective is already offered to that student group.")
+        raise HTTPException(500, "Could not publish elective.")
+
+@router.patch("/elective-offerings/{offering_id}/toggle")
+def toggle_elective_offering(offering_id: int, admin: dict = Depends(require_admin)):
+    rows = sb.table("elective_offerings").select("id,is_open").eq("id", offering_id).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(404, "Elective offering not found.")
+    updated = sb.table("elective_offerings").update({"is_open": not rows[0]["is_open"]}).eq("id", offering_id).execute().data or []
+    return updated[0] if updated else {"id": offering_id, "is_open": not rows[0]["is_open"]}
+
+@router.delete("/elective-offerings/{offering_id}")
+def delete_elective_offering(offering_id: int, admin: dict = Depends(require_admin)):
+    sb.table("elective_offerings").delete().eq("id", offering_id).execute()
+    return {"message": "Elective offering removed."}
+
 #  TIMETABLE  (admin creates / manages the schedule)
 # 
 
