@@ -2691,8 +2691,8 @@ function renderTimetable() {
   const progTabs=categories.map(c=>{
     const active=c.programme===ttCurrentProg&&c.course===ttCurrentCourse;
     const names=[...new Set([...adminSectionNames(c.programme,c.course),...ttDraftGroups().filter(x=>x.programme===c.programme&&String(x.course||"").toLowerCase()===c.course.toLowerCase()).map(x=>x.group)])];
-    const semCount=names.filter(x=>/^semester\\s+/i.test(x.trim())).length;
-    const groupCount=names.filter(x=>!/^semester\\s+/i.test(x.trim())).length;
+    const semCount=names.filter(x=>/^semester\s+/i.test(x.trim())).length;
+    const groupCount=names.filter(x=>!/^semester\s+/i.test(x.trim())).length;
     const countLabel=[semCount?semCount+" semester"+(semCount!==1?"s":""):"",groupCount?groupCount+" group"+(groupCount!==1?"s":""):""].filter(Boolean).join(" · ")||"No timetables yet";
     return `<div class="tt-prog-tab ${active?"active":""}" onclick="ttSelectProgramCourse('${escAttr(c.programme)}','${escAttr(c.course)}')">
       <div class="tt-tab-name" style="${active?"color:"+(TT_ACCENT_COLORS[0]):""}">${c.label}</div>
@@ -2795,7 +2795,7 @@ function filterTimetableSubjectsForCurrentGroup(){
   const programme=normalise(ttCurrentProg);
   const course=normalise(meta.course||ttCurrentCourse||"");
   const semesterSource=String(meta.semester||ttCurrentSection||"").trim().toUpperCase();
-  const semesterMatch=semesterSource.match(/(?:SEM(?:ESTER)?\\s*)?(VIII|VII|VI|V|IV|III|II|I|[1-8])(?:\\s*(?:ST|ND|RD|TH))?/i);
+  const semesterMatch=semesterSource.match(/(?:SEM(?:ESTER)?\s*)?(VIII|VII|VI|V|IV|III|II|I|[1-8])(?:\s*(?:ST|ND|RD|TH))?/i);
   const roman={"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII","I":"I","II":"II","III":"III","IV":"IV","V":"V","VI":"VI","VII":"VII","VIII":"VIII"};
   const semester=semesterMatch?(roman[semesterMatch[1].toUpperCase()]||semesterMatch[1].toUpperCase()):"";
   const isMAEnglish=(programme.includes("ma")||programme.includes("masterofarts")) && course.includes("english");
