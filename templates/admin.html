@@ -2764,6 +2764,7 @@ function renderTimetable() {
       <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">/ ${ttCurrentSection}</span>
       <span style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono)">${slots.filter(s=>s.programme===ttCurrentProg&&adminTimetableGroup(s)===ttCurrentSection).length} slots</span>
       <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="addClassToFirstAvailableSlot()">＋ Add Class to Slot</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
       <div class="tt-grid" style="min-width:1120px"><div class="tt-head" style="background:transparent;border-color:transparent">DAY / TIME</div>${timeHeaders}${rows}</div>
@@ -2832,6 +2833,16 @@ function filterTimetableSubjectsForCurrentGroup(){
   const selected=select.selectedOptions[0];
   if(selected && selected.hidden) select.value="";
 }
+function addClassToFirstAvailableSlot(){
+  if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group first.","error");
+  for(const day of TT_DAYS){
+    for(let i=0;i<TT_TIMES.length;i++){
+      if(!adminSlotFor(ttCurrentProg,ttCurrentSection,day.key,i)) return openTTEdit(day.key,i);
+    }
+  }
+  toast("Every time slot is occupied. Click an existing class to edit it, or create another timetable section.","error");
+}
+
 function openTTEdit(day,timeIdx){
   try {
     if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group before editing a class.","error");
