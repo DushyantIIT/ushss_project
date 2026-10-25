@@ -430,6 +430,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item" onclick="goPage('timetable',this)"><span class="ico">🗓️</span> My Timetable</div>
 
     <div class="sb-section">Class Management</div>
+    <div class="sb-item" onclick="goPage('subjects',this)"><span class="ico">📚</span> My Subjects</div>
     <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">0</span></div>
     <div class="sb-item" onclick="goPage('assignments',this)"><span class="ico">📝</span> Assignments <span class="sb-count" id="asgn-cnt">0</span></div>
     <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📄</span> Study Materials <span class="sb-count" id="mat-cnt">0</span></div>
@@ -567,7 +568,9 @@ tr:hover td{background:rgba(255,255,255,.01)}
       </div>
     </div>
 
-    <!-- CR TIMETABLE -->
+    <div class="page" id="pg-subjects"><div class="sec-head"><div><div class="sec-label">Academics</div><div class="sec-title">My Subjects</div></div><button class="btn btn-ghost btn-sm" onclick="loadMySubjects()">↻ Refresh</button></div><div id="my-subjects-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:26px"><div class="card">Loading subjects…</div></div><div class="sec-head"><div><div class="sec-label">Department Offers</div><div class="sec-title">Available Electives</div></div></div><div id="my-electives-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px"><div class="card">Loading electives…</div></div></div>
+
+<!-- CR TIMETABLE -->
     <div class="page" id="pg-timetable">
       <div class="sec-head"><div><div class="sec-label">Class Schedule</div><div class="sec-title">My Timetable</div></div><button class="btn btn-ghost btn-sm" onclick="loadCRTimetable()">↻ Refresh</button></div>
       <div class="card"><div class="table-wrap"><table style="min-width:900px"><thead><tr id="cr-timetable-head"><th style="min-width:100px">Day / Time</th></tr></thead><tbody id="cr-timetable-body"></tbody></table></div></div>
@@ -761,6 +764,7 @@ let userLat=null,userLng=null,locOk=false;
 
 /* NAVIGATION */
 const pgs = {
+  subjects:["My Subjects","USHSS / CR / Subjects"],
   timetable:["My Timetable","USHSS / CR / Timetable"],
   dashboard:["Dashboard","USHSS / CR / Overview"],
   attendance:["Mark Attendance","USHSS / CR / Attendance"],
@@ -782,9 +786,21 @@ function goPage(id,el){
   if(id==='assignments')renderAssignments();
   if(id==='materials')renderMaterials();
   if(id==='classmates')renderClassmates(DB.classmates);
+  if(id==='subjects')loadMySubjects();
   if(id==='timetable')renderCRTimetable();
   if(id==='attendance')initAttPage();
 }
+
+async function loadMySubjects(){
+ const token=localStorage.getItem("ushss_token"),a=document.getElementById("my-subjects-cards"),b=document.getElementById("my-electives-cards");if(!token||!a||!b)return;
+ a.innerHTML="<div class='card'>Loading subjects…</div>";b.innerHTML="<div class='card'>Loading electives…</div>";
+ try{const r=await fetch("/api/student/subjects",{headers:{Authorization:"Bearer "+token}}),d=await r.json();if(!r.ok)throw new Error(d.detail||"Could not load subjects");
+ const esc=v=>String(v||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ a.innerHTML=(d.subjects||[]).length?d.subjects.map(s=>"<div class='card' style='padding:20px'><div style='font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:9px'>"+esc(s.category||"Scheduled Subject")+"</div><div style='font-size:18px;font-weight:700'>"+esc(s.subject)+"</div><div style='font-size:12px;color:var(--muted);margin-top:8px'>"+(s.source==="elective"?"Selected elective":"From your timetable")+"</div></div>").join(""):"<div class='card'>No subjects found in your current timetable.</div>";
+ b.innerHTML=(d.electives||[]).length?d.electives.map(e=>"<div class='card' style='padding:20px'><div style='font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:8px'>Department Elective</div><div style='font-size:17px;font-weight:700'>"+esc(e.subject)+"</div><div style='font-size:12px;color:var(--muted);margin:8px 0'>Paper ID: "+esc(e.paper_id)+" · Code: "+esc(e.course_code)+"</div><button class='btn "+(e.chosen?"btn-ghost":"btn-primary")+"' "+(e.chosen?"disabled":"")+" onclick='chooseMyElective("+Number(e.offering_id)+")'>"+(e.chosen?"Selected":"Choose Elective")+"</button></div>").join(""):"<div class='card'>No electives are currently offered for your group.</div>";
+ }catch(e){a.innerHTML="<div class='card'>Could not load subjects: "+String(e.message||e)+"</div>";b.innerHTML="<div class='card'>Could not load electives.</div>";}
+}
+async function chooseMyElective(id){const token=localStorage.getItem("ushss_token");try{const r=await fetch("/api/student/subjects/elective-choice",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({offering_id:id})}),d=await r.json();if(!r.ok)throw new Error(d.detail||"Could not choose elective");alert(d.message||"Elective selected");await loadMySubjects();}catch(e){alert(e.message||"Could not choose elective");}}
 
 /* SUPABASE DATA */
 async function loadCRTimetable(){
