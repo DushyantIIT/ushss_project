@@ -100,13 +100,21 @@ def get_timetable(
     Returns all timetable slots for the student's programme and batch.
     Includes the assigned faculty name and room.
     """
-    if not student.get("programme") or not student.get("batch"):
-        raise HTTPException(400, "Your account has no programme/batch assigned. Contact admin.")
+    # Older accounts may be missing one grouping field. Apply every available
+    # profile constraint rather than failing the entire portal request.
+    # If both programme and batch are absent, return no rows to avoid exposing
+    # another class's timetable.
+    if not student.get("programme") and not student.get("batch"):
+        return []
 
     q = sb.table("timetable_slots").select(
         "id, subject, day_of_week, start_time, end_time, room, programme, batch, "
         "department, course, semester, section, published, users(full_name, email)"
-    ).eq("programme", student["programme"]).eq("batch", student["batch"]).eq("published", True).eq("is_active", True)
+    ).eq("published", True).eq("is_active", True)
+    if student.get("programme"):
+        q = q.eq("programme", student["programme"])
+    if student.get("batch"):
+        q = q.eq("batch", student["batch"])
 
     if day:
         q = q.eq("day_of_week", day)
