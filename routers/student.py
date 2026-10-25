@@ -106,7 +106,7 @@ def get_timetable(
     q = sb.table("timetable_slots").select(
         "id, subject, day_of_week, start_time, end_time, room, programme, batch, "
         "department, course, semester, section, published, users(full_name, email)"
-    ).eq("programme", student["programme"]).eq("batch", student["batch"]).eq("published", True)
+    ).eq("programme", student["programme"]).eq("batch", student["batch"]).eq("published", True).eq("is_active", True)
 
     if day:
         q = q.eq("day_of_week", day)
