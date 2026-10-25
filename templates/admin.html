@@ -2822,36 +2822,39 @@ async function publishTimetable(programme, group) {
 function filterTimetableSubjectsForCurrentGroup(){
   const select=document.getElementById("tt-subject");
   if(!select) return;
+  // Keep an untouched copy so each invocation can rebuild the native select.
+  // Some browsers ignore hidden/display styles on <optgroup> inside <select>.
+  if(!select.__allSubjectOptions){
+    select.__allSubjectOptions=Array.from(select.children).map(node=>node.cloneNode(true));
+  }
   const meta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection)||{};
   const normalise=value=>String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"");
   const programme=normalise(ttCurrentProg);
   const course=normalise(meta.course||ttCurrentCourse||"");
-  // Prefer the explicit semester field, then parse the full group label (e.g.
-  // "English · 2025 · Sem 1 · Section A") before falling back to legacy labels.
-  const semesterSource=[meta.semester,ttCurrentSection].filter(Boolean).join(" ");
-  const semesterMatch=semesterSource.match(/(?:SEM(?:ESTER)?\s*)?(VIII|VII|VI|V|IV|III|II|I|[1-8])(?:\s*(?:ST|ND|RD|TH))?/i);
   const roman={"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII","I":"I","II":"II","III":"III","IV":"IV","V":"V","VI":"VI","VII":"VII","VIII":"VIII"};
-  const semester=semesterMatch?(roman[semesterMatch[1].toUpperCase()]||semesterMatch[1].toUpperCase()):"";
+  // Only accept a bare semester value or a number explicitly introduced by
+  // "Sem"/"Semester"; never mistake the batch year (e.g. 2025-2027) for a semester.
+  const explicit=String(meta.semester||"").trim().toUpperCase().match(/^(VIII|VII|VI|V|IV|III|II|I|[1-8])$/);
+  const labelMatch=String(ttCurrentSection||"").match(/\\bSEM(?:ESTER)?\\s*(VIII|VII|VI|V|IV|III|II|I|[1-8])\\b/i);
+  const rawSemester=explicit?explicit[1]:(labelMatch?labelMatch[1].toUpperCase():"");
+  const semester=roman[rawSemester]||"";
   const isMAEnglish=(programme.includes("ma")||programme.includes("masterofarts")) && course.includes("english");
-  const isSemesterGroup=isMAEnglish && ["I","II","III","IV"].includes(semester);
-  const target=isSemesterGroup ? "MA English — Semester "+semester+" (all sections)" : "";
-  Array.from(select.querySelectorAll("optgroup")).forEach(group=>{
-    const isTarget=!!target && group.label===target;
-    const isFree=group.label==="";
-    // Fail closed for MA English: if semester metadata is absent or invalid,
-    // never expose every semester's papers by default.
-    const show=isMAEnglish ? (isTarget||isFree) : (!target||isTarget||isFree);
-    group.hidden=!show;
-    group.style.display=show?"":"none";
-    Array.from(group.options).forEach(option=>{option.hidden=!show;});
-  });
-  Array.from(select.options).forEach(option=>{
-    if(!option.parentElement || option.parentElement.tagName!=="OPTGROUP") {
-      option.hidden=isMAEnglish ? option.value!=="" : false;
+  const target=isMAEnglish && ["I","II","III","IV"].includes(semester)
+    ? "MA English — Semester "+semester+" (all sections)" : "";
+  const original=select.__allSubjectOptions;
+  select.replaceChildren();
+  original.forEach(node=>{
+    if(node.tagName==="OPTGROUP"){
+      const isFree=node.label==="";
+      const keep=isFree || (!!target && node.label===target) || !isMAEnglish;
+      if(keep) select.appendChild(node.cloneNode(true));
+    } else {
+      // Keep the standalone "Free / No Class" option, not unrelated papers.
+      if(!isMAEnglish || node.value==="") select.appendChild(node.cloneNode(true));
     }
   });
   const selected=select.selectedOptions[0];
-  if(selected && selected.hidden) select.value="";
+  if(selected && selected.value && !Array.from(select.options).some(option=>option.value===selected.value)) select.value="";
 }
 function addClassToFirstAvailableSlot(){
   try {
