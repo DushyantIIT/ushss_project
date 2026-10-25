@@ -692,6 +692,7 @@ class SubjectOfferedCreate(BaseModel):
     batch: Optional[str] = None
     semester: str = Field(min_length=1, max_length=20)
     section: Optional[str] = None
+    is_elective: bool = False
 
 
 @router.get("/subjects-offered", summary="List offered subjects")
@@ -728,6 +729,18 @@ def create_subject_offered(body: SubjectOfferedCreate, admin: dict = Depends(req
     return result.data[0]
 
 
+class SubjectElectiveStatus(BaseModel):
+    is_elective: bool
+
+@router.patch("/subjects-offered/{subject_id}/elective-status")
+def update_subject_elective_status(subject_id: int, body: SubjectElectiveStatus, admin: dict = Depends(require_admin)):
+    existing = sb.table("subjects_offered").select("id,subject,is_elective").eq("id", subject_id).limit(1).execute().data or []
+    if not existing:
+        raise HTTPException(404, "Subject not found.")
+    updated = sb.table("subjects_offered").update({"is_elective": body.is_elective}).eq("id", subject_id).execute().data or []
+    return updated[0] if updated else {"id": subject_id, "is_elective": body.is_elective}
+
+
 @router.delete("/subjects-offered/{subject_id}", summary="Remove an offered subject")
 def delete_subject_offered(subject_id: int, admin: dict = Depends(require_admin)):
     existing = sb.table("subjects_offered").select("id,subject").eq("id", subject_id).limit(1).execute().data or []
@@ -759,12 +772,8 @@ def create_elective_offering(body: ElectiveOfferingCreate, admin: dict = Depends
     if not subjects:
         raise HTTPException(404, "Subject catalogue entry not found.")
     subject = subjects[0]
-    category = str(subject.get("paper_category") or "").strip().upper()
-    programme = str(subject.get("programme") or "").strip()
-    ba_elective_categories = {"MSC", "IDC", "SEC", "AEC", "VAC"}
-    is_elective = category == "ELECTIVE" or (programme == "B.A." and category in ba_elective_categories)
-    if not is_elective:
-        raise HTTPException(400, "For B.A., only MSC, IDC, SEC, AEC and VAC subjects can be offered as electives; for M.A., select a subject marked Elective.")
+    if not bool(subject.get("is_elective")):
+        raise HTTPException(400, "This subject is marked compulsory. Update its Subject Status to Elective before publishing it.")
     if subject.get("programme") != body.programme or subject.get("course") != body.course or str(subject.get("semester")) != str(body.semester):
         raise HTTPException(400, "Programme, course and semester must match the catalogue subject.")
     payload = body.model_dump()
