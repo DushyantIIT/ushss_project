@@ -272,12 +272,7 @@ def register(body: RegisterRequest, request: Request):
                     required_code = "109"
 
             if required_code and enr_clean[6:9] != required_code:
-                raise HTTPException(
-                    400,
-                    f"Enrollment number does not match the selected programme and subject. "
-                    f"The course code must be {required_code} for {body.programme or 'the selected programme'} "
-                    f"{body.department or 'subject'}.",
-                )
+                raise HTTPException(400, "Invalid Enrollment Number")
 
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
