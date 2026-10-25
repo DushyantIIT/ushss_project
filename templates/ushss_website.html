@@ -1350,6 +1350,24 @@ async function submitPortalRegister() {
       err.style.display = "block";
       return;
     }
+
+    // Course code occupies digits 7–9 (zero-based slice [6:9]) of the enrollment number.
+    if (role === "student") {
+      const courseCodeBySelection = {
+        "B.A. (Hons.)|english": "617",
+        "B.A. (Hons.)|economics": "616",
+        "M.A.|english": "109",
+        "M.A.|economics": "307"
+      };
+      const subject = /economics/i.test(dept) ? "economics" : (/english/i.test(dept) ? "english" : "");
+      const requiredCode = courseCodeBySelection[prog + "|" + subject];
+      if (requiredCode && cleanEnr.slice(6, 9) !== requiredCode) {
+        err.textContent = "Your enrollment number must contain course code " + requiredCode +
+          " in digits 7–9 for " + dept + ".";
+        err.style.display = "block";
+        return;
+      }
+    }
   }
   if (role !== "faculty" && (!semester || !section || !dept || !prog || !batch)) {
     err.textContent = "Please select your programme, course, batch, semester and section.";
