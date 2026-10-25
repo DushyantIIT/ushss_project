@@ -773,6 +773,25 @@ def create_elective_offering(body: ElectiveOfferingCreate, admin: dict = Depends
             raise HTTPException(409, "This elective is already offered to that student group.")
         raise HTTPException(500, "Could not publish elective.")
 
+
+
+@router.get("/elective-offerings/{offering_id}/students")
+def list_elective_offering_students(offering_id: int, admin: dict = Depends(require_admin)):
+    offers = sb.table("elective_offerings").select("*, subjects_offered(subject,course_code,paper_id,paper_category)").eq("id", offering_id).limit(1).execute().data or []
+    if not offers:
+        raise HTTPException(404, "Elective offering not found.")
+    offer = offers[0]
+    users = sb.table("users").select("id,full_name,email,roll_number,programme,course,batch,semester,section").eq("role", "student").eq("programme", offer.get("programme") or "").eq("course", offer.get("course") or "").eq("batch", offer.get("batch") or "").eq("semester", offer.get("semester") or "").execute().data or []
+    choices = sb.table("student_elective_choices").select("student_id").eq("elective_offering_id", offering_id).execute().data or []
+    chosen_ids = {int(x["student_id"]) for x in choices}
+    section = str(offer.get("section") or "").strip().lower()
+    result = []
+    for user in users:
+        if section and str(user.get("section") or "").strip().lower() != section:
+            continue
+        result.append({**user, "selected": int(user["id"]) in chosen_ids})
+    return {"offering": offer, "students": result}
+
 @router.patch("/elective-offerings/{offering_id}/toggle")
 def toggle_elective_offering(offering_id: int, admin: dict = Depends(require_admin)):
     rows = sb.table("elective_offerings").select("id,is_open").eq("id", offering_id).limit(1).execute().data or []
