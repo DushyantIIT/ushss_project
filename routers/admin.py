@@ -793,7 +793,7 @@ def student_subject_register(programme: Optional[str] = Query(None), course: Opt
     def sem_key(value):
         raw = str(value or "").strip().upper().replace("SEMESTER", "").replace("SEM", "").strip()
         return {"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII"}.get(raw, raw)
-    users = sb.table("users").select("id,full_name,email,roll_number,enrollment_no,programme,course,batch,semester,section").eq("role","student").execute().data or []
+    users = sb.table("users").select("id,full_name,email,enrollment_no,programme,course,batch,semester,section").eq("role","student").execute().data or []
     slots = sb.table("timetable_slots").select("subject,programme,course,batch,semester,section,is_active").execute().data or []
     offerings = sb.table("elective_offerings").select("id,programme,course,batch,semester,section,subjects_offered(subject)").execute().data or []
     choices = sb.table("student_elective_choices").select("student_id,elective_offering_id").execute().data or []
