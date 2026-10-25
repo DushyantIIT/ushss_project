@@ -252,6 +252,62 @@ tr:hover td{background:rgba(255,255,255,.01)}
 :root[data-ushss-theme="dark"] input,:root[data-ushss-theme="dark"] textarea,:root[data-ushss-theme="dark"] select{background:var(--surface2);color:var(--text);border-color:var(--border2)}
 :root[data-ushss-theme="light"] body{background:var(--bg);color:var(--ink)}
 @media(prefers-color-scheme:dark){:root[data-ushss-theme="system"]{--bg:#111214;--surface:#191b1f;--surface2:#22252a;--surface3:#2b2f35;--border:#343941;--border2:#454b55;--maroon:#9c4545;--maroon-d:#321717;--maroon-l:#b85d5d;--gold:#d7b65c;--gold-l:#f0d58b;--gold-pale:rgba(215,182,92,.12);--ink:#f3eee7;--ink-mid:#e5d9cb;--text:#e8e4dc;--cream:#f3eee7;--muted:#b3a596;color-scheme:dark}:root[data-ushss-theme="system"] body{background:var(--bg);color:var(--text)}:root[data-ushss-theme="system"] input,:root[data-ushss-theme="system"] textarea,:root[data-ushss-theme="system"] select{background:var(--surface2);color:var(--text);border-color:var(--border2)}}
+
+/* Theme-aware text and surfaces: prevent hard-coded light-theme text from becoming unreadable. */
+:root[data-ushss-theme="dark"] body,
+:root[data-ushss-theme="dark"] main,
+:root[data-ushss-theme="dark"] .main-content,
+:root[data-ushss-theme="dark"] .dashboard-content,
+:root[data-ushss-theme="dark"] .content,
+:root[data-ushss-theme="dark"] .page-content { color:var(--text)!important; }
+:root[data-ushss-theme="dark"] p,
+:root[data-ushss-theme="dark"] label,
+:root[data-ushss-theme="dark"] small,
+:root[data-ushss-theme="dark"] .muted,
+:root[data-ushss-theme="dark"] .text-muted,
+:root[data-ushss-theme="dark"] .subtitle,
+:root[data-ushss-theme="dark"] .description,
+:root[data-ushss-theme="dark"] .form-label,
+:root[data-ushss-theme="dark"] .field-label,
+:root[data-ushss-theme="dark"] td,
+:root[data-ushss-theme="dark"] th { color:var(--text); }
+:root[data-ushss-theme="dark"] h1,
+:root[data-ushss-theme="dark"] h2,
+:root[data-ushss-theme="dark"] h3,
+:root[data-ushss-theme="dark"] h4,
+:root[data-ushss-theme="dark"] h5,
+:root[data-ushss-theme="dark"] h6,
+:root[data-ushss-theme="dark"] .page-title,
+:root[data-ushss-theme="dark"] .section-title { color:var(--text); }
+:root[data-ushss-theme="dark"] .card,
+:root[data-ushss-theme="dark"] .panel,
+:root[data-ushss-theme="dark"] .modal-content,
+:root[data-ushss-theme="dark"] .dashboard-card,
+:root[data-ushss-theme="dark"] .stat-card,
+:root[data-ushss-theme="dark"] .table-container,
+:root[data-ushss-theme="dark"] .content-card,
+:root[data-ushss-theme="dark"] .form-card { background:var(--surface);color:var(--text);border-color:var(--border); }
+:root[data-ushss-theme="dark"] table { color:var(--text); }
+:root[data-ushss-theme="dark"] thead,
+:root[data-ushss-theme="dark"] th { background:var(--surface2); }
+:root[data-ushss-theme="dark"] tr,
+:root[data-ushss-theme="dark"] td { border-color:var(--border); }
+:root[data-ushss-theme="dark"] input,
+:root[data-ushss-theme="dark"] textarea,
+:root[data-ushss-theme="dark"] select { background:var(--surface2);color:var(--text);border-color:var(--border2); }
+:root[data-ushss-theme="dark"] input::placeholder,
+:root[data-ushss-theme="dark"] textarea::placeholder { color:var(--muted);opacity:1; }
+:root[data-ushss-theme="light"] body,
+:root[data-ushss-theme="light"] main,
+:root[data-ushss-theme="light"] .main-content,
+:root[data-ushss-theme="light"] .dashboard-content,
+:root[data-ushss-theme="light"] .content,
+:root[data-ushss-theme="light"] .page-content { color:var(--ink)!important; }
+:root[data-ushss-theme="light"] p,
+:root[data-ushss-theme="light"] label,
+:root[data-ushss-theme="light"] small,
+:root[data-ushss-theme="light"] td { color:var(--ink-mid); }
+
 </style>
 </head>
 <script>
