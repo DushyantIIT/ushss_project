@@ -685,6 +685,7 @@ def reset_password(
 class SubjectOfferedCreate(BaseModel):
     subject: str = Field(min_length=1, max_length=200)
     course_code: str = Field(min_length=1, max_length=50)
+    paper_id: str = Field(min_length=1, max_length=80)
     programme: str = Field(min_length=1, max_length=30)
     course: str = Field(min_length=1, max_length=50)
     batch: Optional[str] = None
@@ -702,12 +703,13 @@ def create_subject_offered(body: SubjectOfferedCreate, admin: dict = Depends(req
     payload = body.model_dump()
     payload["subject"] = payload["subject"].strip()
     payload["course_code"] = payload["course_code"].strip()
+    payload["paper_id"] = payload["paper_id"].strip()
     payload["programme"] = payload["programme"].strip()
     payload["course"] = payload["course"].strip()
     payload["batch"] = (payload.get("batch") or "").strip() or "General"
     payload["semester"] = payload["semester"].strip()
     payload["section"] = (payload.get("section") or "").strip() or None
-    if not all(payload[key] for key in ("subject", "course_code", "programme", "course", "semester")):
+    if not all(payload[key] for key in ("subject", "course_code", "paper_id", "programme", "course", "semester")):
         raise HTTPException(400, "Subject name, course code and all academic details are required.")
     payload["created_by"] = admin.get("id")
     try:
