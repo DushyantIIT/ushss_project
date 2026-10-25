@@ -2683,8 +2683,44 @@ function renderSubjectsOffered() {
   <div class="card" style="padding:0;overflow:hidden">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border)"><div class="card-title">Subject Catalogue</div></div>
     ${subjects.length ? `<div class="table-wrap" style="border:0;border-radius:0"><table><thead><tr><th>#</th><th>Paper ID</th><th>Subject Code</th><th>Subject Name</th><th>Paper Category</th><th>Programme</th><th>Course</th><th>Semester</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px">No subjects have been added yet. Use the form above to add the first subject.</div>`}
-  </div>`;
+  </div>
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Department Electives</div>
+    <div class="card-sub" style="margin:6px 0 16px">Publish an M.A. elective for a specific student group, then view the student-wise selection list.</div>
+    <form onsubmit="publishElectiveOffering(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end">
+      <label><span class="field-label">Elective Subject *</span><select class="form-select" name="subject_offered_id" id="electiveSubjectChoice" required><option value="">Select elective subject</option></select></label>
+      <label><span class="field-label">Programme *</span><select class="form-select" name="programme" id="electiveProgramme" required><option value="M.A.">M.A.</option></select></label>
+      <label><span class="field-label">Course *</span><select class="form-select" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
+      <label><span class="field-label">Batch *</span><input class="form-input" name="batch" required placeholder="e.g. General or 2025-27"></label>
+      <label><span class="field-label">Semester *</span><select class="form-select" name="semester" required><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></label>
+      <label><span class="field-label">Section (optional)</span><input class="form-input" name="section" placeholder="A / B / leave blank"></label>
+      <div><button class="btn btn-primary" type="submit">＋ Publish Elective</button></div>
+    </form>
+    <div id="elective-offerings-list" style="margin-top:22px"><div style="color:var(--muted);font-size:13px">Loading elective offerings…</div></div>
+    <div id="elective-student-report" style="margin-top:18px"></div>
+  </div>
 }
+
+async function loadElectiveOfferings(){
+ const list=document.getElementById("elective-offerings-list"),select=document.getElementById("electiveSubjectChoice");if(!list||!select)return;
+ const offered=Array.isArray(window.__offeredSubjects)?window.__offeredSubjects:[];
+ const electives=offered.filter(x=>x.paper_category==="Elective");
+ select.innerHTML='<option value="">Select elective subject</option>'+electives.map(x=>'<option value="'+Number(x.id)+'">'+String(x.subject||"").replace(/[&<>"]/g,"")+' — '+String(x.course||"")+' / Sem '+String(x.semester||"")+'</option>').join("");
+ try{
+  const rows=await adminApiJson("/api/admin/elective-offerings");
+  list.innerHTML=rows.length?'<div class="table-wrap"><table><thead><tr><th>Subject</th><th>Programme / Course</th><th>Batch / Semester</th><th>Section</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+rows.map(x=>{const sub=x.subjects_offered||{};return '<tr><td><strong>'+String(sub.subject||"").replace(/[&<>"]/g,"")+'</strong><div class="card-sub">'+String(sub.paper_id||"")+' · '+String(sub.course_code||"")+'</div></td><td>'+x.programme+' / '+x.course+'</td><td>'+x.batch+' / '+x.semester+'</td><td>'+(x.section||"All")+'</td><td>'+(x.is_open?"Open":"Closed")+'</td><td><button class="btn btn-ghost btn-sm" onclick="viewElectiveStudents('+Number(x.id)+')">Student List</button> <button class="btn btn-ghost btn-sm" onclick="toggleElectiveOffering('+Number(x.id)+')">'+(x.is_open?"Close":"Reopen")+'</button> <button class="btn btn-danger btn-sm" onclick="deleteElectiveOffering('+Number(x.id)+')">Remove</button></td></tr>';}).join("")+'</tbody></table></div>':'<div style="padding:16px;color:var(--muted);font-size:13px">No department electives have been published yet.</div>';
+ }catch(e){list.innerHTML='<div style="color:var(--red)">Could not load offerings: '+String(e.message||e)+'</div>';}
+}
+async function publishElectiveOffering(event){
+ event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget).entries());values.subject_offered_id=Number(values.subject_offered_id);
+ try{await adminApiJson("/api/admin/elective-offerings",{method:"POST",body:JSON.stringify(values)});toast("Elective published for student selection.","success");event.currentTarget.reset();await loadElectiveOfferings();}catch(e){toast(e.message||"Could not publish elective.","error");}
+}
+async function viewElectiveStudents(id){
+ const target=document.getElementById("elective-student-report");if(!target)return;target.innerHTML='<div class="card-sub">Loading student list…</div>';
+ try{const data=await adminApiJson("/api/admin/elective-offerings/"+Number(id)+"/students");const offer=data.offering||{},sub=offer.subjects_offered||{};const esc=v=>String(v||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));target.innerHTML='<div class="card-title">Student List — '+esc(sub.subject)+' ('+esc(offer.programme)+' / '+esc(offer.course)+' / '+esc(offer.batch)+' / Sem '+esc(offer.semester)+')</div><div class="table-wrap" style="margin-top:10px"><table><thead><tr><th>#</th><th>Student</th><th>Roll No.</th><th>Email</th><th>Elective Selection</th></tr></thead><tbody>'+((data.students||[]).map((u,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(u.full_name)+'</td><td>'+esc(u.roll_number)+'</td><td>'+esc(u.email)+'</td><td>'+(u.selected?'Selected':'Not selected')+'</td></tr>').join("")||'<tr><td colspan="5">No matching students found for this group.</td></tr>')+'</tbody></table></div>';}catch(e){target.innerHTML='<div style="color:var(--red)">Could not load students: '+String(e.message||e)+'</div>';}
+}
+async function toggleElectiveOffering(id){try{await adminApiJson("/api/admin/elective-offerings/"+Number(id)+"/toggle",{method:"PATCH"});await loadElectiveOfferings();}catch(e){toast(e.message||"Could not update offering.","error");}}
+async function deleteElectiveOffering(id){if(!confirm("Remove this elective offering and its student choices?"))return;try{await adminApiJson("/api/admin/elective-offerings/"+Number(id),{method:"DELETE"});await loadElectiveOfferings();}catch(e){toast(e.message||"Could not remove offering.","error");}}
 
 function updateTaughtSubjectPaperCategories() {
    const programme = document.getElementById("taughtSubjectProgramme");
@@ -2715,6 +2751,7 @@ async function loadOfferedSubjects() {
     if (currentPage === "subjects-taught") {
       const target = document.getElementById("content");
       if (target) target.innerHTML = renderSubjectsOffered();
+      await loadElectiveOfferings();
     }
     else if (currentPage === "timetable" && document.getElementById("tt-modal") && document.getElementById("tt-modal").classList.contains("open")) filterTimetableSubjectsForCurrentGroup();
   } catch (error) {
