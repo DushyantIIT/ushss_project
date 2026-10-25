@@ -104,15 +104,39 @@ def get_timetable(
         raise HTTPException(400, "Your account has no programme/batch assigned. Contact admin.")
 
     q = sb.table("timetable_slots").select(
-        "id, subject, day_of_week, start_time, end_time, room, programme, batch, department, "
-        "users(full_name, email)"   # joined faculty info
-    ).eq("programme", student["programme"]).eq("batch", student["batch"])
+        "id, subject, day_of_week, start_time, end_time, room, programme, batch, "
+        "department, course, semester, section, published, users(full_name, email)"
+    ).eq("programme", student["programme"]).eq("batch", student["batch"]).eq("published", True)
 
     if day:
         q = q.eq("day_of_week", day)
 
-    res = q.order("day_of_week").order("start_time").execute()
-    return res.data or []
+    rows = q.order("day_of_week").order("start_time").execute().data or []
+
+    def normalise(value):
+        return " ".join(str(value or "").strip().lower().split())
+
+    def semester_key(value):
+        raw = normalise(value).replace("semester", "").strip()
+        roman = {"i":"1", "ii":"2", "iii":"3", "iv":"4", "v":"5", "vi":"6", "vii":"7", "viii":"8"}
+        return roman.get(raw, raw)
+
+    # When the student's profile has semester/section details, show only the
+    # timetable published for that exact group, not other sections in the batch.
+    student_semester = student.get("semester")
+    student_section = normalise(student.get("section"))
+    student_course = normalise(student.get("department") or student.get("course"))
+    if student_semester:
+        rows = [row for row in rows if semester_key(row.get("semester")) == semester_key(student_semester)]
+    if student_section:
+        rows = [row for row in rows if normalise(row.get("section") or "None") == student_section]
+    if student_course:
+        rows = [
+            row for row in rows
+            if not row.get("course") or normalise(row.get("course")) == student_course
+        ]
+
+    return rows
 
 
 # ═══════════════════════════════════════════════════════════════
