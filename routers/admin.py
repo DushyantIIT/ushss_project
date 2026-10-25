@@ -695,6 +695,7 @@ class TimetableCreate(BaseModel):
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
+    faculty_ids: list[int] = Field(default_factory=list)
 
 
 class TimetableUpdate(BaseModel):
@@ -710,6 +711,7 @@ class TimetableUpdate(BaseModel):
     room:        Optional[str] = None
     department:  Optional[str] = None
     faculty_id:  Optional[int] = None
+    faculty_ids: Optional[list[int]] = None
 
 
 # Timetable times are fixed; admins may edit class details but cannot create custom periods.
@@ -740,11 +742,14 @@ def _time_minutes(value: str) -> int:
     return parsed.hour * 60 + parsed.minute
 
 
-def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None,
+def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None, faculty_ids=None,
                         room=None, programme=None, course=None, batch=None,
                         semester=None, section=None, exclude_id=None):
     """Prevent resource clashes while allowing different classes to run in parallel."""
     start_min, end_min = _time_minutes(start_time), _time_minutes(end_time)
+    assigned_faculty = {str(x) for x in (faculty_ids or []) if x}
+    if faculty_id:
+        assigned_faculty.add(str(faculty_id))
     for slot in existing_slots:
         if exclude_id is not None and str(slot.get("id")) == str(exclude_id):
             continue
@@ -752,8 +757,11 @@ def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None,
         slot_end = _time_minutes(slot.get("end_time"))
         if start_min >= slot_end or slot_start >= end_min:
             continue
-        if faculty_id and str(slot.get("faculty_id")) == str(faculty_id):
-            return f"Faculty is already assigned to '{slot.get('subject')}' during this time."
+        existing_faculty = {str(x) for x in (slot.get("faculty_ids") or []) if x}
+        if slot.get("faculty_id"):
+            existing_faculty.add(str(slot.get("faculty_id")))
+        if assigned_faculty.intersection(existing_faculty):
+            return f"One of the assigned professors is already teaching '{slot.get('subject')}' during this time."
         if room and (slot.get("room") or "").strip().lower() == room.strip().lower():
             return f"Room '{room}' is already booked for '{slot.get('subject')}' during this time."
         # A cohort is defined by its programme, course, batch, semester and section.
@@ -781,30 +789,48 @@ def list_timetable(
     if programme: q = q.ilike("programme", f"%{programme}%")
     if batch:     q = q.eq("batch", batch)
     res = q.order("day_of_week").order("start_time").execute()
-    return res.data or []
+    rows = res.data or []
+    all_ids = {int(fid) for row in rows for fid in (row.get("faculty_ids") or []) if str(fid).isdigit()}
+    all_ids.update(int(row["faculty_id"]) for row in rows if row.get("faculty_id"))
+    names = {}
+    if all_ids:
+        users = sb.table("users").select("id,full_name,username").in_("id", list(all_ids)).execute().data or []
+        names = {int(u["id"]): (u.get("full_name") or u.get("username") or "") for u in users}
+    for row in rows:
+        ids = row.get("faculty_ids") or ([row["faculty_id"]] if row.get("faculty_id") else [])
+        row["faculty_ids"] = ids
+        row["faculty_names"] = [names[int(fid)] for fid in ids if str(fid).isdigit() and int(fid) in names]
+    return rows
 
 
 @router.post("/timetable", status_code=201, summary="Create a timetable slot")
 def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
     _validate_timetable_slot(body.start_time, body.end_time, body.day_of_week)
-    if body.faculty_id:
-        fac = sb.table("users").select("id").eq("id", body.faculty_id).eq("role", "faculty").execute()
-        if not fac.data:
-            raise HTTPException(404, "Faculty user not found")
+    faculty_ids = list(dict.fromkeys([int(x) for x in (body.faculty_ids or []) if x]))
+    if body.faculty_id and int(body.faculty_id) not in faculty_ids:
+        faculty_ids.insert(0, int(body.faculty_id))
+    if faculty_ids:
+        fac = sb.table("users").select("id").eq("role", "faculty").in_("id", faculty_ids).execute()
+        found_ids = {int(x["id"]) for x in (fac.data or [])}
+        if found_ids != set(faculty_ids):
+            raise HTTPException(404, "One or more assigned professors could not be found.")
+    primary_faculty_id = faculty_ids[0] if faculty_ids else None
 
     day_slots = (
         sb.table("timetable_slots").select("*")
         .eq("is_active", True).eq("day_of_week", body.day_of_week).execute().data or []
     )
     conflict = _timetable_conflict(
-        day_slots, body.start_time, body.end_time, faculty_id=body.faculty_id,
+        day_slots, body.start_time, body.end_time, faculty_id=primary_faculty_id, faculty_ids=faculty_ids,
         room=body.room, programme=body.programme, course=body.course,
         batch=body.batch, semester=body.semester, section=body.section
     )
     if conflict:
         raise HTTPException(409, conflict)
 
-    res = sb.table("timetable_slots").insert(body.model_dump()).execute()
+    payload = body.model_dump(exclude={"faculty_id", "faculty_ids"})
+    payload.update({"faculty_id": primary_faculty_id, "faculty_ids": faculty_ids})
+    res = sb.table("timetable_slots").insert(payload).execute()
     _audit(admin["id"], "CREATE_TIMETABLE",
            f"{body.subject} {body.day_of_week} {body.start_time} [{body.programme} {body.batch}]")
     return res.data[0]
@@ -868,6 +894,17 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     _validate_timetable_slot(eff_start, eff_end, eff_day)
 
     # Validate the assigned faculty and reject any overlapping class/resource interval.
+    if "faculty_ids" in updates:
+        eff_faculty_ids = list(dict.fromkeys([int(x) for x in (updates.get("faculty_ids") or []) if x]))
+        if "faculty_id" in updates and updates["faculty_id"] and int(updates["faculty_id"]) not in eff_faculty_ids:
+            eff_faculty_ids.insert(0, int(updates["faculty_id"]))
+        updates["faculty_ids"] = eff_faculty_ids
+        updates["faculty_id"] = eff_faculty_ids[0] if eff_faculty_ids else None
+    elif "faculty_id" in updates:
+        eff_faculty_ids = [int(updates["faculty_id"])] if updates["faculty_id"] else []
+        updates["faculty_ids"] = eff_faculty_ids
+    else:
+        eff_faculty_ids = current.get("faculty_ids") or ([current["faculty_id"]] if current.get("faculty_id") else [])
     eff_faculty = updates.get("faculty_id", current.get("faculty_id"))
     eff_room = updates.get("room", current.get("room"))
     eff_programme = updates.get("programme", current.get("programme"))
@@ -876,17 +913,18 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     eff_semester = updates.get("semester", current.get("semester"))
     eff_section = updates.get("section", current.get("section"))
 
-    if eff_faculty:
-        fac = sb.table("users").select("id").eq("id", eff_faculty).eq("role", "faculty").limit(1).execute()
-        if not fac.data:
-            raise HTTPException(404, "Faculty user not found")
+    if eff_faculty_ids:
+        fac = sb.table("users").select("id").eq("role", "faculty").in_("id", eff_faculty_ids).execute()
+        found_ids = {int(x["id"]) for x in (fac.data or [])}
+        if found_ids != set(eff_faculty_ids):
+            raise HTTPException(404, "One or more assigned professors could not be found.")
 
     day_slots = (
         sb.table("timetable_slots").select("*")
         .eq("is_active", True).eq("day_of_week", eff_day).execute().data or []
     )
     conflict = _timetable_conflict(
-        day_slots, eff_start, eff_end, faculty_id=eff_faculty, room=eff_room,
+        day_slots, eff_start, eff_end, faculty_id=eff_faculty, faculty_ids=eff_faculty_ids, room=eff_room,
         programme=eff_programme, course=eff_course, batch=eff_batch,
         semester=eff_semester, section=eff_section, exclude_id=slot_id
     )
