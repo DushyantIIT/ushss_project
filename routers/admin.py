@@ -706,7 +706,8 @@ def create_subject_offered(body: SubjectOfferedCreate, admin: dict = Depends(req
     payload["course_code"] = payload["course_code"].strip()
     payload["paper_id"] = payload["paper_id"].strip()
     payload["paper_category"] = payload["paper_category"].strip()
-    if payload["paper_category"] not in {"DSC", "MSC", "Elective", "Minors (Elective)", "AEC", "SEC"}:
+    valid_categories = {"B.A.": {"DSC", "FC", "MSC", "IDC", "SEC", "AEC", "VAC"}, "M.A.": {"DSC", "MSC", "Elective", "Minors (Elective)", "AEC", "SEC"}}
+    if payload["paper_category"] not in valid_categories.get(payload["programme"], set()):
         raise HTTPException(status_code=400, detail="Invalid paper category")
     payload["programme"] = payload["programme"].strip()
     payload["course"] = payload["course"].strip()
