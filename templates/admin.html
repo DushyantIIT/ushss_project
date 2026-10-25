@@ -2781,6 +2781,38 @@ async function publishTimetable(programme, group) {
   }
 }
 
+function filterTimetableSubjectsForCurrentGroup(){
+  const select=document.getElementById("tt-subject");
+  if(!select) return;
+  const meta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection)||{};
+  const programme=String(ttCurrentProg||"").toLowerCase().replace(/[^a-z]/g,"");
+  const course=String(meta.course||ttCurrentCourse||"").toLowerCase().trim();
+  let semester=String(meta.semester||"").trim().toUpperCase();
+  if(!semester){
+    const match=String(ttCurrentSection||"").match(/\\bSem(?:ester)?\\s*(I{1,3}|IV|[1-4])\\b/i);
+    if(match) semester=match[1].toUpperCase();
+  }
+  const roman={"1":"I","2":"II","3":"III","4":"IV","I":"I","II":"II","III":"III","IV":"IV"};
+  semester=roman[semester]||semester;
+  const isMAEnglish=(programme==="ma"||programme==="masterofarts") && course==="english";
+  if(!isMAEnglish || !["I","II"].includes(semester)){
+    Array.from(select.querySelectorAll("optgroup")).forEach(g=>g.style.display="");
+    Array.from(select.options).forEach(o=>o.hidden=false);
+    return;
+  }
+  const target="MA English — Semester "+semester+" (all sections)";
+  Array.from(select.querySelectorAll("optgroup")).forEach(g=>{
+    const show=g.label===target;
+    g.hidden=!show;
+    g.style.display=show?"":"none";
+    Array.from(g.options).forEach(o=>o.hidden=!show);
+  });
+  Array.from(select.options).forEach(o=>{
+    if(!o.parentElement || o.parentElement.tagName!=="OPTGROUP") o.hidden=false;
+  });
+  if(select.selectedOptions[0]?.hidden) select.value="";
+}
+
 function openTTEdit(day,timeIdx){
   if(!ttCurrentProg||!ttCurrentSection) return toast("Create/select a timetable first","error");
   ttEditing={day,timeIdx};
@@ -2789,6 +2821,7 @@ function openTTEdit(day,timeIdx){
   document.getElementById("tt-slot-info").innerHTML=`<span style="color:var(--gold)">${adminDayName(day)}</span> · ${TT_TIMES[timeIdx]} · <span style="color:var(--text)">${ttCurrentProg} / ${ttCurrentSection}</span>`;
   document.getElementById("tt-modal-title").textContent=cell?"Edit Class Slot":"Add Class to Slot";
   document.getElementById("tt-subject").value=cell?.subject||"";
+  filterTimetableSubjectsForCurrentGroup();
   document.getElementById("tt-room").value=cell?.room||"";
   populateFacultyDropdowns();
   const facultyName=cell?.users?.full_name||"";
