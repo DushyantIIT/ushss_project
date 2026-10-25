@@ -2692,14 +2692,20 @@ function adminDayName(key) {
   return ({mon:"Monday",tue:"Tuesday",wed:"Wednesday",thu:"Thursday",fri:"Friday"})[key] || key;
 }
 function adminSlotFor(prog, section, day, timeIdx) {
-  const pair=adminTimePair(timeIdx), dayName=adminDayName(day);
-  return adminTimetableSlots().find(s =>
-    s.programme===prog &&
-    (!ttCurrentCourse || String(s.course||"").toLowerCase()===String(ttCurrentCourse).toLowerCase()) &&
-    adminTimetableGroup(s)===section &&
-    String(s.day_of_week).toLowerCase()===dayName.toLowerCase() &&
-    String(s.start_time).slice(0,5)===pair[0] &&
-    String(s.end_time).slice(0,5)===pair[1]
+  // A timetable cell may be rendered while stale/partial timetable data is in memory.
+  // Never index a missing time pair: treat an invalid cell as empty instead of
+  // throwing during the cell's click handler.
+  const pair=adminTimePair(Number(timeIdx));
+  if(!Array.isArray(pair) || pair.length < 2 || !day) return null;
+  const dayName=adminDayName(day);
+  const slots=adminTimetableSlots();
+  return slots.find(slot =>
+    slot && slot.programme===prog &&
+    (!ttCurrentCourse || String(slot.course||"").toLowerCase()===String(ttCurrentCourse).toLowerCase()) &&
+    adminTimetableGroup(slot)===section &&
+    String(slot.day_of_week||"").toLowerCase()===dayName.toLowerCase() &&
+    String(slot.start_time||"").slice(0,5)===pair[0] &&
+    String(slot.end_time||"").slice(0,5)===pair[1]
   ) || null;
 }
 
@@ -2888,7 +2894,10 @@ function openTTEdit(day,timeIdx){
     subjectSelect.value=savedSubject;
     roomInput.value=cell?.room||"";
     populateFacultyDropdowns();
-    const assignedIds=(cell?.faculty_ids|| (cell?.faculty_id?[cell.faculty_id]:[])).map(String);
+    // API rows can contain faculty_ids as null or a non-array legacy value.
+    // Normalize it before using it so opening an empty cell is always safe.
+    const rawFacultyIds=cell?.faculty_ids;
+    const assignedIds=(Array.isArray(rawFacultyIds)?rawFacultyIds:(cell?.faculty_id?[cell.faculty_id]:[])).map(String);
     Array.from(facultySelect.options).forEach(option=>{option.selected=assignedIds.includes(option.value);});
     notesInput.value=cell?.notes||"";
     modal.classList.add("open");
