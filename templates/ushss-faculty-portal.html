@@ -328,6 +328,35 @@ tr:hover td{background:rgba(255,255,255,.01)}
 :root[data-ushss-theme="dark"] body input::placeholder,
 :root[data-ushss-theme="dark"] body textarea::placeholder { color:#D0D0D0 !important; }
 
+
+/* Preserve white text on maroon backgrounds even when Light theme is selected. */
+:root[data-ushss-theme="light"] .btn-primary,
+:root[data-ushss-theme="light"] .btn-primary *,
+:root[data-ushss-theme="light"] .modal,
+:root[data-ushss-theme="light"] .modal *,
+:root[data-ushss-theme="light"] .modal-head,
+:root[data-ushss-theme="light"] .modal-foot,
+:root[data-ushss-theme="light"] .sb-head,
+:root[data-ushss-theme="light"] .sb-head *,
+:root[data-ushss-theme="light"] .dash-welcome,
+:root[data-ushss-theme="light"] .dash-welcome *,
+:root[data-ushss-theme="light"] .att-hero,
+:root[data-ushss-theme="light"] .att-hero *,
+:root[data-ushss-theme="light"] .att-session,
+:root[data-ushss-theme="light"] .att-session *,
+:root[data-ushss-theme="light"] .fac-welcome,
+:root[data-ushss-theme="light"] .fac-welcome *,
+:root[data-ushss-theme="light"] .live-host-card,
+:root[data-ushss-theme="light"] .live-host-card *,
+:root[data-ushss-theme="light"] .sidebar-logo-badge,
+:root[data-ushss-theme="light"] .sidebar-user-avatar,
+:root[data-ushss-theme="light"] .nav-badge,
+:root[data-ushss-theme="light"] .sb-logo-badge,
+:root[data-ushss-theme="light"] .sb-count,
+:root[data-ushss-theme="light"] .sb-badge {
+  color:#FFFFFF !important;
+}
+
 </style>
 </head>
 <script>
