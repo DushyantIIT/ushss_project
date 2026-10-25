@@ -784,6 +784,47 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
     return res.data[0]
 
 
+class TimetablePublish(BaseModel):
+    programme: str
+    group: str
+
+
+@router.post("/timetable/publish", summary="Publish a timetable group to students")
+def publish_timetable_group(body: TimetablePublish, admin: dict = Depends(require_admin)):
+    programme = (body.programme or "").strip()
+    group = (body.group or "").strip()
+    if not programme or not group:
+        raise HTTPException(400, "Programme and timetable section are required.")
+
+    rows = sb.table("timetable_slots").select(
+        "id, programme, course, batch, semester, section, published"
+    ).eq("programme", programme).execute().data or []
+
+    def group_label(slot):
+        if slot.get("course") and slot.get("batch") and slot.get("semester"):
+            return (
+                str(slot["course"]) + " · " + str(slot["batch"])
+                + " · Sem " + str(slot["semester"])
+                + " · Section " + str(slot.get("section") or "None")
+            )
+        return slot.get("section") or slot.get("batch") or "General"
+
+    matching = [row for row in rows if str(group_label(row)).strip() == group]
+    if not matching:
+        raise HTTPException(404, "This timetable has no saved class slots yet. Add classes before publishing.")
+
+    # Publish every saved slot in this exact programme + semester/section group.
+    for row in matching:
+        sb.table("timetable_slots").update({"published": True}).eq("id", row["id"]).execute()
+
+    _audit(
+        admin["id"],
+        "PUBLISH_TIMETABLE",
+        f"Published {programme} / {group} ({len(matching)} slots)"
+    )
+    return {"message": f"Timetable published for {programme} / {group}.", "published": True, "slots": len(matching)}
+
+
 @router.put("/timetable/{slot_id}", summary="Update a timetable slot")
 def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(require_admin)):
     existing = sb.table("timetable_slots").select("*").eq("id", slot_id).limit(1).execute()
