@@ -758,9 +758,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <div class="form-row">
         <div class="form-group"><label class="form-label">Room / Venue</label><input class="form-input" id="tt-room" placeholder="e.g. Seminar Hall A"/></div>
         <div class="form-group"><label class="form-label">Assigned Faculty</label>
-          <select class="form-select" id="tt-faculty">
-            <option value="">— Assign Faculty —</option>
-          </select>
+          <select class="form-select" id="tt-faculty" multiple size="5" aria-describedby="tt-faculty-help"></select><small id="tt-faculty-help" style="color:var(--muted)">Select one or more professors (Ctrl-click / Command-click for multiple).</small>
         </div>
       </div>
       <div class="form-group"><label class="form-label">Notes (optional)</label><input class="form-input" id="tt-notes" placeholder="e.g. Guest lecturer this week"/></div>
@@ -1057,12 +1055,12 @@ function populateFacultyDropdowns() {
   const faculties = dbGetUsers({role:"faculty"}).filter(u=>u.is_active!==false);
   const ttFac = document.getElementById("tt-faculty");
   if (ttFac) {
-    const cur = ttFac.value;
-    ttFac.innerHTML = '<option value="">— Assign Faculty —</option>' + faculties.map(f => {
+    const cur = Array.from(ttFac.selectedOptions).map(o=>o.value);
+    ttFac.innerHTML = faculties.map(f => {
       const name = f.full_name || f.username;
-      return `<option value="${esc(name)}">${esc(name)}</option>`;
+      return `<option value="${Number(f.id)}">${esc(name)}</option>`;
     }).join('');
-    if (cur) ttFac.value = cur;
+    cur.forEach(v=>{const opt=Array.from(ttFac.options).find(o=>o.value===String(v));if(opt)opt.selected=true;});
   }
   const liveFac = document.getElementById("live-fac");
   if (liveFac) {
@@ -2728,7 +2726,7 @@ function renderTimetable() {
         else html+=`<div class="tt-cell has-class" draggable="true" ondragstart="ttDragStart(event,${s.id})" ondragend="ttDragEnd(event)" ondragover="ttDragOver(event)" ondragleave="ttDragLeave(event)" ondrop="ttDropSlot(event,'${d.key}',${i})" style="border-left:3px solid ${accent}" onclick="openTTEdit('${d.key}',${i})">
           <div class="tt-cell-subject">${s.subject}</div>
           ${s.room?`<div class="tt-cell-room">📍 ${s.room}</div>`:""}
-          ${s.users?.full_name?`<div class="tt-cell-teacher">👤 ${s.users.full_name}</div>`:""}
+          ${(s.faculty_names?.length?s.faculty_names:(s.users?.full_name?[s.users.full_name]:[])).length?`<div class="tt-cell-teacher">👤 ${(s.faculty_names?.length?s.faculty_names:[s.users.full_name]).join(", ")}</div>`:""}
           <div class="tt-slot-actions">
             <button type="button" class="btn btn-amber btn-sm" onclick="event.stopPropagation();openTTEdit(&quot;${d.key}&quot;,${i})">Swap Slot</button>
             <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTimetableSlot(${s.id},&quot;${d.key}&quot;,${i})">Delete Slot</button>
@@ -2824,8 +2822,8 @@ function openTTEdit(day,timeIdx){
   filterTimetableSubjectsForCurrentGroup();
   document.getElementById("tt-room").value=cell?.room||"";
   populateFacultyDropdowns();
-  const facultyName=cell?.users?.full_name||"";
-  document.getElementById("tt-faculty").value=facultyName;
+  const assignedIds=(cell?.faculty_ids|| (cell?.faculty_id?[cell.faculty_id]:[])).map(String);
+  Array.from(document.getElementById("tt-faculty").options).forEach(o=>{o.selected=assignedIds.includes(o.value);});
   document.getElementById("tt-notes").value="";
   document.getElementById("tt-modal").classList.add("open");
 }
@@ -2840,10 +2838,9 @@ async function saveTTCell(){
     if(!subject){
       if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"DELETE"});
     }else{
-      const facText=document.getElementById("tt-faculty").value.trim().toLowerCase();
-      const faculty=(dbGetUsers({role:"faculty"}).find(u=>(u.full_name||"").toLowerCase()===facText || (u.username||"").toLowerCase()===facText));
+      const facultyIds=Array.from(document.getElementById("tt-faculty").selectedOptions).map(o=>Number(o.value)).filter(Boolean);
       const groupMeta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection);
-      const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,course:groupMeta.course||existing?.course||null,batch:groupMeta.batch||existing?.batch||"General",semester:groupMeta.semester||existing?.semester||null,section:groupMeta.section||existing?.section||ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_id:faculty?.id||existing?.faculty_id||null};
+      const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,course:groupMeta.course||existing?.course||null,batch:groupMeta.batch||existing?.batch||"General",semester:groupMeta.semester||existing?.semester||null,section:groupMeta.section||existing?.section||ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_ids:facultyIds,faculty_id:facultyIds[0]||null};
       if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
       else await adminApiJson("/api/admin/timetable",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     }
