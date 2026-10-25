@@ -2659,11 +2659,11 @@ function renderSubjectsOffered() {
   const esc = value => String(value == null || value === "" ? "—" : value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const rows = subjects.map((s,i) => `<tr>
     <td class="mono">${i+1}</td><td><strong style="color:var(--cream)">${esc(s.subject)}</strong></td>
-    <td>${esc(s.programme)}</td><td>${esc(s.course)}</td><td>${esc(s.semester)}</td><td>${esc(s.section||"All / None")}</td>
+    <td>${esc(s.programme)}</td><td>${esc(s.course)}</td><td>${esc(s.semester)}</td>
     <td><button class="btn btn-danger btn-sm" onclick="removeOfferedSubject(${Number(s.id)})">Remove</button></td>
   </tr>`).join("");
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px">
-    <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Offered</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Add and manage the subjects offered for each programme, course, batch and semester. Saved subjects are stored in the database.</p></div>
+    <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Offered</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Add and manage the subjects offered for each programme, course and semester. Saved subjects are stored in the database.</p></div>
     <span class="badge badge-teal">${subjects.length} subject${subjects.length===1?"":"s"}</span>
   </div>
   <div class="card" style="margin-bottom:18px">
@@ -2673,13 +2673,12 @@ function renderSubjectsOffered() {
       <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" required><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
       <label style="display:block"><span class="field-label">Course *</span><select class="form-input" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
       <label style="display:block"><span class="field-label">Semester *</span><select class="form-input" name="semester" required><option value="">Select semester</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>VII</option><option>VIII</option></select></label>
-      <label style="display:block"><span class="field-label">Section (optional)</span><select class="form-input" name="section"><option value="">All / None</option><option>A</option><option>B</option></select></label>
       <div><button class="btn btn-primary" type="submit">＋ Add Subject</button></div>
     </form>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border)"><div class="card-title">Subject Catalogue</div></div>
-    ${subjects.length ? `<div class="table-wrap" style="border:0;border-radius:0"><table><thead><tr><th>#</th><th>Subject</th><th>Programme</th><th>Course</th><th>Semester</th><th>Section</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px">No subjects have been added yet. Use the form above to add the first subject.</div>`}
+    ${subjects.length ? `<div class="table-wrap" style="border:0;border-radius:0"><table><thead><tr><th>#</th><th>Subject</th><th>Programme</th><th>Course</th><th>Semester</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px">No subjects have been added yet. Use the form above to add the first subject.</div>`}
   </div>`;
 }
 
