@@ -560,7 +560,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
-    <div class="nav-item" onclick="showPage('subjects-offered')" data-page="subjects-offered"><span class="icon">📖</span> Subjects Offered</div>
+    <div class="nav-item" onclick="showPage('subjects-taught')" data-page="subjects-taught"><span class="icon">📖</span> Subjects Taught</div>
     <div class="nav-item" onclick="showPage('attendance')" data-page="attendance"><span class="icon">✅</span> Attendance Editor<span class="nav-badge-live" id="live-nav-badge" style="display:none">LIVE</span></div>
     <div class="nav-item" onclick="showPage('announcements')" data-page="announcements"><span class="icon">📢</span> Announcements<span class="nav-badge" id="badge-ann">3</span></div>
 
@@ -1387,7 +1387,7 @@ const pageTitles={
   admin:["Administrators","USHSS / Admin / Users / Admin"],
   "pending-requests":["Pending Registrations","USHSS / Admin / User Management / Pending Registrations"],
   timetable:["Timetable Manager","USHSS / Admin / Academic / Timetable"],
-  "subjects-offered":["Subjects Offered","USHSS / Admin / Academic / Subjects Offered"],
+  "subjects-taught":["Subjects Taught","USHSS / Admin / Academic / Subjects Taught"],
   attendance:["Attendance Editor","USHSS / Admin / Academic / Attendance"],
   announcements:["Announcements","USHSS / Admin / Academic / Announcements"],
   audit:["Audit Log","USHSS / Admin / System / Audit"],
@@ -1418,7 +1418,7 @@ function renderPage(page) {
     if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") c.innerHTML=renderTimetable();
-    else if(page==="subjects-offered") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
+    else if(page==="subjects-taught") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
     else if(page==="attendance") c.innerHTML=renderAttendance();
     else if(page==="announcements") c.innerHTML=renderAnnouncements();
     else if(page==="audit") c.innerHTML=renderAudit();
@@ -2663,11 +2663,11 @@ function renderSubjectsOffered() {
     <td><button class="btn btn-danger btn-sm" onclick="removeOfferedSubject(${Number(s.id)})">Remove</button></td>
   </tr>`).join("");
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px">
-    <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Offered</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Add and manage the subjects offered for each programme, course and semester. Saved subjects are stored in the database.</p></div>
+    <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Taught</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Add and manage the subjects taught for each programme, course and semester. Saved subjects are stored in the database.</p></div>
     <span class="badge badge-teal">${subjects.length} subject${subjects.length===1?"":"s"}</span>
   </div>
   <div class="card" style="margin-bottom:18px">
-    <div class="card-title">Add a Subject</div><div class="card-sub" style="margin:6px 0 16px">Fill in the academic details for the subject you want to offer.</div>
+    <div class="card-title">Add a Subject</div><div class="card-sub" style="margin:6px 0 16px">Fill in the academic details for the subject you want to teach.</div>
     <form onsubmit="addOfferedSubject(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">
       <label style="display:block"><span class="field-label">Subject name *</span><input class="form-input" name="subject" maxlength="200" required placeholder="Enter subject name"></label>
       <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" required><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
@@ -2684,14 +2684,14 @@ function renderSubjectsOffered() {
 
 async function loadOfferedSubjects() {
   try {
-    const data = await adminApiJson("/api/admin/subjects-offered");
+    const data = await adminApiJson("/api/admin/subjects-taught");
     window.__offeredSubjects = Array.isArray(data) ? data : [];
-    if (currentPage === "subjects-offered") {
+    if (currentPage === "subjects-taught") {
       const target = document.getElementById("content");
       if (target) target.innerHTML = renderSubjectsOffered();
     }
   } catch (error) {
-    console.error("Could not load offered subjects:", error);
+    console.error("Could not load taught subjects:", error);
     toast(error.message || "Could not load subjects.", "error");
   }
 }
@@ -2701,7 +2701,7 @@ async function addOfferedSubject(event) {
   const form = event.currentTarget;
   const values = Object.fromEntries(new FormData(form).entries());
   try {
-    await adminApiJson("/api/admin/subjects-offered", {method:"POST",body:JSON.stringify(values)});
+    await adminApiJson("/api/admin/subjects-taught", {method:"POST",body:JSON.stringify(values)});
     toast("Subject added successfully.", "success");
     await loadOfferedSubjects();
   } catch (error) {
@@ -2711,9 +2711,9 @@ async function addOfferedSubject(event) {
 
 async function removeOfferedSubject(id) {
   if (!Number.isInteger(Number(id)) || Number(id) < 1) return toast("Invalid subject selected.", "error");
-  if (!confirm("Remove this subject from the Subjects Offered catalogue?")) return;
+  if (!confirm("Remove this subject from the Subjects Taught catalogue?")) return;
   try {
-    await adminApiJson("/api/admin/subjects-offered/"+Number(id), {method:"DELETE"});
+    await adminApiJson("/api/admin/subjects-taught/"+Number(id), {method:"DELETE"});
     toast("Subject removed.", "success");
     await loadOfferedSubjects();
   } catch (error) {
