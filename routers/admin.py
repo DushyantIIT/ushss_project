@@ -759,8 +759,12 @@ def create_elective_offering(body: ElectiveOfferingCreate, admin: dict = Depends
     if not subjects:
         raise HTTPException(404, "Subject catalogue entry not found.")
     subject = subjects[0]
-    if subject.get("paper_category") != "Elective":
-        raise HTTPException(400, "Only subjects marked Elective can be offered for student selection.")
+    category = str(subject.get("paper_category") or "").strip().upper()
+    programme = str(subject.get("programme") or "").strip()
+    ba_elective_categories = {"MSC", "IDC", "SEC", "AEC", "VAC"}
+    is_elective = category == "ELECTIVE" or (programme == "B.A." and category in ba_elective_categories)
+    if not is_elective:
+        raise HTTPException(400, "For B.A., only MSC, IDC, SEC, AEC and VAC subjects can be offered as electives; for M.A., select a subject marked Elective.")
     if subject.get("programme") != body.programme or subject.get("course") != body.course or str(subject.get("semester")) != str(body.semester):
         raise HTTPException(400, "Programme, course and semester must match the catalogue subject.")
     payload = body.model_dump()
