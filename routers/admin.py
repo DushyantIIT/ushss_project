@@ -800,6 +800,46 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     eff_day = updates.get("day_of_week", current.get("day_of_week"))
     _validate_timetable_slot(eff_start, eff_end, eff_day)
 
+    # Apply the same conflict checks used during creation, excluding this slot.
+    eff_faculty = updates.get("faculty_id", current.get("faculty_id"))
+    eff_room = updates.get("room", current.get("room"))
+    eff_programme = updates.get("programme", current.get("programme"))
+    eff_batch = updates.get("batch", current.get("batch"))
+    eff_section = updates.get("section", current.get("section"))
+
+    if eff_faculty:
+        fac = sb.table("users").select("id").eq("id", eff_faculty).eq("role", "faculty").limit(1).execute()
+        if not fac.data:
+            raise HTTPException(404, "Faculty user not found")
+        clash = (
+            sb.table("timetable_slots").select("id, subject")
+            .eq("faculty_id", eff_faculty).eq("day_of_week", eff_day)
+            .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
+        )
+        if clash.data:
+            raise HTTPException(409, f"Faculty is already assigned to '{clash.data[0].get('subject')}' at this day and time.")
+
+    if eff_room:
+        clash = (
+            sb.table("timetable_slots").select("id, subject")
+            .eq("room", eff_room).eq("day_of_week", eff_day)
+            .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
+        )
+        if clash.data:
+            raise HTTPException(409, f"Room '{eff_room}' is already booked for '{clash.data[0].get('subject')}' at this day and time.")
+
+    class_q = (
+        sb.table("timetable_slots").select("id, subject")
+        .eq("programme", eff_programme).eq("batch", eff_batch)
+        .eq("day_of_week", eff_day).eq("start_time", eff_start)
+        .neq("id", slot_id)
+    )
+    if eff_section:
+        class_q = class_q.eq("section", eff_section)
+    clash = class_q.limit(1).execute()
+    if clash.data:
+        raise HTTPException(409, f"This class already has '{clash.data[0].get('subject')}' scheduled at this day and time.")
+
     res = sb.table("timetable_slots").update(updates).eq("id", slot_id).execute()
     _audit(admin["id"], "UPDATE_TIMETABLE", f"Updated slot id={slot_id}")
     return res.data[0]
