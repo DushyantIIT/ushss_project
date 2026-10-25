@@ -2691,8 +2691,8 @@ function updateTaughtSubjectPaperCategories() {
    const category = document.getElementById("taughtSubjectPaperCategory");
    if (!programme || !category) return;
    const previous = category.value;
-   const baOptions = [["DSC","DSC - Discipline Specific Course"],["FC","FC - Foundation Course"],["MSC","MSC - Minor Stream Course"],["IDC","IDC - Interdisciplinary Course"],["SEC","SEC - Skill Enhancement Course"],["AEC","AEC - Ability Enhancement Course"],["VAC","VAC - Value Addition Course"]];
-   const maOptions = [["DSC","DSC - Discipline Specific Course"],["MSC","MSC - Minor Stream Course"],["Elective","Elective"],["Minors (Elective)","Minors (Elective)"],["AEC","AEC - Ability Enhancement Course"],["SEC","SEC - Skill Enhancement Course"]];
+   const baOptions = [["Theory","Theory"],["Elective","Elective"]];
+   const maOptions = [["Theory","Theory"],["Elective","Elective"]];
    const options = programme.value === "B.A." ? baOptions : maOptions;
    category.innerHTML = '<option value="">Select paper category</option>' + options.map(([value,label]) => '<option value="' + value + '">' + label + '</option>').join("");
    if (options.some(([value]) => value === previous)) category.value = previous;
