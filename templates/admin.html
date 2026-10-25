@@ -528,6 +528,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="modal-header"><h2 id="tt-modal-title">Edit Class Slot</h2><button class="btn btn-ghost btn-sm" onclick="closeTTModal()">✕</button></div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-family:var(--mono);background:var(--surface2);padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border)" id="tt-slot-info"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Time</label><input class="form-input" id="tt-start-time" type="time" value="09:00" required /></div>
+        <div class="form-group"><label class="form-label">End Time</label><input class="form-input" id="tt-end-time" type="time" value="10:00" required /></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin:-4px 0 12px">Classes must be 60 minutes and must not overlap the 1:00–1:30 PM break.</div>
       <div class="form-group"><label class="form-label">Subject / Paper</label>
         <select class="form-select" id="tt-subject">
           <option value="">— Free / No Class —</option>
@@ -1365,7 +1370,8 @@ function renderDashboard() {
    TIMETABLE — MULTI-PROGRAMME SYSTEM
 ══════════════════════════════════════════ */
 const TT_DAYS=[{key:"mon",label:"Monday"},{key:"tue",label:"Tuesday"},{key:"wed",label:"Wednesday"},{key:"thu",label:"Thursday"},{key:"fri",label:"Friday"}];
-const TT_TIMES=["9–10 AM","10–11 AM","11–12 PM","12–1 PM","1:30–2:30 PM","2:30–3:30 PM","3:30–4:30 PM","4:30–5:30 PM"];
+let TT_TIMES=["9–10 AM","10–11 AM","11–12 PM","12–1 PM","1:30–2:30 PM","2:30–3:30 PM","3:30–4:30 PM","4:30–5:30 PM"];
+let TT_TIME_PAIRS=[["09:00","10:00"],["10:00","11:00"],["11:00","12:00"],["12:00","13:00"],["13:30","14:30"],["14:30","15:30"],["15:30","16:30"],["16:30","17:30"]];
 
 // State for timetable view
 let ttCurrentProg = "";   // empty = show all
@@ -2439,11 +2445,22 @@ function adminSectionNames(prog) {
   const vals = adminTimetableSlots().filter(s=>s.programme===prog).map(adminTimetableGroup);
   return [...new Set(vals)];
 }
-function adminTimePair(i) {
-  return [
-    ["09:00","10:00"],["10:00","11:00"],["11:00","12:00"],["12:00","13:00"],
-    ["13:30","14:30"],["14:30","15:30"],["15:30","16:30"],["16:30","17:30"]
-  ][i];
+function adminTimePair(i) { return TT_TIME_PAIRS[i] || null; }
+function ttFormatClock(value) {
+  const [hh,mm]=String(value||"").slice(0,5).split(":").map(Number);
+  if(!Number.isFinite(hh)||!Number.isFinite(mm)) return String(value||"");
+  const suffix=hh>=12?"PM":"AM", hour=hh%12||12;
+  return hour+ (mm?":"+String(mm).padStart(2,"0"):"") +" "+suffix;
+}
+function refreshAdminTimetableTimes() {
+  const pairs=[["09:00","10:00"],["10:00","11:00"],["11:00","12:00"],["12:00","13:00"],["13:30","14:30"],["14:30","15:30"],["15:30","16:30"],["16:30","17:30"]];
+  adminTimetableSlots().forEach(slot=>{
+    const start=String(slot.start_time||"").slice(0,5), end=String(slot.end_time||"").slice(0,5);
+    if(/^\\d{2}:\\d{2}$/.test(start)&&/^\\d{2}:\\d{2}$/.test(end)&&!pairs.some(p=>p[0]===start&&p[1]===end)) pairs.push([start,end]);
+  });
+  pairs.sort((a,b)=>a[0].localeCompare(b[0])||a[1].localeCompare(b[1]));
+  TT_TIME_PAIRS=pairs;
+  TT_TIMES=pairs.map(p=>ttFormatClock(p[0])+"–"+ttFormatClock(p[1]));
 }
 function adminDayName(key) {
   return ({mon:"Monday",tue:"Tuesday",wed:"Wednesday",thu:"Thursday",fri:"Friday"})[key] || key;
@@ -2460,6 +2477,7 @@ function adminSlotFor(prog, section, day, timeIdx) {
 }
 
 function renderTimetable() {
+  refreshAdminTimetableTimes();
   const slots=adminTimetableSlots();
   const progs=[...new Set([...slots.map(s=>s.programme).filter(Boolean),...ttDraftGroups().map(x=>x.programme)])];
   if(!ttCurrentProg && progs.length) ttCurrentProg=progs[0];
@@ -2573,7 +2591,10 @@ function openTTEdit(day,timeIdx){
   if(!ttCurrentProg||!ttCurrentSection) return toast("Create/select a timetable first","error");
   ttEditing={day,timeIdx};
   const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx);
+  const defaultPair=adminTimePair(timeIdx)||["09:00","10:00"];
   document.getElementById("tt-slot-info").innerHTML=`<span style="color:var(--gold)">${adminDayName(day)}</span> · ${TT_TIMES[timeIdx]} · <span style="color:var(--text)">${ttCurrentProg} / ${ttCurrentSection}</span>`;
+  document.getElementById("tt-start-time").value=String(cell?.start_time||defaultPair[0]).slice(0,5);
+  document.getElementById("tt-end-time").value=String(cell?.end_time||defaultPair[1]).slice(0,5);
   document.getElementById("tt-modal-title").textContent=cell?"Edit Class Slot":"Add Class to Slot";
   document.getElementById("tt-subject").value=cell?.subject||"";
   document.getElementById("tt-room").value=cell?.room||"";
@@ -2587,7 +2608,8 @@ function openTTEdit(day,timeIdx){
 async function saveTTCell(){
   const {day,timeIdx}=ttEditing;
   const subject=document.getElementById("tt-subject").value;
-  const pair=adminTimePair(timeIdx);
+  const pair=[document.getElementById("tt-start-time").value,document.getElementById("tt-end-time").value];
+  if(!pair[0]||!pair[1]||pair[0]>=pair[1]) return toast("Enter a valid start and end time.","error");
   const existing=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx);
   try{
     if(!subject){
