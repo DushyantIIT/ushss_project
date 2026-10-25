@@ -2704,7 +2704,8 @@ function renderSubjectsOffered() {
 async function loadElectiveOfferings(){
  const list=document.getElementById("elective-offerings-list"),select=document.getElementById("electiveSubjectChoice");if(!list||!select)return;
  const offered=Array.isArray(window.__offeredSubjects)?window.__offeredSubjects:[];
- const electives=offered.filter(x=>x.paper_category==="Elective");
+ const baElectiveCategories=new Set(["MSC","IDC","SEC","AEC","VAC"]);
+ const electives=offered.filter(x=>x.paper_category==="Elective"||(String(x.programme||"").trim()==="B.A."&&baElectiveCategories.has(String(x.paper_category||"").trim().toUpperCase())));
  select.innerHTML='<option value="">Select elective subject</option>'+electives.map(x=>'<option value="'+Number(x.id)+'">'+String(x.subject||"").replace(/[&<>"]/g,"")+' — '+String(x.course||"")+' / Sem '+String(x.semester||"")+'</option>').join("");
  try{
   const rows=await adminApiJson("/api/admin/elective-offerings");
