@@ -116,8 +116,24 @@ def get_timetable(
     def normalise(value):
         return " ".join(str(value or "").strip().lower().split())
 
+    def legacy_group_part(row, pattern):
+        # Older timetable records stored the whole label in the section column,
+        # e.g. "English · 2025-2027 · Sem III · Section A".
+        label = str(row.get("section") or "")
+        match = re.search(pattern, label, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else ""
+
+    def row_semester(row):
+        return row.get("semester") or legacy_group_part(row, r"\\bSem(?:ester)?\\s+([^·]+)")
+
+    def row_section(row):
+        return row.get("section") if not legacy_group_part(row, r"\\bSection\\s+([^·]+)") else legacy_group_part(row, r"\\bSection\\s+([^·]+)")
+
+    def row_course(row):
+        return row.get("course") or str(row.get("section") or "").split(" · ", 1)[0]
+
     def semester_key(value):
-        raw = normalise(value).replace("semester", "").strip()
+        raw = normalise(value).replace("semester", "").replace("sem", "").strip()
         roman = {"i":"1", "ii":"2", "iii":"3", "iv":"4", "v":"5", "vi":"6", "vii":"7", "viii":"8"}
         return roman.get(raw, raw)
 
@@ -127,13 +143,13 @@ def get_timetable(
     student_section = normalise(student.get("section"))
     student_course = normalise(student.get("department") or student.get("course"))
     if student_semester:
-        rows = [row for row in rows if semester_key(row.get("semester")) == semester_key(student_semester)]
+        rows = [row for row in rows if semester_key(row_semester(row)) == semester_key(student_semester)]
     if student_section:
-        rows = [row for row in rows if normalise(row.get("section") or "None") == student_section]
+        rows = [row for row in rows if normalise(row_section(row) or "None") == student_section]
     if student_course:
         rows = [
             row for row in rows
-            if not row.get("course") or normalise(row.get("course")) == student_course
+            if not row_course(row) or normalise(row_course(row)) == student_course
         ]
 
     return rows
