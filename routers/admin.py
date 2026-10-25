@@ -712,30 +712,31 @@ class TimetableUpdate(BaseModel):
     faculty_id:  Optional[int] = None
 
 
-# Academic timetable rule: classes are one hour, with a fixed 30-minute
-# break from 13:00 to 13:30. The API rejects any slot outside these windows.
-VALID_TIMETABLE_SLOTS = {
-    ("09:00", "10:00"),
-    ("10:00", "11:00"),
-    ("11:00", "12:00"),
-    ("12:00", "13:00"),
-    ("13:30", "14:30"),
-    ("14:30", "15:30"),
-    ("15:30", "16:30"),
-    ("16:30", "17:30"),
-}
-
-
+# Timetable slots are editable, but classes remain 60 minutes and may not
+# overlap the fixed 13:00–13:30 break. Morning and afternoon periods stay separate.
 def _validate_timetable_slot(start_time: str, end_time: str, day_of_week: str) -> None:
     day = (day_of_week or "").strip().lower()
     if day not in {"monday", "tuesday", "wednesday", "thursday", "friday"}:
         raise HTTPException(400, "Timetable day must be Monday through Friday.")
 
-    if (start_time, end_time) not in VALID_TIMETABLE_SLOTS:
+    try:
+        start = datetime.strptime(start_time, "%H:%M")
+        end = datetime.strptime(end_time, "%H:%M")
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Start and end times must use HH:MM format.")
+
+    if (end - start).total_seconds() != 3600:
+        raise HTTPException(400, "Each timetable class must be exactly 60 minutes.")
+
+    start_min = start.hour * 60 + start.minute
+    end_min = end.hour * 60 + end.minute
+    morning_ok = start_min >= 9 * 60 and end_min <= 13 * 60
+    afternoon_ok = start_min >= 13 * 60 + 30 and end_min <= 17 * 60 + 30
+    if not (morning_ok or afternoon_ok):
         raise HTTPException(
             400,
-            "Invalid timetable slot. Classes run hourly from 9:00 AM to 1:00 PM "
-            "and 1:30 PM to 5:30 PM, with a fixed 30-minute break from 1:00 PM to 1:30 PM."
+            "Classes must be between 9:00 AM and 1:00 PM or 1:30 PM and 5:30 PM, "
+            "without overlapping the 1:00–1:30 PM break."
         )
 
 
