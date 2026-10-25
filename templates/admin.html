@@ -1417,7 +1417,7 @@ function renderPage(page) {
     try { updateBadges(); } catch(e) { console.warn("Admin badge refresh failed:", e); }
     if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
-    else if(page==="timetable") c.innerHTML=renderTimetable();
+    else if(page==="timetable") { c.innerHTML=renderTimetable(); loadOfferedSubjects(); }
     else if(page==="subjects-taught") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
     else if(page==="attendance") c.innerHTML=renderAttendance();
     else if(page==="announcements") c.innerHTML=renderAnnouncements();
@@ -2703,6 +2703,7 @@ async function loadOfferedSubjects() {
       const target = document.getElementById("content");
       if (target) target.innerHTML = renderSubjectsOffered();
     }
+    else if (currentPage === "timetable" && document.getElementById("tt-modal") && document.getElementById("tt-modal").classList.contains("open")) filterTimetableSubjectsForCurrentGroup();
   } catch (error) {
     console.error("Could not load taught subjects:", error);
     toast(error.message || "Could not load subjects.", "error");
@@ -2847,39 +2848,23 @@ async function publishTimetable(programme, group) {
 function filterTimetableSubjectsForCurrentGroup(){
   const select=document.getElementById("tt-subject");
   if(!select) return;
-  // Keep an untouched copy so each invocation can rebuild the native select.
-  // Some browsers ignore hidden/display styles on <optgroup> inside <select>.
-  if(!select.__allSubjectOptions){
-    select.__allSubjectOptions=Array.from(select.children).map(node=>node.cloneNode(true));
-  }
+  const savedValue=select.value;
   const meta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection)||{};
-  const normalise=value=>String(value||"").toLowerCase().replace(/[^a-z0-9]/g,"");
-  const programme=normalise(ttCurrentProg);
-  const course=normalise(meta.course||ttCurrentCourse||"");
+  const norm=v=>String(v||"").trim().toLowerCase().replace(/[^a-z0-9]/g,"");
   const roman={"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII","I":"I","II":"II","III":"III","IV":"IV","V":"V","VI":"VI","VII":"VII","VIII":"VIII"};
-  // Only accept a bare semester value or a number explicitly introduced by
-  // "Sem"/"Semester"; never mistake the batch year (e.g. 2025-2027) for a semester.
-  const explicit=String(meta.semester||"").trim().toUpperCase().match(/^(VIII|VII|VI|V|IV|III|II|I|[1-8])$/);
-  const labelMatch=String(ttCurrentSection||"").match(/\bSEM(?:ESTER)?\s*(VIII|VII|VI|V|IV|III|II|I|[1-8])\b/i);
-  const rawSemester=explicit?explicit[1]:(labelMatch?labelMatch[1].toUpperCase():"");
-  const semester=roman[rawSemester]||"";
-  const isMAEnglish=(programme.includes("ma")||programme.includes("masterofarts")) && course.includes("english");
-  const target=isMAEnglish && ["I","II","III","IV"].includes(semester)
-    ? "MA English — Semester "+semester+" (all sections)" : "";
-  const original=select.__allSubjectOptions;
-  select.replaceChildren();
-  original.forEach(node=>{
-    if(node.tagName==="OPTGROUP"){
-      const isFree=node.label==="";
-      const keep=isFree || (!!target && node.label===target) || !isMAEnglish;
-      if(keep) select.appendChild(node.cloneNode(true));
-    } else {
-      // Keep the standalone "Free / No Class" option, not unrelated papers.
-      if(!isMAEnglish || node.value==="") select.appendChild(node.cloneNode(true));
-    }
+  const sem=roman[String(meta.semester||"").trim().toUpperCase()]||"";
+  const prog=norm(ttCurrentProg), course=norm(meta.course||ttCurrentCourse||"");
+  const max=(prog==="ma"||prog.includes("masterofarts"))?4:8;
+  const items=(Array.isArray(window.__offeredSubjects)?window.__offeredSubjects:[]).filter(s=>{
+    const sp=norm(s.programme), sc=norm(s.course), ss=roman[String(s.semester||"").trim().toUpperCase()]||"";
+    const pm=sp===prog||(prog==="ba"&&sp==="bachelorofarts")||(prog==="ma"&&sp==="masterofarts");
+    return pm&&sc===course&&ss&&["I","II","III","IV","V","VI","VII","VIII"].indexOf(ss)<max&&(!sem||ss===sem);
   });
-  const selected=select.selectedOptions[0];
-  if(selected && selected.value && !Array.from(select.options).some(option=>option.value===selected.value)) select.value="";
+  select.replaceChildren();
+  const free=document.createElement("option"); free.value=""; free.textContent="— Free / No Class —"; select.appendChild(free);
+  const seen=new Set();
+  items.forEach(s=>{const name=String(s.subject||"").trim(), code=String(s.course_code||"").trim(); if(!name)return; const k=norm(name)+"|"+norm(code); if(seen.has(k))return; seen.add(k); const o=document.createElement("option"); o.value=name; o.textContent=code?name+" ("+code+")":name; select.appendChild(o);});
+  select.value=savedValue&&Array.from(select.options).some(o=>o.value===savedValue)?savedValue:"";
 }
 function addClassToFirstAvailableSlot(){
   try {
