@@ -2691,7 +2691,7 @@ function updateTaughtSubjectPaperCategories() {
    const category = document.getElementById("taughtSubjectPaperCategory");
    if (!programme || !category) return;
    const previous = category.value;
-   const baOptions = [["Theory","Theory"],["Elective","Elective"]];
+   const baOptions = [["DSC","DSC - Discipline Specific Course"],["FC","FC - Foundation Course"],["MSC","MSC - Minor Stream Course"],["IDC","IDC - Interdisciplinary Course"],["SEC","SEC - Skill Enhancement Course"],["AEC","AEC - Ability Enhancement Course"],["VAC","VAC - Value Addition Course"]];
    const maOptions = [["Theory","Theory"],["Elective","Elective"]];
    const options = programme.value === "B.A." ? baOptions : maOptions;
    category.innerHTML = '<option value="">Select paper category</option>' + options.map(([value,label]) => '<option value="' + value + '">' + label + '</option>').join("");
