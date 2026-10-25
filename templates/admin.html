@@ -2833,20 +2833,41 @@ function filterTimetableSubjectsForCurrentGroup(){
   if(selected && selected.hidden) select.value="";
 }
 function openTTEdit(day,timeIdx){
-  if(!ttCurrentProg||!ttCurrentSection) return toast("Create/select a timetable first","error");
-  ttEditing={day,timeIdx};
-  const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx);
-  const defaultPair=adminTimePair(timeIdx)||["09:00","10:00"];
-  document.getElementById("tt-slot-info").innerHTML=`<span style="color:var(--gold)">${adminDayName(day)}</span> · ${TT_TIMES[timeIdx]} · <span style="color:var(--text)">${ttCurrentProg} / ${ttCurrentSection}</span>`;
-  document.getElementById("tt-modal-title").textContent=cell?"Edit Class Slot":"Add Class to Slot";
-  document.getElementById("tt-subject").value=cell?.subject||"";
-  filterTimetableSubjectsForCurrentGroup();
-  document.getElementById("tt-room").value=cell?.room||"";
-  populateFacultyDropdowns();
-  const assignedIds=(cell?.faculty_ids|| (cell?.faculty_id?[cell.faculty_id]:[])).map(String);
-  Array.from(document.getElementById("tt-faculty").options).forEach(o=>{o.selected=assignedIds.includes(o.value);});
-  document.getElementById("tt-notes").value="";
-  document.getElementById("tt-modal").classList.add("open");
+  try {
+    if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group before editing a class.","error");
+    const index=Number(timeIdx);
+    if(!Number.isInteger(index)||!adminTimePair(index)) return toast("This timetable time slot is invalid. Refresh the timetable and try again.","error");
+    ttEditing={day:String(day),timeIdx:index};
+    const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,index);
+    const info=document.getElementById("tt-slot-info");
+    const title=document.getElementById("tt-modal-title");
+    const subjectSelect=document.getElementById("tt-subject");
+    const roomInput=document.getElementById("tt-room");
+    const facultySelect=document.getElementById("tt-faculty");
+    const notesInput=document.getElementById("tt-notes");
+    const modal=document.getElementById("tt-modal");
+    if(!info||!title||!subjectSelect||!roomInput||!facultySelect||!notesInput||!modal) throw new Error("The timetable editor could not be loaded. Refresh the page and try again.");
+    info.textContent=adminDayName(day)+" · "+TT_TIMES[index]+" · "+ttCurrentProg+" / "+ttCurrentSection;
+    title.textContent=cell?"Edit Class Slot":"Add Class to Slot";
+    filterTimetableSubjectsForCurrentGroup();
+    const savedSubject=String(cell?.subject||"");
+    if(savedSubject&&!Array.from(subjectSelect.options).some(option=>option.value===savedSubject)){
+      const savedOption=document.createElement("option");
+      savedOption.value=savedSubject;savedOption.textContent=savedSubject;
+      savedOption.dataset.savedTimetableSubject="true";
+      subjectSelect.insertBefore(savedOption,subjectSelect.options[1]||null);
+    }
+    subjectSelect.value=savedSubject;
+    roomInput.value=cell?.room||"";
+    populateFacultyDropdowns();
+    const assignedIds=(cell?.faculty_ids|| (cell?.faculty_id?[cell.faculty_id]:[])).map(String);
+    Array.from(facultySelect.options).forEach(option=>{option.selected=assignedIds.includes(option.value);});
+    notesInput.value=cell?.notes||"";
+    modal.classList.add("open");
+  } catch(error) {
+    console.error("Could not open timetable editor:",error);
+    toast(error?.message||"Could not open the timetable editor. Please refresh and try again.","error");
+  }
 }
 
 async function saveTTCell(){
