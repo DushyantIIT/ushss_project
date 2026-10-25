@@ -182,17 +182,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tt-section-tab:hover .tt-section-del{opacity:1}
 
 /* Timetable grid */
-.tt-grid{display:grid;grid-template-columns:100px repeat(8,minmax(105px,1fr));gap:2px;margin-top:0}
-.tt-head{background:var(--surface2);padding:10px 8px;text-align:center;font-size:11px;font-weight:600;color:var(--gold);border-radius:var(--radius) var(--radius) 0 0;border:1px solid var(--border2);font-family:var(--mono);letter-spacing:.5px}
-.tt-time{background:var(--surface2);padding:8px 6px;text-align:center;font-size:10px;color:var(--muted);border:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;justify-content:center;min-height:56px}
-.tt-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px;min-height:56px;cursor:pointer;transition:all .15s;position:relative}
+.tt-grid{display:grid;grid-template-columns:112px repeat(8,minmax(125px,1fr));gap:3px;margin-top:0}
+.tt-head{background:var(--surface2);padding:13px 10px;text-align:center;font-size:12px;font-weight:600;color:var(--gold);border-radius:var(--radius) var(--radius) 0 0;border:1px solid var(--border2);font-family:var(--mono);letter-spacing:.5px}
+.tt-time{background:var(--surface2);padding:10px 8px;text-align:center;font-size:11px;color:var(--muted);border:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;justify-content:center;min-height:72px}
+.tt-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:10px;min-height:72px;cursor:pointer;transition:all .15s;position:relative}
 .tt-cell:hover{border-color:var(--gold);background:var(--surface2)}
 .tt-cell.has-class{background:rgba(139,42,42,.12);border-color:rgba(139,42,42,.3)}
 .tt-cell.has-class:hover{background:rgba(139,42,42,.2);border-color:var(--gold)}
 .tt-cell.break{background:rgba(201,168,76,.05);border-color:rgba(201,168,76,.15)}
-.tt-cell-subject{font-size:11px;font-weight:600;color:var(--cream);line-height:1.3;margin-bottom:3px}
-.tt-cell-room{font-size:10px;color:var(--muted);font-family:var(--mono)}
-.tt-cell-teacher{font-size:10px;color:var(--gold);font-family:var(--mono)}
+.tt-cell-subject{font-size:12px;font-weight:600;color:var(--cream);line-height:1.3;margin-bottom:3px}
+.tt-cell-room{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.tt-cell-teacher{font-size:11px;color:var(--gold);font-family:var(--mono)}
 .tt-cell-empty{font-size:11px;color:var(--border2);text-align:center;line-height:3}
 .tt-edit-btn{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:3px;background:var(--surface3);border:1px solid var(--border2);color:var(--muted);font-size:10px;display:none;align-items:center;justify-content:center;cursor:pointer}
 .tt-cell:hover .tt-edit-btn{display:flex}
@@ -2532,7 +2532,7 @@ function renderTimetable() {
       <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
-      <div class="tt-grid" style="min-width:1000px"><div class="tt-head" style="background:transparent;border-color:transparent">DAY / TIME</div>${timeHeaders}${rows}</div>
+      <div class="tt-grid" style="min-width:1120px"><div class="tt-head" style="background:transparent;border-color:transparent">DAY / TIME</div>${timeHeaders}${rows}</div>
     </div>`;
   } else {
     gridHTML=`<div class="tt-empty-state"><div class="tt-empty-icon">🗓️</div><div class="tt-empty-title">No timetable slots yet</div><div class="tt-empty-sub">Create a programme/section, then add classes to its cells.</div><button class="btn btn-primary btn-lg" onclick="openNewTimetableModal()">➕ Create Timetable</button></div>`;
