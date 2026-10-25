@@ -262,24 +262,27 @@ tr:hover td{background:rgba(255,255,255,.01)}
 :root[data-ushss-theme="light"] td { color:var(--ink-mid); }
 
 
-/* Enforce consistent, high-contrast text across the entire page for the selected theme. */
-:root[data-ushss-theme="light"] body,
-:root[data-ushss-theme="light"] body *,
-:root[data-ushss-theme="light"] body *::before,
-:root[data-ushss-theme="light"] body *::after {
-  color:#171717 !important;
+/* Theme-safe base colours. Keep component-specific brand colours intact. */
+:root[data-ushss-theme="light"] body { background:var(--bg); color:var(--ink,#1A1209); }
+:root[data-ushss-theme="dark"] body { background:var(--bg); color:var(--text,#E8E4DC); }
+:root[data-ushss-theme="light"] input,
+:root[data-ushss-theme="light"] textarea,
+:root[data-ushss-theme="light"] select {
+  background:var(--surface2,#F5F1EA);
+  color:var(--ink,#1A1209);
+  border-color:var(--border2,#CFC6B5);
 }
-:root[data-ushss-theme="dark"] body,
-:root[data-ushss-theme="dark"] body *,
-:root[data-ushss-theme="dark"] body *::before,
-:root[data-ushss-theme="dark"] body *::after {
-  color:#F5F5F5 !important;
+:root[data-ushss-theme="dark"] input,
+:root[data-ushss-theme="dark"] textarea,
+:root[data-ushss-theme="dark"] select {
+  background:var(--surface2,#22252A);
+  color:var(--text,#E8E4DC);
+  border-color:var(--border2,#454B55);
 }
-/* Keep placeholder text readable while retaining the same theme contrast. */
-:root[data-ushss-theme="light"] body input::placeholder,
-:root[data-ushss-theme="light"] body textarea::placeholder { color:#555555 !important; }
-:root[data-ushss-theme="dark"] body input::placeholder,
-:root[data-ushss-theme="dark"] body textarea::placeholder { color:#D0D0D0 !important; }
+:root[data-ushss-theme="light"] input::placeholder,
+:root[data-ushss-theme="light"] textarea::placeholder { color:var(--muted,#8A7B6E); opacity:1; }
+:root[data-ushss-theme="dark"] input::placeholder,
+:root[data-ushss-theme="dark"] textarea::placeholder { color:var(--muted,#B3A596); opacity:1; }
 
 
 /* Preserve white text on maroon backgrounds even when Light theme is selected. */
