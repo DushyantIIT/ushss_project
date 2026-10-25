@@ -2655,6 +2655,7 @@ function adminSlotFor(prog, section, day, timeIdx) {
 }
 
 function renderSubjectsOffered() {
+  // Semester options are limited by programme: B.A. I–VIII, M.A. I–IV.
   const subjects = Array.isArray(window.__offeredSubjects) ? window.__offeredSubjects : [];
   const esc = value => String(value == null || value === "" ? "—" : value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
   const rows = subjects.map((s,i) => `<tr>
@@ -2671,9 +2672,9 @@ function renderSubjectsOffered() {
     <form onsubmit="addOfferedSubject(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">
       <label style="display:block"><span class="field-label">Subject name *</span><input class="form-input" name="subject" maxlength="200" required placeholder="Enter subject name"></label>
       <label style="display:block"><span class="field-label">Course code *</span><input class="form-input" name="course_code" maxlength="50" required placeholder="e.g. ENG-201"></label>
-      <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" required><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
+      <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" id="taughtSubjectProgramme" required onchange="updateTaughtSubjectSemesters()"><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
       <label style="display:block"><span class="field-label">Course *</span><select class="form-input" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
-      <label style="display:block"><span class="field-label">Semester *</span><select class="form-input" name="semester" required><option value="">Select semester</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>VII</option><option>VIII</option></select></label>
+      <label style="display:block"><span class="field-label">Semester *</span><select class="form-input" name="semester" id="taughtSubjectSemester" required><option value="">Select semester</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>VII</option><option>VIII</option></select></label>
       <div><button class="btn btn-primary" type="submit">＋ Add Subject</button></div>
     </form>
   </div>
@@ -2681,6 +2682,17 @@ function renderSubjectsOffered() {
     <div style="padding:16px 20px;border-bottom:1px solid var(--border)"><div class="card-title">Subject Catalogue</div></div>
     ${subjects.length ? `<div class="table-wrap" style="border:0;border-radius:0"><table><thead><tr><th>#</th><th>Subject</th><th>Course Code</th><th>Programme</th><th>Course</th><th>Semester</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div style="padding:32px 20px;text-align:center;color:var(--muted);font-size:13px">No subjects have been added yet. Use the form above to add the first subject.</div>`}
   </div>`;
+}
+
+function updateTaughtSubjectSemesters() {
+  const programme = document.getElementById("taughtSubjectProgramme");
+  const semester = document.getElementById("taughtSubjectSemester");
+  if (!programme || !semester) return;
+  const maxSemester = programme.value === "M.A." ? 4 : 8;
+  const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
+  const previous = semester.value;
+  semester.innerHTML = '<option value="">Select semester</option>' + roman.slice(0, maxSemester).map(value => `<option value="${value}">${value}</option>`).join("");
+  if (roman.slice(0, maxSemester).includes(previous)) semester.value = previous;
 }
 
 async function loadOfferedSubjects() {
