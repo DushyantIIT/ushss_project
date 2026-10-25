@@ -2870,9 +2870,12 @@ function openTTEdit(day,timeIdx){
   try {
     if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group before editing a class.","error");
     const index=Number(timeIdx);
-    if(!Number.isInteger(index)||!adminTimePair(index)) return toast("This timetable time slot is invalid. Refresh the timetable and try again.","error");
+    const pair=adminTimePair(index);
+    if(!Number.isInteger(index)||!Array.isArray(pair)||pair.length!==2||!pair[0]||!pair[1]) return toast("This timetable time slot is invalid. Refresh the timetable and try again.","error");
+    const days=Array.isArray(TT_DAYS)?TT_DAYS:[];
+    if(!days.some(item=>item&&String(item.key)===String(day))) return toast("This timetable day is invalid. Refresh the timetable and try again.","error");
     ttEditing={day:String(day),timeIdx:index};
-    const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,index);
+    const cell=adminSlotFor(ttCurrentProg,ttCurrentSection,day,index)||null;
     const info=document.getElementById("tt-slot-info");
     const title=document.getElementById("tt-modal-title");
     const subjectSelect=document.getElementById("tt-subject");
@@ -2881,29 +2884,30 @@ function openTTEdit(day,timeIdx){
     const notesInput=document.getElementById("tt-notes");
     const modal=document.getElementById("tt-modal");
     if(!info||!title||!subjectSelect||!roomInput||!facultySelect||!notesInput||!modal) throw new Error("The timetable editor could not be loaded. Refresh the page and try again.");
-    info.textContent=adminDayName(day)+" · "+TT_TIMES[index]+" · "+ttCurrentProg+" / "+ttCurrentSection;
+    info.textContent=adminDayName(day)+" · "+String(TT_TIMES[index]||pair.join("–"))+" · "+ttCurrentProg+" / "+ttCurrentSection;
     title.textContent=cell?"Edit Class Slot":"Add Class to Slot";
-    filterTimetableSubjectsForCurrentGroup();
-    const savedSubject=String(cell?.subject||"");
-    if(savedSubject&&!Array.from(subjectSelect.options).some(option=>option.value===savedSubject)){
+    const savedSubject=String(cell&&cell.subject||"");
+    // A malformed optional subject/faculty list must not block opening an empty cell.
+    try { filterTimetableSubjectsForCurrentGroup(); }
+    catch(filterError) { console.error("Timetable subject filtering failed:",filterError); }
+    if(savedSubject&&!Array.from(subjectSelect.options||[]).some(option=>option.value===savedSubject)){
       const savedOption=document.createElement("option");
       savedOption.value=savedSubject;savedOption.textContent=savedSubject;
       savedOption.dataset.savedTimetableSubject="true";
       subjectSelect.insertBefore(savedOption,subjectSelect.options[1]||null);
     }
     subjectSelect.value=savedSubject;
-    roomInput.value=cell?.room||"";
-    populateFacultyDropdowns();
-    // API rows can contain faculty_ids as null or a non-array legacy value.
-    // Normalize it before using it so opening an empty cell is always safe.
-    const rawFacultyIds=cell?.faculty_ids;
-    const assignedIds=(Array.isArray(rawFacultyIds)?rawFacultyIds:(cell?.faculty_id?[cell.faculty_id]:[])).map(String);
-    Array.from(facultySelect.options).forEach(option=>{option.selected=assignedIds.includes(option.value);});
-    notesInput.value=cell?.notes||"";
+    roomInput.value=String(cell&&cell.room||"");
+    try { populateFacultyDropdowns(); }
+    catch(facultyError) { console.error("Timetable faculty dropdown setup failed:",facultyError); }
+    const rawFacultyIds=cell&&cell.faculty_ids;
+    const assignedIds=(Array.isArray(rawFacultyIds)?rawFacultyIds:(cell&&cell.faculty_id?[cell.faculty_id]:[])).map(String);
+    Array.from(facultySelect.options||[]).forEach(option=>{option.selected=assignedIds.includes(option.value);});
+    notesInput.value=String(cell&&cell.notes||"");
     modal.classList.add("open");
   } catch(error) {
     console.error("Could not open timetable editor:",error);
-    toast(error?.message||"Could not open the timetable editor. Please refresh and try again.","error");
+    toast(error&&error.message||"Could not open the timetable editor. Please refresh and try again.","error");
   }
 }
 
