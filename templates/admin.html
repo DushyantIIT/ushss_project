@@ -2673,8 +2673,8 @@ function renderSubjectsOffered() {
             <label style="display:block"><span class="field-label">Paper ID *</span><input class="form-input" name="paper_id" maxlength="80" required placeholder="Enter paper ID"></label>
       <label style="display:block"><span class="field-label">Subject Code *</span><input class="form-input" name="course_code" maxlength="50" required placeholder="Enter subject code"></label>
       <label style="display:block"><span class="field-label">Subject Name *</span><input class="form-input" name="subject" maxlength="200" required placeholder="Enter subject name"></label>
-      <label style="display:block"><span class="field-label">Paper Category *</span><select class="form-select" name="paper_category" required><option value="">Select paper category</option><option value="DSC">DSC</option><option value="MSC">MSC</option><option value="Elective">Elective</option><option value="Minors (Elective)">Minors (Elective)</option><option value="AEC">AEC</option><option value="SEC">SEC</option></select></label>
-      <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" id="taughtSubjectProgramme" required onchange="updateTaughtSubjectSemesters()"><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
+      <label style="display:block"><span class="field-label">Paper Category *</span><select class="form-select" name="paper_category" id="taughtSubjectPaperCategory" required><option value="">Select paper category</option></select></label>
+      <label style="display:block"><span class="field-label">Programme *</span><select class="form-input" name="programme" id="taughtSubjectProgramme" required onchange="updateTaughtSubjectSemesters();updateTaughtSubjectPaperCategories()"><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
       <label style="display:block"><span class="field-label">Course *</span><select class="form-input" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
       <label style="display:block"><span class="field-label">Semester *</span><select class="form-input" name="semester" id="taughtSubjectSemester" required><option value="">Select semester</option><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option><option>VII</option><option>VIII</option></select></label>
       <div><button class="btn btn-primary" type="submit">＋ Add Subject</button></div>
@@ -2686,7 +2686,18 @@ function renderSubjectsOffered() {
   </div>`;
 }
 
-function updateTaughtSubjectSemesters() {
+function updateTaughtSubjectPaperCategories() {
+   const programme = document.getElementById("taughtSubjectProgramme");
+   const category = document.getElementById("taughtSubjectPaperCategory");
+   if (!programme || !category) return;
+   const previous = category.value;
+   const baOptions = [["DSC","DSC - Discipline Specific Course"],["FC","FC - Foundation Course"],["MSC","MSC - Minor Stream Course"],["IDC","IDC - Interdisciplinary Course"],["SEC","SEC - Skill Enhancement Course"],["AEC","AEC - Ability Enhancement Course"],["VAC","VAC - Value Addition Course"]];
+   const maOptions = [["DSC","DSC - Discipline Specific Course"],["MSC","MSC - Minor Stream Course"],["Elective","Elective"],["Minors (Elective)","Minors (Elective)"],["AEC","AEC - Ability Enhancement Course"],["SEC","SEC - Skill Enhancement Course"]];
+   const options = programme.value === "B.A." ? baOptions : maOptions;
+   category.innerHTML = '<option value="">Select paper category</option>' + options.map(([value,label]) => '<option value="' + value + '">' + label + '</option>').join("");
+   if (options.some(([value]) => value === previous)) category.value = previous;
+ }
+ function updateTaughtSubjectSemesters() {
   const programme = document.getElementById("taughtSubjectProgramme");
   const semester = document.getElementById("taughtSubjectSemester");
   if (!programme || !semester) return;
