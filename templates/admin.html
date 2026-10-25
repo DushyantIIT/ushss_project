@@ -560,6 +560,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
+    <div class="nav-item" onclick="showPage('subjects-offered')" data-page="subjects-offered"><span class="icon">📖</span> Subjects Offered</div>
     <div class="nav-item" onclick="showPage('attendance')" data-page="attendance"><span class="icon">✅</span> Attendance Editor<span class="nav-badge-live" id="live-nav-badge" style="display:none">LIVE</span></div>
     <div class="nav-item" onclick="showPage('announcements')" data-page="announcements"><span class="icon">📢</span> Announcements<span class="nav-badge" id="badge-ann">3</span></div>
 
@@ -1386,6 +1387,7 @@ const pageTitles={
   admin:["Administrators","USHSS / Admin / Users / Admin"],
   "pending-requests":["Pending Registrations","USHSS / Admin / User Management / Pending Registrations"],
   timetable:["Timetable Manager","USHSS / Admin / Academic / Timetable"],
+  "subjects-offered":["Subjects Offered","USHSS / Admin / Academic / Subjects Offered"],
   attendance:["Attendance Editor","USHSS / Admin / Academic / Attendance"],
   announcements:["Announcements","USHSS / Admin / Academic / Announcements"],
   audit:["Audit Log","USHSS / Admin / System / Audit"],
@@ -1416,6 +1418,7 @@ function renderPage(page) {
     if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") c.innerHTML=renderTimetable();
+    else if(page==="subjects-offered") c.innerHTML=renderSubjectsOffered();
     else if(page==="attendance") c.innerHTML=renderAttendance();
     else if(page==="announcements") c.innerHTML=renderAnnouncements();
     else if(page==="audit") c.innerHTML=renderAudit();
@@ -2649,6 +2652,58 @@ function adminSlotFor(prog, section, day, timeIdx) {
     String(slot.start_time||"").slice(0,5)===pair[0] &&
     String(slot.end_time||"").slice(0,5)===pair[1]
   ) || null;
+}
+
+function renderSubjectsOffered() {
+  // Subjects Offered is derived only from actual timetable records. Do not
+  // invent a catalogue or display placeholder/hardcoded subject names.
+  const slots = adminTimetableSlots().filter(slot => {
+    if (!slot || typeof slot.subject !== "string") return false;
+    const subject = slot.subject.trim();
+    return subject && !/^(free\s*\/\s*no class|free|no class|break)$/i.test(subject);
+  });
+  if (!slots.length) return `
+    <div class="card" style="max-width:820px;margin:0 auto;text-align:center;padding:42px 24px">
+      <div style="font-size:34px;margin-bottom:12px">📖</div>
+      <div class="card-title" style="font-size:18px">No subjects added yet</div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.7;max-width:540px;margin:10px auto 20px">Subjects will appear here automatically when a subject is assigned to a timetable slot. No sample or hardcoded subjects are shown.</p>
+      <button class="btn btn-primary" onclick="showPage('timetable')">Open Timetable Manager →</button>
+    </div>`;
+  const keyOf = slot => [slot.programme||"Programme not set",slot.course||"Course not set",slot.batch||"Batch not set",slot.semester||"Semester not set"].join("|||");
+  const groups = new Map();
+  const clean = value => String(value == null || value === "" ? "—" : value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  slots.forEach(slot => {
+    const key = keyOf(slot);
+    if (!groups.has(key)) groups.set(key,{programme:slot.programme||"Programme not set",course:slot.course||"Course not set",batch:slot.batch||"Batch not set",semester:slot.semester||"Semester not set",subjects:new Map()});
+    const group=groups.get(key);
+    const name=slot.subject.trim();
+    if (!group.subjects.has(name.toLowerCase())) group.subjects.set(name.toLowerCase(),{name,sections:new Set(),faculty:new Set()});
+    const item=group.subjects.get(name.toLowerCase());
+    if (slot.section) item.sections.add(String(slot.section));
+    const faculty=slot.faculty_name||slot.faculty_full_name||slot.teacher;
+    if (faculty) item.faculty.add(String(faculty));
+  });
+  const sortedGroups=[...groups.values()].sort((a,b)=>(a.programme+a.course+a.batch+String(a.semester)).localeCompare(b.programme+b.course+b.batch+String(b.semester)));
+  const cards=sortedGroups.map(group=>{
+    const subjects=[...group.subjects.values()].sort((a,b)=>a.name.localeCompare(b.name));
+    const rows=subjects.map((item,index)=>`<tr>
+      <td class="mono">${String(index+1).padStart(2,"0")}</td>
+      <td><strong style="color:var(--cream)">${clean(item.name)}</strong></td>
+      <td>${item.sections.size?[...item.sections].map(clean).join(", "):"—"}</td>
+      <td>${item.faculty.size?[...item.faculty].map(clean).join(", "):"—"}</td>
+    </tr>`).join("");
+    return `<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
+      <div style="padding:17px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><div class="card-title" style="font-size:15px">${clean(group.programme)} · ${clean(group.course)}</div><div class="card-sub" style="margin-top:6px">Batch: ${clean(group.batch)} &nbsp;·&nbsp; Semester: ${clean(group.semester)}</div></div>
+        <span class="badge badge-teal">${subjects.length} subject${subjects.length===1?"":"s"}</span>
+      </div>
+      <div class="table-wrap" style="border:0;border-radius:0"><table><thead><tr><th style="width:70px">No.</th><th>Subject</th><th>Section</th><th>Faculty</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+  }).join("");
+  return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+    <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Offered</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Live list of subjects actually assigned in the timetable, grouped by programme, course, batch and semester.</p></div>
+    <div style="display:flex;gap:8px;align-items:center"><span class="badge badge-teal">${slots.length} scheduled slot${slots.length===1?"":"s"}</span><button class="btn btn-ghost" onclick="showPage('timetable')">Manage Timetable ↗</button></div>
+  </div>${cards}`;
 }
 
 function renderTimetable() {
