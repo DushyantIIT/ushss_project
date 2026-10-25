@@ -323,6 +323,64 @@ tr:hover td{background:var(--gold-pale)}
 :root[data-ushss-theme="light"] td { color:var(--ink-mid); }
 
 
+
+/* High-contrast light palette: warm page surfaces, dark readable text. */
+:root[data-ushss-theme="light"] {
+  --bg:#FAF7F2;
+  --surface:#FFFFFF;
+  --surface2:#F0EBE0;
+  --surface3:#E8E0D2;
+  --border:#D4C4A8;
+  --border2:#BDA987;
+  --cream:#1A1209;
+  --text:#1A1209;
+  --muted:#625143;
+  --gold:#805A0B;
+  --gold-l:#805A0B;
+  --gold-pale:#F7EED8;
+  --maroon:#6B1A1A;
+  --maroon-d:#4A0E0E;
+  --maroon-l:#8B2E2E;
+}
+:root[data-ushss-theme="light"] input,
+:root[data-ushss-theme="light"] textarea,
+:root[data-ushss-theme="light"] select,
+:root[data-ushss-theme="light"] option {
+  background-color:#FFFFFF;
+  color:#1A1209;
+}
+:root[data-ushss-theme="light"] ::placeholder { color:#625143; opacity:1; }
+:root[data-ushss-theme="light"] .card,
+:root[data-ushss-theme="light"] .stat-card,
+:root[data-ushss-theme="light"] .modal,
+:root[data-ushss-theme="light"] .table-wrap { box-shadow:0 2px 10px rgba(50,32,12,.06); }
+:root[data-ushss-theme="light"] th,
+:root[data-ushss-theme="light"] .form-label,
+:root[data-ushss-theme="light"] .nav-section-title,
+:root[data-ushss-theme="light"] .sb-section { color:#625143; }
+:root[data-ushss-theme="light"] .btn-primary,
+:root[data-ushss-theme="light"] .btn-primary *,
+:root[data-ushss-theme="light"] .sb-head,
+:root[data-ushss-theme="light"] .sb-head *,
+:root[data-ushss-theme="light"] .dash-welcome,
+:root[data-ushss-theme="light"] .dash-welcome *,
+:root[data-ushss-theme="light"] .att-hero,
+:root[data-ushss-theme="light"] .att-hero *,
+:root[data-ushss-theme="light"] .att-session,
+:root[data-ushss-theme="light"] .att-session *,
+:root[data-ushss-theme="light"] .fac-welcome,
+:root[data-ushss-theme="light"] .fac-welcome *,
+:root[data-ushss-theme="light"] .live-host-card,
+:root[data-ushss-theme="light"] .live-host-card *,
+:root[data-ushss-theme="light"] .sidebar-logo-badge,
+:root[data-ushss-theme="light"] .sidebar-user-avatar,
+:root[data-ushss-theme="light"] .nav-badge,
+:root[data-ushss-theme="light"] .sb-logo-badge,
+:root[data-ushss-theme="light"] .sb-count,
+:root[data-ushss-theme="light"] .sb-badge {
+  color:#F4D98B !important;
+}
+
 /* Theme-safe base colours. Keep component-specific brand colours intact. */
 :root[data-ushss-theme="light"] body { background:var(--bg); color:var(--ink,#1A1209); }
 :root[data-ushss-theme="dark"] body { background:var(--bg); color:var(--text,#E8E4DC); }
