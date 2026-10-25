@@ -196,6 +196,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tt-cell-empty{font-size:11px;color:var(--border2);text-align:center;line-height:3}
 .tt-edit-btn{position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:3px;background:var(--surface3);border:1px solid var(--border2);color:var(--muted);font-size:10px;display:none;align-items:center;justify-content:center;cursor:pointer}
 .tt-cell:hover .tt-edit-btn{display:flex}
+.tt-slot-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;position:relative;z-index:2}
+.tt-slot-actions .btn{padding:4px 7px;font-size:10px;white-space:nowrap}
+.tt-cell.has-class{padding-bottom:8px}
 
 /* Programme colour accents */
 .tt-acc-0{border-left:3px solid #8B2A2A}
@@ -2512,7 +2515,10 @@ function renderTimetable() {
           <div class="tt-cell-subject">${s.subject}</div>
           ${s.room?`<div class="tt-cell-room">📍 ${s.room}</div>`:""}
           ${s.users?.full_name?`<div class="tt-cell-teacher">👤 ${s.users.full_name}</div>`:""}
-          <div class="tt-edit-btn">✎</div>
+          <div class="tt-slot-actions">
+            <button type="button" class="btn btn-amber btn-sm" onclick="event.stopPropagation();openTTEdit(&quot;${d.key}&quot;,${i})">Swap Slot</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTimetableSlot(${s.id},&quot;${d.key}&quot;,${i})">Delete Slot</button>
+          </div>
         </div>`;
       }
       return html;
@@ -2596,6 +2602,18 @@ async function saveTTCell(){
     if(subject) ttForgetDraftGroup(ttCurrentProg,ttCurrentSection);
     closeTTModal(); renderPage("timetable"); toast(subject?"Slot saved":"Slot cleared","success");
   }catch(e){ toast(e.message||"Could not save timetable slot","error"); }
+}
+
+async function deleteTimetableSlot(slotId,day,timeIdx){
+  const slot=adminTimetableSlots().find(s=>String(s.id)===String(slotId));
+  const label=slot?.subject||"this class";
+  if(!window.confirm("Delete the slot for \""+label+"\"? It will be removed from the active timetable; attendance history will be preserved.")) return;
+  try{
+    await adminApiJson("/api/admin/timetable/"+slotId,{method:"DELETE"});
+    await fetchAdminDashboardData();
+    renderPage("timetable");
+    toast("Slot deleted from the active timetable","success");
+  }catch(e){toast(e.message||"Could not delete timetable slot","error");}
 }
 
 function createNewTimetable(){
