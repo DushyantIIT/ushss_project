@@ -427,6 +427,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-section">Overview</div>
     <div class="sb-item active" onclick="goPage('dashboard',this)"><span class="ico">🏛️</span> Dashboard</div>
     <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Mark Attendance</div>
+    <div class="sb-item" onclick="goPage('timetable',this)"><span class="ico">🗓️</span> My Timetable</div>
 
     <div class="sb-section">Class Management</div>
     <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">0</span></div>
@@ -564,6 +565,12 @@ tr:hover td{background:rgba(255,255,255,.01)}
         </div>
         <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="document.getElementById('mark-view').style.display='none';document.getElementById('att-sessions-list').style.display='block'">← Back to Sessions</button>
       </div>
+    </div>
+
+    <!-- CR TIMETABLE -->
+    <div class="page" id="pg-timetable">
+      <div class="sec-head"><div><div class="sec-label">Class Schedule</div><div class="sec-title">My Timetable</div></div><button class="btn btn-ghost btn-sm" onclick="loadCRTimetable()">↻ Refresh</button></div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Programme</th><th>Course</th><th>Batch</th><th>Semester</th><th>Section</th><th>Room</th><th>Faculty</th></tr></thead><tbody id="cr-timetable-body"></tbody></table></div></div>
     </div>
 
     <!-- ANNOUNCEMENTS -->
@@ -746,7 +753,7 @@ function esc(s){
 }
 
 /* ═══ DATA ═══ */
-const DB = { classmates:[], announcements:[], assignments:[], materials:[], liveSessions:[] };
+const DB = { classmates:[], announcements:[], assignments:[], materials:[], liveSessions:[], timetable:[] };
 let crProfile=null;
 ;
 
@@ -774,10 +781,32 @@ function goPage(id,el){
   if(id==='assignments')renderAssignments();
   if(id==='materials')renderMaterials();
   if(id==='classmates')renderClassmates(DB.classmates);
+  if(id==='timetable')renderCRTimetable();
   if(id==='attendance')initAttPage();
 }
 
 /* SUPABASE DATA */
+async function loadCRTimetable(){
+  const body=document.getElementById('cr-timetable-body');
+  if(body)body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Loading timetable…</td></tr>';
+  const token=localStorage.getItem('ushss_token');
+  if(!token)return;
+  try{
+    const res=await fetch('/api/student/timetable',{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok)throw new Error('Could not load timetable ('+res.status+').');
+    DB.timetable=await res.json();
+    renderCRTimetable();
+  }catch(e){
+    if(body)body.innerHTML='<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--red)">'+esc(e.message||'Could not load timetable')+'</td></tr>';
+    console.error('CR timetable load failed:',e);
+  }
+}
+function renderCRTimetable(){
+  const body=document.getElementById('cr-timetable-body');
+  if(!body)return;
+  const rows=[...(DB.timetable||[])].sort((a,b)=>String(a.day_of_week||'').localeCompare(String(b.day_of_week||''))||String(a.start_time||'').localeCompare(String(b.start_time||'')));
+  body.innerHTML=rows.length?rows.map(s=>`<tr><td>${esc(s.day_of_week||'—')}</td><td>${esc(String(s.start_time||'').slice(0,5))}–${esc(String(s.end_time||'').slice(0,5))}</td><td>${esc(s.subject||'—')}</td><td>${esc(s.programme||'—')}</td><td>${esc(s.course||s.department||'—')}</td><td>${esc(s.batch||'—')}</td><td>${esc(s.semester||'—')}</td><td>${esc(s.section||'None')}</td><td>${esc(s.room||'—')}</td><td>${esc((s.users||{}).full_name||'—')}</td></tr>`).join(''):`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">No published timetable is available for your assigned class yet.</td></tr>`;
+}
 async function loadCRData(){
   const token=localStorage.getItem('ushss_token');if(!token)return;
   const headers={'Authorization':'Bearer '+token};
