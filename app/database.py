@@ -161,6 +161,7 @@ def init_sqlite_db():
         section TEXT,
         department TEXT,
         faculty_id INTEGER,
+        published INTEGER NOT NULL DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
     );
 
