@@ -679,6 +679,57 @@ def reset_password(
     }
 
 # 
+#  SUBJECTS OFFERED (admin-managed subject catalogue)
+# 
+
+class SubjectOfferedCreate(BaseModel):
+    subject: str = Field(min_length=1, max_length=200)
+    programme: str = Field(min_length=1, max_length=30)
+    course: str = Field(min_length=1, max_length=50)
+    batch: str = Field(min_length=1, max_length=30)
+    semester: str = Field(min_length=1, max_length=20)
+    section: Optional[str] = None
+
+
+@router.get("/subjects-offered", summary="List offered subjects")
+def list_subjects_offered(admin: dict = Depends(require_admin)):
+    return sb.table("subjects_offered").select("*").order("programme").order("course").order("batch").order("semester").order("subject").execute().data or []
+
+
+@router.post("/subjects-offered", status_code=201, summary="Add an offered subject")
+def create_subject_offered(body: SubjectOfferedCreate, admin: dict = Depends(require_admin)):
+    payload = body.model_dump()
+    payload["subject"] = payload["subject"].strip()
+    payload["programme"] = payload["programme"].strip()
+    payload["course"] = payload["course"].strip()
+    payload["batch"] = payload["batch"].strip()
+    payload["semester"] = payload["semester"].strip()
+    payload["section"] = (payload.get("section") or "").strip() or None
+    if not all(payload[key] for key in ("subject", "programme", "course", "batch", "semester")):
+        raise HTTPException(400, "Subject and all academic details are required.")
+    payload["created_by"] = admin.get("id")
+    try:
+        result = sb.table("subjects_offered").insert(payload).execute()
+    except Exception as exc:
+        message = str(exc).lower()
+        if "subjects_offered_unique_scope" in message or "duplicate key" in message or "23505" in message:
+            raise HTTPException(409, "This subject is already listed for the selected programme, course, batch, semester and section.")
+        raise HTTPException(502, "Could not save the subject. Please try again.")
+    _audit(admin["id"], "CREATE_SUBJECT_OFFERED", f"{payload['subject']} [{payload['programme']} / {payload['course']} / {payload['batch']} / Sem {payload['semester']}]")
+    return result.data[0]
+
+
+@router.delete("/subjects-offered/{subject_id}", summary="Remove an offered subject")
+def delete_subject_offered(subject_id: int, admin: dict = Depends(require_admin)):
+    existing = sb.table("subjects_offered").select("id,subject").eq("id", subject_id).limit(1).execute().data or []
+    if not existing:
+        raise HTTPException(404, "Subject not found.")
+    sb.table("subjects_offered").delete().eq("id", subject_id).execute()
+    _audit(admin["id"], "DELETE_SUBJECT_OFFERED", f"Removed '{existing[0].get('subject')}' from Subjects Offered")
+    return {"message": "Subject removed."}
+
+
+# 
 #  TIMETABLE  (admin creates / manages the schedule)
 # 
 
