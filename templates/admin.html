@@ -1418,8 +1418,7 @@ function renderPage(page) {
     if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") c.innerHTML=renderTimetable();
-    else if(page==="subjects-offered") c.innerHTML=renderSubjectsOffered();
-    else if(page==="subjects-offered") loadOfferedSubjects();
+    else if(page==="subjects-offered") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
     else if(page==="attendance") c.innerHTML=renderAttendance();
     else if(page==="announcements") c.innerHTML=renderAnnouncements();
     else if(page==="audit") c.innerHTML=renderAudit();
