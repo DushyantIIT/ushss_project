@@ -712,21 +712,22 @@ class TimetableUpdate(BaseModel):
     faculty_id:  Optional[int] = None
 
 
-# Timetable slots are editable, but classes remain 60 minutes and may not
-# overlap the fixed 13:00–13:30 break. Morning and afternoon periods stay separate.
+# Timetable slots can have class-specific durations (15 minutes to 3 hours).
+# Morning and afternoon periods stay separate so no class crosses the lunch break.
 def _validate_timetable_slot(start_time: str, end_time: str, day_of_week: str) -> None:
     day = (day_of_week or "").strip().lower()
     if day not in {"monday", "tuesday", "wednesday", "thursday", "friday"}:
         raise HTTPException(400, "Timetable day must be Monday through Friday.")
 
     try:
-        start = datetime.strptime(start_time, "%H:%M")
-        end = datetime.strptime(end_time, "%H:%M")
+        start = datetime.strptime(str(start_time)[:5], "%H:%M")
+        end = datetime.strptime(str(end_time)[:5], "%H:%M")
     except (TypeError, ValueError):
         raise HTTPException(400, "Start and end times must use HH:MM format.")
 
-    if (end - start).total_seconds() != 3600:
-        raise HTTPException(400, "Each timetable class must be exactly 60 minutes.")
+    duration = (end - start).total_seconds() / 60
+    if duration < 15 or duration > 180:
+        raise HTTPException(400, "Class duration must be between 15 minutes and 3 hours.")
 
     start_min = start.hour * 60 + start.minute
     end_min = end.hour * 60 + end.minute
@@ -738,6 +739,36 @@ def _validate_timetable_slot(start_time: str, end_time: str, day_of_week: str) -
             "Classes must be between 9:00 AM and 1:00 PM or 1:30 PM and 5:30 PM, "
             "without overlapping the 1:00–1:30 PM break."
         )
+
+
+def _time_minutes(value: str) -> int:
+    parsed = datetime.strptime(str(value)[:5], "%H:%M")
+    return parsed.hour * 60 + parsed.minute
+
+
+def _timetable_conflict(existing_slots, start_time, end_time, faculty_id=None,
+                        room=None, programme=None, batch=None, section=None,
+                        exclude_id=None):
+    start_min, end_min = _time_minutes(start_time), _time_minutes(end_time)
+    for slot in existing_slots:
+        if exclude_id is not None and str(slot.get("id")) == str(exclude_id):
+            continue
+        slot_start = _time_minutes(slot.get("start_time"))
+        slot_end = _time_minutes(slot.get("end_time"))
+        if start_min >= slot_end or slot_start >= end_min:
+            continue
+        if faculty_id and str(slot.get("faculty_id")) == str(faculty_id):
+            return f"Faculty is already assigned to '{slot.get('subject')}' during this time."
+        if room and (slot.get("room") or "").strip().lower() == room.strip().lower():
+            return f"Room '{room}' is already booked for '{slot.get('subject')}' during this time."
+        same_class = (
+            str(slot.get("programme") or "").strip().lower() == str(programme or "").strip().lower()
+            and str(slot.get("batch") or "").strip().lower() == str(batch or "").strip().lower()
+            and str(slot.get("section") or "").strip().lower() == str(section or "").strip().lower()
+        )
+        if same_class:
+            return f"This class overlaps with '{slot.get('subject')}' in the timetable."
+    return None
 
 
 @router.get("/timetable", summary="List all timetable slots")
@@ -760,24 +791,18 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
         fac = sb.table("users").select("id").eq("id", body.faculty_id).eq("role", "faculty").execute()
         if not fac.data:
             raise HTTPException(404, "Faculty user not found")
-        # Faculty clash check
-        fac_clash = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("faculty_id", body.faculty_id).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
-        if fac_clash.data:
-            raise HTTPException(409, f"Faculty is already assigned to '{fac_clash.data[0].get('subject')}' at this day and time.")
 
-    # Room clash check
-    if body.room:
-        room_clash = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("room", body.room).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
-        if room_clash.data:
-            raise HTTPException(409, f"Room '{body.room}' is already booked for '{room_clash.data[0].get('subject')}' at this day and time.")
-
-    # Class clash check
-    class_q = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("programme", body.programme).eq("batch", body.batch).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time)
-    if body.section:
-        class_q = class_q.eq("section", body.section)
-    class_clash = class_q.limit(1).execute()
-    if class_clash.data:
-        raise HTTPException(409, f"This class already has '{class_clash.data[0].get('subject')}' scheduled at this day and time.")
+    day_slots = (
+        sb.table("timetable_slots").select("*")
+        .eq("is_active", True).eq("day_of_week", body.day_of_week).execute().data or []
+    )
+    conflict = _timetable_conflict(
+        day_slots, body.start_time, body.end_time, faculty_id=body.faculty_id,
+        room=body.room, programme=body.programme, batch=body.batch,
+        section=body.section
+    )
+    if conflict:
+        raise HTTPException(409, conflict)
 
     res = sb.table("timetable_slots").insert(body.model_dump()).execute()
     _audit(admin["id"], "CREATE_TIMETABLE",
@@ -842,7 +867,7 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     eff_day = updates.get("day_of_week", current.get("day_of_week"))
     _validate_timetable_slot(eff_start, eff_end, eff_day)
 
-    # Apply the same conflict checks used during creation, excluding this slot.
+    # Validate the assigned faculty and reject any overlapping class/resource interval.
     eff_faculty = updates.get("faculty_id", current.get("faculty_id"))
     eff_room = updates.get("room", current.get("room"))
     eff_programme = updates.get("programme", current.get("programme"))
@@ -853,34 +878,18 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
         fac = sb.table("users").select("id").eq("id", eff_faculty).eq("role", "faculty").limit(1).execute()
         if not fac.data:
             raise HTTPException(404, "Faculty user not found")
-        clash = (
-            sb.table("timetable_slots").select("id, subject")
-            .eq("is_active", True).eq("faculty_id", eff_faculty).eq("day_of_week", eff_day)
-            .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
-        )
-        if clash.data:
-            raise HTTPException(409, f"Faculty is already assigned to '{clash.data[0].get('subject')}' at this day and time.")
 
-    if eff_room:
-        clash = (
-            sb.table("timetable_slots").select("id, subject")
-            .eq("is_active", True).eq("room", eff_room).eq("day_of_week", eff_day)
-            .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
-        )
-        if clash.data:
-            raise HTTPException(409, f"Room '{eff_room}' is already booked for '{clash.data[0].get('subject')}' at this day and time.")
-
-    class_q = (
-        sb.table("timetable_slots").select("id, subject")
-        .eq("is_active", True).eq("programme", eff_programme).eq("batch", eff_batch)
-        .eq("day_of_week", eff_day).eq("start_time", eff_start)
-        .neq("id", slot_id)
+    day_slots = (
+        sb.table("timetable_slots").select("*")
+        .eq("is_active", True).eq("day_of_week", eff_day).execute().data or []
     )
-    if eff_section:
-        class_q = class_q.eq("section", eff_section)
-    clash = class_q.limit(1).execute()
-    if clash.data:
-        raise HTTPException(409, f"This class already has '{clash.data[0].get('subject')}' scheduled at this day and time.")
+    conflict = _timetable_conflict(
+        day_slots, eff_start, eff_end, faculty_id=eff_faculty, room=eff_room,
+        programme=eff_programme, batch=eff_batch, section=eff_section,
+        exclude_id=slot_id
+    )
+    if conflict:
+        raise HTTPException(409, conflict)
 
     res = sb.table("timetable_slots").update(updates).eq("id", slot_id).execute()
     _audit(admin["id"], "UPDATE_TIMETABLE", f"Updated slot id={slot_id}")
