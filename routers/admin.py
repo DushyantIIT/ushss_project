@@ -781,12 +781,17 @@ def list_elective_offering_students(offering_id: int, admin: dict = Depends(requ
     if not offers:
         raise HTTPException(404, "Elective offering not found.")
     offer = offers[0]
-    users = sb.table("users").select("id,full_name,email,roll_number,programme,course,batch,semester,section").eq("role", "student").eq("programme", offer.get("programme") or "").eq("course", offer.get("course") or "").eq("batch", offer.get("batch") or "").eq("semester", offer.get("semester") or "").execute().data or []
+    users = sb.table("users").select("id,full_name,email,roll_number,programme,course,batch,semester,section").eq("role", "student").eq("programme", offer.get("programme") or "").eq("course", offer.get("course") or "").eq("batch", offer.get("batch") or "").execute().data or []
     choices = sb.table("student_elective_choices").select("student_id").eq("elective_offering_id", offering_id).execute().data or []
     chosen_ids = {int(x["student_id"]) for x in choices}
     section = str(offer.get("section") or "").strip().lower()
+    def sem_key(value):
+        raw = str(value or "").strip().upper().replace("SEMESTER", "").replace("SEM", "").strip()
+        return {"I":"1","II":"2","III":"3","IV":"4","V":"5","VI":"6","VII":"7","VIII":"8"}.get(raw, raw)
     result = []
     for user in users:
+        if sem_key(user.get("semester")) != sem_key(offer.get("semester")):
+            continue
         if section and str(user.get("section") or "").strip().lower() != section:
             continue
         result.append({**user, "selected": int(user["id"]) in chosen_ids})
