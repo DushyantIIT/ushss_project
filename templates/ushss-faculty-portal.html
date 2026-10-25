@@ -476,6 +476,7 @@ tr:hover td{background:rgba(255,255,255,.01)}
     <div class="sb-item active" onclick="goPage('dashboard',this)"><span class="ico">🏛️</span> Dashboard</div>
 
     <div class="sb-section">Teaching</div>
+    <div class="sb-item" onclick="goPage('timetable',this)"><span class="ico">🗓️</span> My Timetable</div>
     <div class="sb-item" onclick="goPage('attendance',this)"><span class="ico">✅</span> Attendance <span class="sb-count" id="live-badge" style="display:none">LIVE</span></div>
     <div class="sb-item" onclick="goPage('announcements',this)"><span class="ico">📢</span> Announcements <span class="sb-count" id="ann-cnt">0</span></div>
     <div class="sb-item" onclick="goPage('materials',this)"><span class="ico">📚</span> Study Materials <span class="sb-count" id="mat-cnt">0</span></div>
@@ -806,6 +807,12 @@ tr:hover td{background:rgba(255,255,255,.01)}
         </div>
       </div>
 
+      <!-- FACULTY TIMETABLE PAGE -->
+      <div class="page" id="pg-timetable">
+        <div class="sec-head"><div><div class="sec-label">Teaching Schedule</div><div class="sec-title">My Timetable</div></div><button class="btn btn-ghost btn-sm" onclick="loadFacultyData().then(renderFacultyTimetable).catch(e=>toast(e.message,'err'))">↻ Refresh</button></div>
+        <div class="card"><div class="table-wrap"><table><thead><tr><th>Day</th><th>Time</th><th>Subject</th><th>Programme</th><th>Course</th><th>Batch</th><th>Semester</th><th>Section</th><th>Room</th></tr></thead><tbody id="faculty-timetable-body"></tbody></table></div></div>
+      </div>
+
       <!-- ANNOUNCEMENTS PAGE -->
     <div class="page" id="pg-announcements">
       <div class="sec-head">
@@ -1024,6 +1031,7 @@ function goPage(id, el) {
   document.getElementById('pg-title').textContent = title;
   document.getElementById('pg-crumb').textContent = crumb;
   if (id === 'announcements') renderAnnList();
+  if (id === 'timetable') renderFacultyTimetable();
   if (id === 'students') renderRoster(DB.students);
   if (id === 'history') renderFullHistory();
 }
@@ -1068,6 +1076,12 @@ async function loadFacultyData(){
   updateFacultyStats();
   const course=document.getElementById('att-course');
   if(course&&DB.timetable.length){course.replaceChildren();DB.timetable.forEach(s=>{const o=document.createElement('option');o.value=String(s.id);o.textContent=(s.subject||'Class')+' — '+(s.programme||'')+' '+(s.batch||'')+' · '+(s.day_of_week||'')+' '+String(s.start_time||'').slice(0,5);course.appendChild(o);});}
+}
+function renderFacultyTimetable(){
+  const body=document.getElementById('faculty-timetable-body');
+  if(!body)return;
+  const rows=[...(DB.timetable||[])].sort((a,b)=>String(a.day_of_week||'').localeCompare(String(b.day_of_week||''))||String(a.start_time||'').localeCompare(String(b.start_time||'')));
+  body.innerHTML=rows.length?rows.map(s=>`<tr><td>${esc(s.day_of_week||'—')}</td><td>${esc(String(s.start_time||'').slice(0,5))}–${esc(String(s.end_time||'').slice(0,5))}</td><td>${esc(s.subject||'—')}</td><td>${esc(s.programme||'—')}</td><td>${esc(s.course||s.department||'—')}</td><td>${esc(s.batch||'—')}</td><td>${esc(s.semester||'—')}</td><td>${esc(s.section||'None')}</td><td>${esc(s.room||'—')}</td></tr>`).join(''):`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">No timetable slots are assigned to your faculty account yet. Please ask the admin to assign a faculty member to the relevant timetable slots.</td></tr>`;
 }
 function updateFacultyStats(){
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
