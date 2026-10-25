@@ -733,6 +733,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
             <option value="HCS 608 — Contemporary Literary Theory">HCS 608 — Contemporary Literary Theory</option>
             <option value="HCS 652 — Seminar">HCS 652 — Seminar</option>
           </optgroup>
+          <optgroup label="MA English — Semester III (all sections)">
+            <option value="HCS 702 — Shakespearean Drama">HCS 702 — Shakespearean Drama</option>
+            <option value="HCS 704 — African Literature in English">HCS 704 — African Literature in English</option>
+            <option value="HCS 706 — Indian Literature in English">HCS 706 — Indian Literature in English</option>
+            <option value="HCS 708 — Literature and Cinema">HCS 708 — Literature and Cinema</option>
+            <option value="HCS 710 — Cultural Studies">HCS 710 — Cultural Studies</option>
+            <option value="HCS 752 — Dissertation/ Field Work/Project">HCS 752 — Dissertation/ Field Work/Project</option>
+          </optgroup>
           <optgroup label="Other English Subjects">
             <option>Postcolonial Literature</option><option>Literary Theory</option><option>Linguistics</option>
             <option>Modern Fiction</option><option>Old English &amp; Medieval Lit.</option><option>Poetry &amp; Poetics</option>
@@ -2793,7 +2801,7 @@ function filterTimetableSubjectsForCurrentGroup(){
   const roman={"1":"I","2":"II","3":"III","4":"IV","I":"I","II":"II","III":"III","IV":"IV"};
   semester=roman[semester]||semester;
   const isMAEnglish=(programme==="ma"||programme==="masterofarts") && course==="english";
-  if(!isMAEnglish || !["I","II"].includes(semester)){
+  if(!isMAEnglish || !["I","II","III"].includes(semester)){
     Array.from(select.querySelectorAll("optgroup")).forEach(g=>g.style.display="");
     Array.from(select.options).forEach(o=>o.hidden=false);
     return;
