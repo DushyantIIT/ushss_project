@@ -2794,7 +2794,7 @@ function filterTimetableSubjectsForCurrentGroup(){
   const programme=String(ttCurrentProg||"").toLowerCase().replace(/[^a-z]/g,"");
   const course=String(meta.course||ttCurrentCourse||"").toLowerCase().trim();
   const semesterSource=String(meta.semester||ttCurrentSection||"").trim().toUpperCase();
-  const semesterMatch=semesterSource.match(/(?:SEM(?:ESTER)?\\s*)?(III|IV|II|I|[1-8])(?:\\s*(?:ST|ND|RD|TH))?/i);
+  const semesterMatch=semesterSource.match(/(?:SEM(?:ESTER)?\s*)?(III|IV|II|I|[1-8])(?:\s*(?:ST|ND|RD|TH))?/i);
   let semester=semesterMatch?semesterMatch[1].toUpperCase():"";
   const roman={"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII","I":"I","II":"II","III":"III","IV":"IV","V":"V","VI":"VI","VII":"VII","VIII":"VIII"};
   semester=roman[semester]||semester;
@@ -2846,7 +2846,7 @@ async function saveTTCell(){
     }else{
       const facultyIds=Array.from(document.getElementById("tt-faculty").selectedOptions).map(o=>Number(o.value)).filter(Boolean);
       const groupMeta=adminTimetableGroupMeta(ttCurrentProg,ttCurrentSection);
-      const semesterMatch=String(groupMeta.semester||existing?.semester||ttCurrentSection||"").match(/(?:sem(?:ester)?\\s*)?(III|IV|II|I|[1-8])(?:\\s*(?:st|nd|rd|th))?/i);
+      const semesterMatch=String(groupMeta.semester||existing?.semester||ttCurrentSection||"").match(/(?:sem(?:ester)?\s*)?(III|IV|II|I|[1-8])(?:\s*(?:st|nd|rd|th))?/i);
       const semesterValue=groupMeta.semester||existing?.semester||(semesterMatch?semesterMatch[1].toUpperCase():null);
       const payload={subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:ttCurrentProg,course:groupMeta.course||existing?.course||ttCurrentCourse||null,batch:groupMeta.batch||existing?.batch||"General",semester:semesterValue,section:groupMeta.section||existing?.section||ttCurrentSection,room:document.getElementById("tt-room").value.trim(),faculty_ids:facultyIds,faculty_id:facultyIds[0]||null};
       if(existing) await adminApiJson("/api/admin/timetable/"+existing.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
