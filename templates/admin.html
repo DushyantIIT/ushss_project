@@ -2704,7 +2704,7 @@ function renderTimetable() {
   }
   let gridHTML="";
   if(ttCurrentProg && ttCurrentSection){
-    const accent=TT_ACCENT_COLORS[progs.indexOf(ttCurrentProg)%TT_ACCENT_COLORS.length];
+    const accent=TT_ACCENT_COLORS[Math.max(0,categories.findIndex(c=>c.programme===ttCurrentProg&&c.course===ttCurrentCourse))%TT_ACCENT_COLORS.length];
     const timeHeaders=TT_TIMES.map(t=>`<div class="tt-head">${t}</div>`).join("");
     const rows=TT_DAYS.map(d=>{
       let html=`<div class="tt-head" style="text-align:left;display:flex;align-items:center">${d.label}</div>`;
