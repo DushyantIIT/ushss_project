@@ -793,7 +793,10 @@ def student_subject_register(programme: Optional[str] = Query(None), course: Opt
     def sem_key(value):
         raw = str(value or "").strip().upper().replace("SEMESTER", "").replace("SEM", "").strip()
         return {"1":"I","2":"II","3":"III","4":"IV","5":"V","6":"VI","7":"VII","8":"VIII"}.get(raw, raw)
-    users = sb.table("users").select("id,full_name,email,enrollment_no,programme,course,batch,semester,section").eq("role","student").execute().data or []
+    # Student profiles do not have course/section columns in the deployed schema.
+    # Use the existing department field for the English/Economics course and infer
+    # the student's section from matching timetable/elective records when available.
+    users = sb.table("users").select("id,full_name,email,enrollment_no,department,programme,batch,semester").eq("role","student").execute().data or []
     slots = sb.table("timetable_slots").select("subject,programme,course,batch,semester,section,is_active").execute().data or []
     offerings = sb.table("elective_offerings").select("id,programme,course,batch,semester,section,subjects_offered(subject)").execute().data or []
     choices = sb.table("student_elective_choices").select("student_id,elective_offering_id").execute().data or []
@@ -801,26 +804,37 @@ def student_subject_register(programme: Optional[str] = Query(None), course: Opt
     for choice in choices: choice_map.setdefault(str(choice.get("student_id")), set()).add(str(choice.get("elective_offering_id")))
     result = []
     for user in users:
-        up, uc, ub = (str(user.get(k) or "").strip() for k in ("programme","course","batch"))
-        us, usec = sem_key(user.get("semester")), str(user.get("section") or "").strip().lower()
+        up, uc, ub = (str(user.get(k) or "").strip() for k in ("programme","department","batch"))
+        us = sem_key(user.get("semester"))
         if programme and up.lower() != programme.strip().lower(): continue
         if course and uc.lower() != course.strip().lower(): continue
         if semester and us != sem_key(semester): continue
-        if section and usec != ("" if section == "None" else section.strip().lower()): continue
-        subjects, electives = [], []
+        matching_sections = set()
         for slot in slots:
             if slot.get("is_active") is False: continue
             if any(str(slot.get(k) or "").strip().lower() != v.lower() for k,v in (("programme",up),("course",uc),("batch",ub))): continue
-            if sem_key(slot.get("semester")) != us: continue
-            ss, name = str(slot.get("section") or "").strip().lower(), str(slot.get("subject") or "").strip()
-            if name and (not ss or ss == usec) and name not in subjects: subjects.append(name)
-        for offer in offerings:
-            if any(str(offer.get(k) or "").strip().lower() != v.lower() for k,v in (("programme",up),("course",uc),("batch",ub))): continue
-            if sem_key(offer.get("semester")) != us: continue
-            os, sub = str(offer.get("section") or "").strip().lower(), offer.get("subjects_offered") or {}
-            name = str(sub.get("subject") or "").strip()
-            if str(offer.get("id")) in choice_map.get(str(user.get("id")), set()) and (not os or os == usec) and name and name not in electives: electives.append(name)
-        result.append({**user,"subjects":subjects,"electives":electives})
+            if sem_key(slot.get("semester")) == us and slot.get("section"):
+                matching_sections.add(str(slot.get("section")).strip())
+        # If section is stored on the timetable rather than student profile, show the
+        # student in each matching section; if no section exists, keep one None row.
+        user_sections = sorted(matching_sections, key=str.lower) or [""]
+        for usec_value in user_sections:
+            usec = usec_value.lower()
+            if section and usec != ("" if section == "None" else section.strip().lower()): continue
+            subjects, electives = [], []
+            for slot in slots:
+                if slot.get("is_active") is False: continue
+                if any(str(slot.get(k) or "").strip().lower() != v.lower() for k,v in (("programme",up),("course",uc),("batch",ub))): continue
+                if sem_key(slot.get("semester")) != us: continue
+                ss, name = str(slot.get("section") or "").strip().lower(), str(slot.get("subject") or "").strip()
+                if name and (not ss or ss == usec) and name not in subjects: subjects.append(name)
+            for offer in offerings:
+                if any(str(offer.get(k) or "").strip().lower() != v.lower() for k,v in (("programme",up),("course",uc),("batch",ub))): continue
+                if sem_key(offer.get("semester")) != us: continue
+                os, sub = str(offer.get("section") or "").strip().lower(), offer.get("subjects_offered") or {}
+                name = str(sub.get("subject") or "").strip()
+                if str(offer.get("id")) in choice_map.get(str(user.get("id")), set()) and (not os or os == usec) and name and name not in electives: electives.append(name)
+            result.append({**user,"course":uc,"section":usec_value or None,"subjects":subjects,"electives":electives})
     result.sort(key=lambda u:(str(u.get("programme") or ""),str(u.get("course") or ""),str(u.get("batch") or ""),sem_key(u.get("semester")),str(u.get("section") or ""),str(u.get("full_name") or "")))
     return {"total":len(result),"students":result}
 
