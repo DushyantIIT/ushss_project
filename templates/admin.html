@@ -2670,7 +2670,7 @@ function renderSubjectsOffered() {
   const rows = subjects.map((s,i) => `<tr>
     <td class="mono">${i+1}</td><td><strong style="color:var(--cream)">${esc(s.subject)}</strong></td>
     <td>${esc(s.course_code)}</td><td>${esc(s.paper_id)}</td><td>${esc(s.paper_category)}</td><td>${esc(s.programme)}</td><td>${esc(s.course)}</td><td>${esc(s.semester)}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="removeOfferedSubject(${Number(s.id)})">Remove</button></td>
+    <td><span class="badge">${s.is_elective ? "Elective" : "Compulsory"}</span> <button class="btn btn-ghost btn-sm" onclick="setSubjectElective(${Number(s.id)},${!s.is_elective})">${s.is_elective ? "Mark compulsory" : "Mark elective"}</button> <button class="btn btn-danger btn-sm" onclick="removeOfferedSubject(${Number(s.id)})">Remove</button></td>
   </tr>`).join("");
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px">
     <div><h2 style="font-family:'Playfair Display',serif;font-size:22px;color:var(--cream);margin-bottom:6px">Subjects Taught</h2><p style="color:var(--muted);font-size:12px;line-height:1.6">Add and manage the subjects taught for each programme, course and semester. Saved subjects are stored in the database.</p></div>
