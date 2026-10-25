@@ -182,7 +182,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tt-section-tab:hover .tt-section-del{opacity:1}
 
 /* Timetable grid */
-.tt-grid{display:grid;grid-template-columns:80px repeat(5,1fr);gap:2px;margin-top:0}
+.tt-grid{display:grid;grid-template-columns:100px repeat(8,minmax(105px,1fr));gap:2px;margin-top:0}
 .tt-head{background:var(--surface2);padding:10px 8px;text-align:center;font-size:11px;font-weight:600;color:var(--gold);border-radius:var(--radius) var(--radius) 0 0;border:1px solid var(--border2);font-family:var(--mono);letter-spacing:.5px}
 .tt-time{background:var(--surface2);padding:8px 6px;text-align:center;font-size:10px;color:var(--muted);border:1px solid var(--border);font-family:var(--mono);display:flex;align-items:center;justify-content:center;min-height:56px}
 .tt-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:8px;min-height:56px;cursor:pointer;transition:all .15s;position:relative}
@@ -2507,9 +2507,10 @@ function renderTimetable() {
   let gridHTML="";
   if(ttCurrentProg && ttCurrentSection){
     const accent=TT_ACCENT_COLORS[progs.indexOf(ttCurrentProg)%TT_ACCENT_COLORS.length];
-    const rows=TT_TIMES.map((_,i)=>{
-      let html=`<div class="tt-time">${TT_TIMES[i]}</div>`;
-      for(const d of TT_DAYS){
+    const timeHeaders=TT_TIMES.map(t=>`<div class="tt-head">${t}</div>`).join("");
+    const rows=TT_DAYS.map(d=>{
+      let html=`<div class="tt-head" style="text-align:left;display:flex;align-items:center">${d.label}</div>`;
+      TT_TIMES.forEach((_,i)=>{
         const s=adminSlotFor(ttCurrentProg,ttCurrentSection,d.key,i);
         if(!s) html+=`<div class="tt-cell" ondragover="ttDragOver(event)" ondragleave="ttDragLeave(event)" ondrop="ttDropSlot(event,'${d.key}',${i})" onclick="openTTEdit('${d.key}',${i})"><div class="tt-cell-empty">+<div style="font-size:9px;line-height:1.4">Drop class here</div></div></div>`;
         else html+=`<div class="tt-cell has-class" draggable="true" ondragstart="ttDragStart(event,${s.id})" ondragend="ttDragEnd(event)" ondragover="ttDragOver(event)" ondragleave="ttDragLeave(event)" ondrop="ttDropSlot(event,'${d.key}',${i})" style="border-left:3px solid ${accent}" onclick="openTTEdit('${d.key}',${i})">
@@ -2521,7 +2522,7 @@ function renderTimetable() {
             <button type="button" class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTimetableSlot(${s.id},&quot;${d.key}&quot;,${i})">Delete Slot</button>
           </div>
         </div>`;
-      }
+      });
       return html;
     }).join("");
     gridHTML=`<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
@@ -2531,7 +2532,7 @@ function renderTimetable() {
       <button class="btn btn-ghost btn-sm" onclick="exportTimetable()">⬇ Export CSV</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow-x:auto">
-      <div class="tt-grid" style="min-width:700px"><div class="tt-head" style="background:transparent;border-color:transparent"></div>${TT_DAYS.map(d=>`<div class="tt-head">${d.label}</div>`).join("")}${rows}</div>
+      <div class="tt-grid" style="min-width:1000px"><div class="tt-head" style="background:transparent;border-color:transparent">DAY / TIME</div>${timeHeaders}${rows}</div>
     </div>`;
   } else {
     gridHTML=`<div class="tt-empty-state"><div class="tt-empty-icon">🗓️</div><div class="tt-empty-title">No timetable slots yet</div><div class="tt-empty-sub">Create a programme/section, then add classes to its cells.</div><button class="btn btn-primary btn-lg" onclick="openNewTimetableModal()">➕ Create Timetable</button></div>`;
