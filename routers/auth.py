@@ -250,6 +250,35 @@ def register(body: RegisterRequest, request: Request):
             raise HTTPException(400, "Enrollment number must be exactly 11 digits (e.g. 02616401521).")
         if not (IS_DEV and enr_clean.startswith("stu")) and not (enr_clean.isdigit() and len(enr_clean) == 11):
             raise HTTPException(400, "Enrollment number must be exactly 11 digits (e.g. 02616401521).")
+
+        # Course code is the 7th–9th digits in the 11-digit enrollment number.
+        # Keep this server-side check authoritative; client-side validation is only UX.
+        if body.role == "student":
+            course_text = " ".join(
+                part.strip().lower()
+                for part in (body.department or "", body.programme or "")
+                if part and part.strip()
+            )
+            required_code = None
+            if "b.a." in course_text or "ba hons" in course_text or "ba (hons" in course_text:
+                if "english" in course_text:
+                    required_code = "617"
+                elif "economics" in course_text or "eco" in course_text:
+                    required_code = "616"
+            elif "m.a." in course_text or course_text.startswith("ma ") or " ma " in f" {course_text} ":
+                if "economics" in course_text or "eco" in course_text:
+                    required_code = "307"
+                elif "english" in course_text:
+                    required_code = "109"
+
+            if required_code and enr_clean[6:9] != required_code:
+                raise HTTPException(
+                    400,
+                    f"Enrollment number does not match the selected programme and subject. "
+                    f"The course code must be {required_code} for {body.programme or 'the selected programme'} "
+                    f"{body.department or 'subject'}.",
+                )
+
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
             if row_enr.get("status") == "approved":
