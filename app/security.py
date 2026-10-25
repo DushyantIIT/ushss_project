@@ -15,7 +15,12 @@ from typing import Optional
 from jose import JWTError, jwt
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "").strip()
-IS_PROD = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("ENVIRONMENT") == "production")
+IS_PROD = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("RENDER")
+    or os.environ.get("RENDER_SERVICE_ID")
+    or os.environ.get("ENVIRONMENT") == "production"
+)
 # IS_DEV: only true when NOT on a production host. DEBUG/TESTING flags do NOT override IS_PROD.
 IS_DEV = not IS_PROD
 

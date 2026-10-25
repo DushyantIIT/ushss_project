@@ -14,6 +14,7 @@ Render starts it via Procfile:
 """
 
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -25,6 +26,10 @@ from fastapi.templating import Jinja2Templates
 from app.database import ping_db
 from app.seed import seed
 from routers import auth, admin, student, faculty, cr, password_reset, public, chat
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+TEMPLATES_DIR = BASE_DIR / "templates"
 
 
 @asynccontextmanager
@@ -58,7 +63,12 @@ async def lifespan(app: FastAPI):
     print("\n🏛  USHSS Backend shutting down…")
 
 
-_IS_PROD = bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID") or os.environ.get("ENVIRONMENT") == "production")
+_IS_PROD = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("RENDER")
+    or os.environ.get("RENDER_SERVICE_ID")
+    or os.environ.get("ENVIRONMENT") == "production"
+)
 # Disable interactive API docs in production — they leak the full schema
 _docs_url   = None if _IS_PROD else "/docs"
 _redoc_url  = None if _IS_PROD else "/redoc"
@@ -82,8 +92,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 # Same-origin deployment needs no CORS headers. If origins are configured,

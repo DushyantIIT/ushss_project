@@ -16,12 +16,16 @@ _lock = Lock()
 
 
 def get_client_ip(request: Request) -> str:
-    """Use Render's trusted client-IP header when available."""
+    """Use platform-trusted client-IP headers when available."""
+    # Vercel provides x-forwarded-for or x-real-ip
+    if os.environ.get("VERCEL"):
+        vercel_ip = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for")
+        if vercel_ip:
+            return vercel_ip.split(",")[0].strip()
     if os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID"):
         render_ip = request.headers.get("x-render-client-ip")
         if render_ip:
             return render_ip.strip()
-    # Do not trust arbitrary X-Forwarded-For values outside Render.
     return request.client.host if request.client else "127.0.0.1"
 
 

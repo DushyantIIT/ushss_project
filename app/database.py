@@ -23,7 +23,8 @@ SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 
 IS_PROD: bool = bool(
-    os.getenv("RENDER")
+    os.getenv("VERCEL")
+    or os.getenv("RENDER")
     or os.getenv("RENDER_SERVICE_ID")
     or os.getenv("ENVIRONMENT", "").lower() == "production"
 )
@@ -34,7 +35,7 @@ if IS_PROD and _SQLITE_REQUESTED:
 if IS_PROD and not (SUPABASE_URL and SUPABASE_KEY):
     raise RuntimeError(
         "FATAL: Production requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. "
-        "Configure both in Render; SQLite/publishable-key fallback is disabled."
+        "Configure both in Vercel/Render; SQLite/publishable-key fallback is disabled."
     )
 
 USE_SQLITE_FALLBACK: bool = _SQLITE_REQUESTED or not bool(SUPABASE_URL and SUPABASE_KEY)

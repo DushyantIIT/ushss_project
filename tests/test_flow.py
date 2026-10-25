@@ -193,13 +193,14 @@ class TestUSHSSPortal(unittest.TestCase):
         email = f"stu{ts}@ipu.ac.in"
 
         # 1. Register a new student
+        enr_no = f"0011092{int(time.time()) % 10000:04d}"
         reg_res = client.post("/api/register", json={
             "username": uname,
             "password": "Student@999",
             "role": "student",
             "full_name": "New Pending Student",
             "email": email,
-            "enrollment_no": uname,
+            "enrollment_no": enr_no,
             "programme": "M.A. English",
             "batch": "2024"
         })
