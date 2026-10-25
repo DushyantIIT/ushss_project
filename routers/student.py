@@ -91,6 +91,67 @@ def update_profile(body: StudentProfileUpdate, student: dict = Depends(require_s
 #  TIMETABLE  (view own schedule)
 # ═══════════════════════════════════════════════════════════════
 
+
+
+def _elective_group_matches(row: dict, student: dict) -> bool:
+    def norm(value): return " ".join(str(value or "").strip().lower().split())
+    def sem(value):
+        raw = norm(value).replace("semester", "").replace("sem", "").strip().upper()
+        return {"I":"1","II":"2","III":"3","IV":"4","V":"5","VI":"6","VII":"7","VIII":"8"}.get(raw, raw)
+    def prog(value):
+        raw = norm(value)
+        if "b.a" in raw or raw.startswith("ba"): return "ba"
+        if "m.a" in raw or raw.startswith("ma"): return "ma"
+        return raw
+    def course(value):
+        raw = norm(value)
+        if "english" in raw: return "english"
+        if "economics" in raw: return "economics"
+        return raw
+    if prog(row.get("programme")) != prog(student.get("programme")): return False
+    if course(row.get("course")) != course(student.get("course")): return False
+    if sem(row.get("semester")) != sem(student.get("semester")): return False
+    if str(row.get("batch") or "").strip().lower() not in (str(student.get("batch") or "").strip().lower(), "general", ""): return False
+    rs, ss = str(row.get("section") or "").strip().lower(), str(student.get("section") or "").strip().lower()
+    return not rs or not ss or rs == ss
+
+@router.get("/subjects", summary="View timetable subjects and available electives")
+def get_my_subjects(student: dict = Depends(require_student)):
+    slots = sb.table("timetable_slots").select("subject,programme,course,batch,semester,section").eq("programme", student.get("programme") or "").eq("batch", student.get("batch") or "").execute().data or []
+    subjects, seen = [], set()
+    for slot in slots:
+        if _elective_group_matches(slot, student):
+            name = str(slot.get("subject") or "").strip()
+            if name and name.lower() not in seen:
+                seen.add(name.lower()); subjects.append({"subject": name, "source": "timetable", "category": "Scheduled Subject"})
+    offers = sb.table("elective_offerings").select("id,programme,course,batch,semester,section,subjects_offered(id,subject,course_code,paper_id,paper_category)").eq("is_open", True).eq("programme", student.get("programme") or "").eq("course", student.get("course") or "").eq("batch", student.get("batch") or "").eq("semester", str(student.get("semester") or "")).execute().data or []
+    choices = sb.table("student_elective_choices").select("elective_offering_id").eq("student_id", student["id"]).execute().data or []
+    chosen = {x["elective_offering_id"] for x in choices}
+    electives = []
+    for offer in offers:
+        if not _elective_group_matches(offer, student): continue
+        sub = offer.get("subjects_offered") or {}
+        electives.append({"offering_id": offer["id"], "subject": sub.get("subject"), "course_code": sub.get("course_code"), "paper_id": sub.get("paper_id"), "category": "Elective", "chosen": offer["id"] in chosen})
+        if offer["id"] in chosen and sub.get("subject") and sub["subject"].lower() not in seen:
+            seen.add(sub["subject"].lower()); subjects.append({"subject": sub["subject"], "source": "elective", "category": "Elective"})
+    return {"subjects": subjects, "electives": electives}
+
+class ElectiveChoiceBody(BaseModel):
+    offering_id: int
+
+@router.post("/subjects/elective-choice", status_code=201)
+def choose_my_elective(body: ElectiveChoiceBody, student: dict = Depends(require_student)):
+    offers = sb.table("elective_offerings").select("*").eq("id", body.offering_id).eq("is_open", True).limit(1).execute().data or []
+    if not offers or not _elective_group_matches(offers[0], student):
+        raise HTTPException(404, "This elective is not open for your programme, course, semester and section.")
+    existing = sb.table("student_elective_choices").select("id,elective_offering_id,elective_offerings(programme,course,batch,semester)").eq("student_id", student["id"]).execute().data or []
+    for choice in existing:
+        scope = choice.get("elective_offerings") or {}
+        if all(str(scope.get(k) or "") == str(offers[0].get(k) or "") for k in ("programme", "course", "batch", "semester")):
+            sb.table("student_elective_choices").delete().eq("id", choice["id"]).execute()
+    result = sb.table("student_elective_choices").insert({"student_id": student["id"], "elective_offering_id": body.offering_id}).execute().data or []
+    return {"message": "Elective selected successfully.", "choice": result[0] if result else None}
+
 @router.get("/timetable", summary="View your class timetable")
 def get_timetable(
     day: Optional[str] = Query(None, description="Filter by day e.g. Monday"),
