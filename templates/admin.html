@@ -199,6 +199,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tt-slot-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;position:relative;z-index:2}
 .tt-slot-actions .btn{padding:4px 7px;font-size:10px;white-space:nowrap}
 .tt-cell.has-class{padding-bottom:8px}
+.tt-cell.dragging{opacity:.45;border:2px dashed var(--gold)} .tt-cell.drop-target{outline:2px dashed var(--gold);outline-offset:-3px;background:var(--surface2)}
 
 /* Programme colour accents */
 .tt-acc-0{border-left:3px solid #8B2A2A}
@@ -2510,8 +2511,8 @@ function renderTimetable() {
       let html=`<div class="tt-time">${TT_TIMES[i]}</div>`;
       for(const d of TT_DAYS){
         const s=adminSlotFor(ttCurrentProg,ttCurrentSection,d.key,i);
-        if(!s) html+=`<div class="tt-cell" onclick="openTTEdit('${d.key}',${i})"><div class="tt-cell-empty">+</div></div>`;
-        else html+=`<div class="tt-cell has-class" style="border-left:3px solid ${accent}" onclick="openTTEdit('${d.key}',${i})">
+        if(!s) html+=`<div class="tt-cell" ondragover="ttDragOver(event)" ondragleave="ttDragLeave(event)" ondrop="ttDropSlot(event,'${d.key}',${i})" onclick="openTTEdit('${d.key}',${i})"><div class="tt-cell-empty">+<div style="font-size:9px;line-height:1.4">Drop class here</div></div></div>`;
+        else html+=`<div class="tt-cell has-class" draggable="true" ondragstart="ttDragStart(event,${s.id})" ondragend="ttDragEnd(event)" ondragover="ttDragOver(event)" ondragleave="ttDragLeave(event)" ondrop="ttDropSlot(event,'${d.key}',${i})" style="border-left:3px solid ${accent}" onclick="openTTEdit('${d.key}',${i})">
           <div class="tt-cell-subject">${s.subject}</div>
           ${s.room?`<div class="tt-cell-room">📍 ${s.room}</div>`:""}
           ${s.users?.full_name?`<div class="tt-cell-teacher">👤 ${s.users.full_name}</div>`:""}
@@ -2604,6 +2605,21 @@ async function saveTTCell(){
   }catch(e){ toast(e.message||"Could not save timetable slot","error"); }
 }
 
+let ttDraggingSlotId = null;
+function ttDragStart(event,slotId){ ttDraggingSlotId=String(slotId); event.dataTransfer.effectAllowed="move"; event.dataTransfer.setData("text/plain",String(slotId)); event.currentTarget.classList.add("dragging"); }
+function ttDragEnd(event){ event.currentTarget.classList.remove("dragging"); document.querySelectorAll(".tt-cell.drop-target").forEach(el=>el.classList.remove("drop-target")); ttDraggingSlotId=null; }
+function ttDragOver(event){ if(!ttDraggingSlotId && !event.dataTransfer.types.includes("text/plain")) return; event.preventDefault(); event.dataTransfer.dropEffect="move"; event.currentTarget.classList.add("drop-target"); }
+function ttDragLeave(event){ if(!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.classList.remove("drop-target"); }
+async function ttDropSlot(event,day,timeIdx){
+ event.preventDefault(); event.stopPropagation(); event.currentTarget.classList.remove("drop-target");
+ const slotId=event.dataTransfer.getData("text/plain")||ttDraggingSlotId; if(!slotId) return;
+ const target=adminSlotFor(ttCurrentProg,ttCurrentSection,day,timeIdx); if(String(slotId)===String(target?.id||"")) return;
+ const source=adminTimetableSlots().find(s=>String(s.id)===String(slotId)); if(!source) return toast("Could not find the dragged timetable slot. Refresh and try again.","error");
+ if(target) return toast("Drop onto an empty slot. Use Swap Slot to edit a class that already occupies a slot.","error");
+ const pair=adminTimePair(timeIdx);
+ const payload={subject:source.subject,day_of_week:adminDayName(day),start_time:pair[0],end_time:pair[1],programme:source.programme,course:source.course||null,batch:source.batch||"General",semester:source.semester||null,section:source.section||ttCurrentSection,room:source.room||"",faculty_id:source.faculty_id||source.users?.id||null};
+ try{ await adminApiJson("/api/admin/timetable/"+source.id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}); await fetchAdminDashboardData(); renderPage("timetable"); toast("Class moved to "+adminDayName(day)+" · "+pair[0],"success"); }catch(e){toast(e.message||"Could not move class. Check faculty and room conflicts.","error");}
+}
 async function deleteTimetableSlot(slotId,day,timeIdx){
   const slot=adminTimetableSlots().find(s=>String(s.id)===String(slotId));
   const label=slot?.subject||"this class";
