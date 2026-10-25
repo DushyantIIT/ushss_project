@@ -100,67 +100,88 @@ def get_timetable(
     Returns all timetable slots for the student's programme and batch.
     Includes the assigned faculty name and room.
     """
-    # Older accounts may be missing one grouping field. Apply every available
-    # profile constraint rather than failing the entire portal request.
-    # If both programme and batch are absent, return no rows to avoid exposing
-    # another class's timetable.
-    if not student.get("programme") and not student.get("batch"):
+    # Never expose a whole programme/batch when a student's grouping is
+    # incomplete. Timetable visibility requires an exact programme, batch,
+    # course, semester, and section match.
+    if not all(str(student.get(k) or "").strip() for k in ("programme", "batch", "semester", "section")):
+        return []
+
+    def normalise(value):
+        return " ".join(str(value or "").strip().lower().split())
+
+    def semester_key(value):
+        raw = normalise(value).replace("semester", "").replace("sem", "").strip().upper()
+        roman = {"I":"1", "II":"2", "III":"3", "IV":"4", "V":"5", "VI":"6", "VII":"7", "VIII":"8"}
+        return roman.get(raw, raw)
+
+    def programme_key(value):
+        raw = normalise(value)
+        if "b.a" in raw or raw.startswith("ba"):
+            return "ba"
+        if "m.a" in raw or raw.startswith("ma"):
+            return "ma"
+        return raw
+
+    def course_key(*values):
+        raw = " ".join(normalise(v) for v in values if v)
+        if "economics" in raw:
+            return "economics"
+        if "english" in raw:
+            return "english"
+        return ""
+
+    def legacy_group_part(row, pattern):
+        # Older records stored course/batch/semester/section in one label.
+        label = str(row.get("section") or "")
+        match = re.search(pattern, label, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else ""
+
+    def row_semester(row):
+        return row.get("semester") or legacy_group_part(row, r"\\bSem(?:ester)?\\s+([^·]+)")
+
+    def row_section(row):
+        return legacy_group_part(row, r"\\bSection\\s+([^·]+)") or row.get("section")
+
+    def row_course(row):
+        return course_key(row.get("course"), row.get("department"), row.get("section"))
+
+    student_programme = programme_key(student.get("programme"))
+    student_batch = normalise(student.get("batch"))
+    student_semester = semester_key(student.get("semester"))
+    student_section = normalise(student.get("section")) or "none"
+    student_course = course_key(student.get("department"), student.get("programme"), student.get("course"))
+    if not student_programme or not student_batch or not student_semester or not student_course:
         return []
 
     q = sb.table("timetable_slots").select(
         "id, subject, day_of_week, start_time, end_time, room, programme, batch, "
         "department, course, semester, section, published, users(full_name, email)"
     ).eq("published", True).eq("is_active", True)
-    if student.get("programme"):
-        q = q.eq("programme", student["programme"])
-    if student.get("batch"):
-        q = q.eq("batch", student["batch"])
 
     if day:
         q = q.eq("day_of_week", day)
 
     rows = q.order("day_of_week").order("start_time").execute().data or []
 
-    def normalise(value):
-        return " ".join(str(value or "").strip().lower().split())
+    # Enforce every group dimension together. A Section A student in semester V
+    # must not see semester IV, Section B, another course, or another batch.
+    matched = []
+    for row in rows:
+        slot_programme = programme_key(row.get("programme"))
+        slot_batch = normalise(row.get("batch"))
+        slot_semester = semester_key(row_semester(row))
+        slot_section = normalise(row_section(row)) or "none"
+        slot_course = row_course(row)
+        if (
+            slot_programme == student_programme
+            and slot_batch == student_batch
+            and slot_semester == student_semester
+            and slot_section == student_section
+            and slot_course == student_course
+        ):
+            matched.append(row)
 
-    def legacy_group_part(row, pattern):
-        # Older timetable records stored the whole label in the section column,
-        # e.g. "English · 2025-2027 · Sem III · Section A".
-        label = str(row.get("section") or "")
-        match = re.search(pattern, label, flags=re.IGNORECASE)
-        return match.group(1).strip() if match else ""
-
-    def row_semester(row):
-        return row.get("semester") or legacy_group_part(row, r"\bSem(?:ester)?\s+([^·]+)")
-
-    def row_section(row):
-        return legacy_group_part(row, r"\bSection\s+([^·]+)") or row.get("section")
-
-    def row_course(row):
-        return row.get("course") or str(row.get("section") or "").split(" · ", 1)[0]
-
-    def semester_key(value):
-        raw = normalise(value).replace("semester", "").replace("sem", "").strip()
-        roman = {"i":"1", "ii":"2", "iii":"3", "iv":"4", "v":"5", "vi":"6", "vii":"7", "viii":"8"}
-        return roman.get(raw, raw)
-
-    # When the student's profile has semester/section details, show only the
-    # timetable published for that exact group, not other sections in the batch.
-    student_semester = student.get("semester")
-    student_section = normalise(student.get("section"))
-    student_course = normalise(student.get("department") or student.get("course"))
-    if student_semester:
-        rows = [row for row in rows if semester_key(row_semester(row)) == semester_key(student_semester)]
-    if student_section:
-        rows = [row for row in rows if normalise(row_section(row) or "None") == student_section]
-    if student_course:
-        rows = [
-            row for row in rows
-            if not row_course(row) or normalise(row_course(row)) == student_course
-        ]
-
-    return rows
+    return matched
 
 
 # ═══════════════════════════════════════════════════════════════
