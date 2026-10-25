@@ -2686,13 +2686,13 @@ function renderSubjectsOffered() {
   </div>
   <div class="card" style="margin-top:20px">
     <div class="card-title">Department Electives</div>
-    <div class="card-sub" style="margin:6px 0 16px">Publish an M.A. elective for a specific student group, then view the student-wise selection list.</div>
+    <div class="card-sub" style="margin:6px 0 16px">Publish a department elective for a specific B.A. or M.A. student group, then view the student-wise selection list.</div>
     <form onsubmit="publishElectiveOffering(event)" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end">
       <label><span class="field-label">Elective Subject *</span><select class="form-select" name="subject_offered_id" id="electiveSubjectChoice" required><option value="">Select elective subject</option></select></label>
-      <label><span class="field-label">Programme *</span><select class="form-select" name="programme" id="electiveProgramme" required><option value="M.A.">M.A.</option></select></label>
+      <label><span class="field-label">Programme *</span><select class="form-select" name="programme" id="electiveProgramme" required><option value="B.A.">B.A.</option><option value="M.A.">M.A.</option></select></label>
       <label><span class="field-label">Course *</span><select class="form-select" name="course" required><option value="English">English</option><option value="Economics">Economics</option></select></label>
       <label><span class="field-label">Batch *</span><input class="form-input" name="batch" required placeholder="e.g. General or 2025-27"></label>
-      <label><span class="field-label">Semester *</span><select class="form-select" name="semester" required><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option></select></label>
+      <label><span class="field-label">Semester *</span><select class="form-select" name="semester" id="electiveSemester" required><option value="I">I</option><option value="II">II</option><option value="III">III</option><option value="IV">IV</option><option value="V">V</option><option value="VI">VI</option><option value="VII">VII</option><option value="VIII">VIII</option></select></label>
       <label><span class="field-label">Section (optional)</span><input class="form-input" name="section" placeholder="A / B / leave blank"></label>
       <div><button class="btn btn-primary" type="submit">＋ Publish Elective</button></div>
     </form>
@@ -2706,6 +2706,9 @@ async function loadElectiveOfferings(){
  const offered=Array.isArray(window.__offeredSubjects)?window.__offeredSubjects:[];
  const baElectiveCategories=new Set(["MSC","IDC","SEC","AEC","VAC"]);
  const electives=offered.filter(x=>x.paper_category==="Elective"||(String(x.programme||"").trim()==="B.A."&&baElectiveCategories.has(String(x.paper_category||"").trim().toUpperCase())));
+ const programmeSelect=document.getElementById("electiveProgramme"),semesterSelect=document.getElementById("electiveSemester");
+ const updateElectiveSemesters=()=>{if(!programmeSelect||!semesterSelect)return;const max=programmeSelect.value==="M.A."?4:8;const roman=["I","II","III","IV","V","VI","VII","VIII"].slice(0,max);const prev=semesterSelect.value;semesterSelect.innerHTML=roman.map(v=>`<option value="${v}">${v}</option>`).join("");if(roman.includes(prev))semesterSelect.value=prev;};
+ if(programmeSelect&&!programmeSelect.dataset.semesterBound){programmeSelect.addEventListener("change",updateElectiveSemesters);programmeSelect.dataset.semesterBound="1";} updateElectiveSemesters();
  select.innerHTML='<option value="">Select elective subject</option>'+electives.map(x=>'<option value="'+Number(x.id)+'">'+String(x.subject||"").replace(/[&<>"]/g,"")+' — '+String(x.course||"")+' / Sem '+String(x.semester||"")+'</option>').join("");
  try{
   const rows=await adminApiJson("/api/admin/elective-offerings");
