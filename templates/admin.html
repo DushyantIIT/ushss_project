@@ -2835,7 +2835,7 @@ function filterTimetableSubjectsForCurrentGroup(){
   // Only accept a bare semester value or a number explicitly introduced by
   // "Sem"/"Semester"; never mistake the batch year (e.g. 2025-2027) for a semester.
   const explicit=String(meta.semester||"").trim().toUpperCase().match(/^(VIII|VII|VI|V|IV|III|II|I|[1-8])$/);
-  const labelMatch=String(ttCurrentSection||"").match(/\\bSEM(?:ESTER)?\\s*(VIII|VII|VI|V|IV|III|II|I|[1-8])\\b/i);
+  const labelMatch=String(ttCurrentSection||"").match(/\bSEM(?:ESTER)?\s*(VIII|VII|VI|V|IV|III|II|I|[1-8])\b/i);
   const rawSemester=explicit?explicit[1]:(labelMatch?labelMatch[1].toUpperCase():"");
   const semester=roman[rawSemester]||"";
   const isMAEnglish=(programme.includes("ma")||programme.includes("masterofarts")) && course.includes("english");
