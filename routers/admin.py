@@ -684,9 +684,10 @@ def reset_password(
 
 class SubjectOfferedCreate(BaseModel):
     subject: str = Field(min_length=1, max_length=200)
+    course_code: str = Field(min_length=1, max_length=50)
     programme: str = Field(min_length=1, max_length=30)
     course: str = Field(min_length=1, max_length=50)
-    batch: str = Field(min_length=1, max_length=30)
+    batch: Optional[str] = None
     semester: str = Field(min_length=1, max_length=20)
     section: Optional[str] = None
 
@@ -700,13 +701,14 @@ def list_subjects_offered(admin: dict = Depends(require_admin)):
 def create_subject_offered(body: SubjectOfferedCreate, admin: dict = Depends(require_admin)):
     payload = body.model_dump()
     payload["subject"] = payload["subject"].strip()
+    payload["course_code"] = payload["course_code"].strip()
     payload["programme"] = payload["programme"].strip()
     payload["course"] = payload["course"].strip()
-    payload["batch"] = payload["batch"].strip()
+    payload["batch"] = (payload.get("batch") or "").strip() or "General"
     payload["semester"] = payload["semester"].strip()
     payload["section"] = (payload.get("section") or "").strip() or None
-    if not all(payload[key] for key in ("subject", "programme", "course", "batch", "semester")):
-        raise HTTPException(400, "Subject and all academic details are required.")
+    if not all(payload[key] for key in ("subject", "course_code", "programme", "course", "semester")):
+        raise HTTPException(400, "Subject name, course code and all academic details are required.")
     payload["created_by"] = admin.get("id")
     try:
         result = sb.table("subjects_offered").insert(payload).execute()
