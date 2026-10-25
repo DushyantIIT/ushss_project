@@ -1664,15 +1664,24 @@ function updateTTAcademicOptions() {
 }
 
 function openNewTimetableModal(presetProg) {
-  if (presetProg) document.getElementById("tt-new-prog").value = presetProg;
-  document.getElementById("tt-new-sec-preset").value = "";
-  document.getElementById("tt-new-sec-custom").value = "";
-  document.getElementById("tt-new-course").value = "";
-  updateTTAcademicOptions();
-  document.getElementById("tt-new-batch").value = "";
-  document.getElementById("tt-new-semester").value = "";
-  document.getElementById("tt-new-exists-warn").style.display = "none";
-  document.getElementById("tt-new-modal").classList.add("open");
+  try {
+    const get=id=>document.getElementById(id);
+    const required=["tt-new-prog","tt-new-sec-preset","tt-new-sec-custom","tt-new-course","tt-new-batch","tt-new-semester","tt-new-exists-warn","tt-new-modal"];
+    const missing=required.filter(id=>!get(id));
+    if(missing.length) throw new Error("The new timetable form is missing required fields. Refresh the Admin Panel and try again.");
+    if(presetProg) get("tt-new-prog").value=presetProg;
+    get("tt-new-sec-preset").value="";
+    get("tt-new-sec-custom").value="";
+    get("tt-new-course").value="";
+    updateTTAcademicOptions();
+    get("tt-new-batch").value="";
+    get("tt-new-semester").value="";
+    get("tt-new-exists-warn").style.display="none";
+    get("tt-new-modal").classList.add("open");
+  } catch(error) {
+    console.error("Could not open new timetable form:",error);
+    toast(error?.message||"Could not open the new timetable form. Refresh and try again.","error");
+  }
 }
 function onSectionPreset() {
   const val = document.getElementById("tt-new-sec-preset").value;
@@ -2834,13 +2843,21 @@ function filterTimetableSubjectsForCurrentGroup(){
   if(selected && selected.hidden) select.value="";
 }
 function addClassToFirstAvailableSlot(){
-  if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group first.","error");
-  for(const day of TT_DAYS){
-    for(let i=0;i<TT_TIMES.length;i++){
-      if(!adminSlotFor(ttCurrentProg,ttCurrentSection,day.key,i)) return openTTEdit(day.key,i);
+  try {
+    if(!ttCurrentProg||!ttCurrentSection) return toast("Select a timetable group first.","error");
+    const days=Array.isArray(TT_DAYS)?TT_DAYS:[];
+    const times=Array.isArray(TT_TIMES)?TT_TIMES:[];
+    if(!days.length||!times.length) throw new Error("Timetable days or times failed to load. Refresh the page and try again.");
+    for(const day of days){
+      for(let i=0;i<times.length;i++){
+        if(!adminSlotFor(ttCurrentProg,ttCurrentSection,day.key,i)) return openTTEdit(day.key,i);
+      }
     }
+    toast("Every time slot is occupied. Click an existing class to edit it, or create another timetable section.","error");
+  } catch(error) {
+    console.error("Could not start a new timetable class:",error);
+    toast(error?.message||"Could not start a new class. Refresh the page and try again.","error");
   }
-  toast("Every time slot is occupied. Click an existing class to edit it, or create another timetable section.","error");
 }
 
 function openTTEdit(day,timeIdx){
