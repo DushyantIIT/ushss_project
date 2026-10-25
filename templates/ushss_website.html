@@ -1351,7 +1351,7 @@ async function submitPortalRegister() {
       return;
     }
 
-    // Course code occupies digits 7–9 (zero-based slice [6:9]) of the enrollment number.
+    // Course code may appear anywhere after the first 3 and before the last 2 digits.
     if (role === "student") {
       const courseCodeBySelection = {
         "B.A. (Hons.)|english": "617",
@@ -1361,7 +1361,7 @@ async function submitPortalRegister() {
       };
       const subject = /economics/i.test(dept) ? "economics" : (/english/i.test(dept) ? "english" : "");
       const requiredCode = courseCodeBySelection[prog + "|" + subject];
-      if (requiredCode && cleanEnr.slice(6, 9) !== requiredCode) {
+      if (requiredCode && !cleanEnr.slice(3, -2).includes(requiredCode)) {
         err.textContent = "Invalid Enrollment Number";
         err.style.display = "block";
         return;
