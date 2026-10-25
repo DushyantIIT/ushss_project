@@ -273,7 +273,7 @@ def register(body: RegisterRequest, request: Request):
                     required_code = "109"
 
             if not required_code or required_code not in enr_clean[3:-2]:
-                raise HTTPException(400, "Invalid Enrollment Numbers")
+                raise HTTPException(400, "Invalid Enrollment Number")
 
         existing_enr = sb.table("users").select("id, status, supabase_uid").eq("enrollment_no", enr_clean).execute().data or []
         for row_enr in existing_enr:
