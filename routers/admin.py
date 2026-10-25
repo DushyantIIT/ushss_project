@@ -745,7 +745,7 @@ def list_timetable(
     batch:     Optional[str] = Query(None),
     admin: dict = Depends(require_admin),
 ):
-    q = sb.table("timetable_slots").select("*, users(full_name, email)")
+    q = sb.table("timetable_slots").select("*, users(full_name, email)").eq("is_active", True)
     if programme: q = q.ilike("programme", f"%{programme}%")
     if batch:     q = q.eq("batch", batch)
     res = q.order("day_of_week").order("start_time").execute()
@@ -760,18 +760,18 @@ def create_slot(body: TimetableCreate, admin: dict = Depends(require_admin)):
         if not fac.data:
             raise HTTPException(404, "Faculty user not found")
         # Faculty clash check
-        fac_clash = sb.table("timetable_slots").select("id, subject").eq("faculty_id", body.faculty_id).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
+        fac_clash = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("faculty_id", body.faculty_id).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
         if fac_clash.data:
             raise HTTPException(409, f"Faculty is already assigned to '{fac_clash.data[0].get('subject')}' at this day and time.")
 
     # Room clash check
     if body.room:
-        room_clash = sb.table("timetable_slots").select("id, subject").eq("room", body.room).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
+        room_clash = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("room", body.room).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time).limit(1).execute()
         if room_clash.data:
             raise HTTPException(409, f"Room '{body.room}' is already booked for '{room_clash.data[0].get('subject')}' at this day and time.")
 
     # Class clash check
-    class_q = sb.table("timetable_slots").select("id, subject").eq("programme", body.programme).eq("batch", body.batch).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time)
+    class_q = sb.table("timetable_slots").select("id, subject").eq("is_active", True).eq("programme", body.programme).eq("batch", body.batch).eq("day_of_week", body.day_of_week).eq("start_time", body.start_time)
     if body.section:
         class_q = class_q.eq("section", body.section)
     class_clash = class_q.limit(1).execute()
@@ -798,7 +798,7 @@ def publish_timetable_group(body: TimetablePublish, admin: dict = Depends(requir
 
     rows = sb.table("timetable_slots").select(
         "id, programme, course, batch, semester, section, published"
-    ).eq("programme", programme).execute().data or []
+    ).eq("programme", programme).eq("is_active", True).execute().data or []
 
     def group_label(slot):
         if slot.get("course") and slot.get("batch") and slot.get("semester"):
@@ -854,7 +854,7 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
             raise HTTPException(404, "Faculty user not found")
         clash = (
             sb.table("timetable_slots").select("id, subject")
-            .eq("faculty_id", eff_faculty).eq("day_of_week", eff_day)
+            .eq("is_active", True).eq("faculty_id", eff_faculty).eq("day_of_week", eff_day)
             .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
         )
         if clash.data:
@@ -863,7 +863,7 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
     if eff_room:
         clash = (
             sb.table("timetable_slots").select("id, subject")
-            .eq("room", eff_room).eq("day_of_week", eff_day)
+            .eq("is_active", True).eq("room", eff_room).eq("day_of_week", eff_day)
             .eq("start_time", eff_start).neq("id", slot_id).limit(1).execute()
         )
         if clash.data:
@@ -871,7 +871,7 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
 
     class_q = (
         sb.table("timetable_slots").select("id, subject")
-        .eq("programme", eff_programme).eq("batch", eff_batch)
+        .eq("is_active", True).eq("programme", eff_programme).eq("batch", eff_batch)
         .eq("day_of_week", eff_day).eq("start_time", eff_start)
         .neq("id", slot_id)
     )
@@ -888,16 +888,14 @@ def update_slot(slot_id: int, body: TimetableUpdate, admin: dict = Depends(requi
 
 @router.delete("/timetable/{slot_id}", summary="Delete a timetable slot")
 def delete_slot(slot_id: int, admin: dict = Depends(require_admin)):
-    existing = sb.table("timetable_slots").select("id").eq("id", slot_id).limit(1).execute()
-    if not existing.data:
-        raise HTTPException(404, "Timetable slot not found")
-    # Prevent cascading destruction of attendance history
-    has_sessions = sb.table("attendance_sessions").select("id").eq("slot_id", slot_id).limit(1).execute().data
-    if has_sessions:
-        raise HTTPException(400, "Cannot delete timetable slot with existing attendance sessions. Deleting it would destroy historical attendance records.")
-    sb.table("timetable_slots").delete().eq("id", slot_id).execute()
-    _audit(admin["id"], "DELETE_TIMETABLE", f"Deleted slot id={slot_id}")
-    return {"message": "Timetable slot deleted"}
+    existing = sb.table("timetable_slots").select("id, is_active").eq("id", slot_id).limit(1).execute()
+    if not existing.data or existing.data[0].get("is_active") is False:
+        raise HTTPException(404, "Active timetable slot not found")
+    # Soft-clear the slot so attendance sessions and historical reports remain intact.
+    # Inactive slots are hidden from current timetables and excluded from clash checks.
+    sb.table("timetable_slots").update({"is_active": False, "published": False}).eq("id", slot_id).execute()
+    _audit(admin["id"], "CLEAR_TIMETABLE_SLOT", f"Cleared slot id={slot_id}")
+    return {"message": "Timetable slot cleared. Historical attendance records were preserved."}
 
 
 # 
