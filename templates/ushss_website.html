@@ -1361,7 +1361,7 @@ async function submitPortalRegister() {
       };
       const subject = /economics/i.test(dept) ? "economics" : (/english/i.test(dept) ? "english" : "");
       const requiredCode = courseCodeBySelection[prog + "|" + subject];
-      if (requiredCode && !cleanEnr.slice(3, -2).includes(requiredCode)) {
+      if (!requiredCode || !cleanEnr.slice(3, -2).includes(requiredCode)) {
         err.textContent = "Invalid Enrollment Number";
         err.style.display = "block";
         return;
