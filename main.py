@@ -108,6 +108,38 @@ app.add_middleware(
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# ── Vercel Path Rewriter Middleware ────────────────────────────
+# When Vercel rewrites requests to /api/index.py, scope['path'] can receive
+# the physical script name ('/api/index.py' or '/api/index') or pass the original
+# path in headers such as 'x-matched-path' or 'x-forwarded-uri'.
+# This middleware restores the user's actual requested path so FastAPI routes match.
+@app.middleware("http")
+async def vercel_path_correction(request: Request, call_next):
+    # Check headers provided by Vercel's proxy
+    matched_path = (
+        request.headers.get("x-matched-path")
+        or request.headers.get("x-invoke-path")
+        or request.headers.get("x-forwarded-uri")
+    )
+    if matched_path:
+        # Strip query string if present
+        clean_path = matched_path.split("?")[0]
+        request.scope["path"] = clean_path
+    else:
+        # Fallback: if scope['path'] was rewritten to /api/index.py or /api/index
+        current_path = request.scope.get("path", "")
+        if current_path.startswith("/api/index.py"):
+            rest = current_path[len("/api/index.py"):]
+            request.scope["path"] = rest if rest.startswith("/") else f"/{rest}" if rest else "/"
+        elif current_path.startswith("/api/index"):
+            rest = current_path[len("/api/index"):]
+            request.scope["path"] = rest if rest.startswith("/") else f"/{rest}" if rest else "/"
+        elif current_path == "/api" or current_path == "/api/":
+            request.scope["path"] = "/"
+
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
