@@ -4,11 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="description" content="University School of Humanities and Social Sciences (USHSS) at Guru Gobind Singh Indraprastha University (GGSIPU), New Delhi. Academic programmes in English and Economics."/>
-<link rel="canonical" href="https://ushss-project.onrender.com/"/>
+<link rel="canonical" href="https://ushss-project-dushyantiits-projects.vercel.app/"/>
 <meta property="og:type" content="website"/>
 <meta property="og:title" content="USHSS — University School of Humanities &amp; Social Sciences | GGSIPU"/>
 <meta property="og:description" content="University School of Humanities and Social Sciences (USHSS), GGSIPU. Premier centre for interdisciplinary humanities and social science education."/>
-<meta property="og:url" content="https://ushss-project.onrender.com/"/>
+<meta property="og:url" content="https://ushss-project-dushyantiits-projects.vercel.app/"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;rect width='100' height='100' rx='20' fill='%236B1A1A'/&gt;&lt;text x='50' y='65' font-size='46' font-family='serif' font-weight='bold' fill='%23C9A84C' text-anchor='middle'&gt;G&lt;/text&gt;&lt;/svg&gt;"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap"/>
@@ -460,6 +460,102 @@ section[id] { scroll-margin-top: 76px; }
   .fade-up { opacity: 1; transform: none; }
 }
 
+
+/* ── EDITORIAL REFINEMENT: calmer, more institutional, less template-like ── */
+:root {
+  --gold: #b58b45;
+  --gold-light: #e3c98f;
+  --cream: #fbfaf7;
+  --cream-dark: #f1eee7;
+  --border: #ded7ca;
+}
+body { background: var(--cream); }
+nav { background: rgba(251,250,247,.97); backdrop-filter: blur(8px); }
+.nav-links { gap: 1.35rem; }
+.nav-links a { font-size: 13px; }
+.hero { min-height: min(850px, 100svh); background: var(--cream); }
+.hero-left { padding-top: 9rem; padding-bottom: 4rem; }
+.hero-eyebrow { color: #8a6a35; letter-spacing: 1.6px; }
+.hero h1 { font-size: clamp(2.8rem, 4.8vw, 4.6rem); letter-spacing: -.035em; }
+.hero h1 em { color: #7e2828; }
+.hero-sub { font-family: 'DM Sans', sans-serif; font-size: 1rem; line-height: 1.8; max-width: 430px; }
+.btn-gold, .btn-outline { text-transform: none; letter-spacing: .15px; font-size: 14px; padding: 13px 20px; border-radius: 2px; }
+.btn-gold { background: var(--maroon); color: #fff !important; }
+.btn-outline { border-color: #b8aa96; color: var(--ink-mid); }
+.hero-stats { gap: 1.4rem 1.7rem; margin-top: 2.5rem; padding-top: 1.7rem; flex-wrap: wrap; }
+.stat { min-width: 82px; flex: 1 1 95px; }
+.stat-num { font-size: 1.8rem; color: var(--maroon-deep); }
+.stat-lbl { font-size: 10px; letter-spacing: .45px; text-transform: none; line-height: 1.45; }
+.hero-right { min-height: 620px; background: #e9e3d8; display:flex; align-items:stretch; justify-content:stretch; }
+.hero-img-grid { display:none; }
+.hero-editorial-panel { width:100%; min-height:100%; display:flex; flex-direction:column; justify-content:center; padding:clamp(2rem,5vw,5rem); background: #eee8dc; color:var(--maroon-deep); position:relative; }
+.hero-editorial-panel::before { content:""; position:absolute; inset:24px; border:1px solid rgba(105,69,42,.25); pointer-events:none; }
+.editorial-rule { width:46px; height:2px; background:#9a743c; margin-bottom:1.6rem; }
+.editorial-kicker { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#75634e; }
+.editorial-heading { font-family:'Playfair Display',serif; font-size:clamp(2.4rem,4.4vw,4.4rem); line-height:1.06; letter-spacing:-.04em; margin-top:1.1rem; }
+.editorial-heading em { color:#8b3430; font-weight:400; }
+.editorial-bottom { display:flex; justify-content:space-between; gap:1rem; margin-top:3rem; padding-top:1rem; border-top:1px solid rgba(105,69,42,.25); color:#75634e; font-size:11px; letter-spacing:.35px; }
+.marquee-strip { background:#f1eee7; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.marquee-inner { animation:none; display:flex; justify-content:center; width:100%; }
+.marquee-item { color:#6d2929; font-size:11px; letter-spacing:1px; padding:0 1rem; }
+.marquee-item::before { content:"·"; margin-right:1rem; }
+section { padding:5.25rem 0; }
+.section-label { color:#8a6a35; letter-spacing:1.5px; }
+.section-title { letter-spacing:-.02em; }
+.section-body { font-family:'DM Sans',sans-serif; font-size:1rem; line-height:1.8; }
+.about-grid { gap:4rem; }
+.about-editorial { min-height:440px; padding:clamp(2rem,4vw,4rem); display:flex; flex-direction:column; justify-content:center; background:#e9e3d8; color:var(--maroon-deep); position:relative; }
+.about-editorial::after { content:""; position:absolute; inset:18px; border:1px solid rgba(105,69,42,.25); pointer-events:none; }
+.about-editorial > span { font-size:11px; text-transform:uppercase; letter-spacing:1.6px; color:#75634e; }
+.about-editorial strong { display:block; font-family:'Playfair Display',serif; font-size:clamp(2.1rem,4vw,3.6rem); font-weight:500; line-height:1.12; letter-spacing:-.03em; margin-top:1rem; }
+.about-editorial-bottom { margin-top:3rem; padding-top:1rem; border-top:1px solid rgba(105,69,42,.25); font-size:11px; letter-spacing:.5px; color:#75634e; }
+.about-editorial-bottom span { padding:0 .35rem; }
+.about-img-caption { font-family:'DM Sans',sans-serif; font-style:normal; font-size:12px; max-width:220px; line-height:1.5; }
+.about-values { gap:0; border-top:1px solid var(--border); border-left:1px solid var(--border); }
+.value-card { border-radius:0; box-shadow:none; padding:1.1rem; }
+.value-card:hover { transform:none; background:#faf8f2; }
+.value-icon { font-family:'DM Sans',sans-serif; font-size:11px; color:#8a6a35; letter-spacing:1px; margin-bottom:.9rem; }
+.value-title { font-family:'DM Sans',sans-serif; font-size:14px; }
+.value-desc { font-size:13px; }
+.prog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; }
+.prog-card { padding:1.75rem; }
+.prog-card::before { display:none; }
+.prog-card:hover { background:rgba(250,247,242,.08); }
+.prog-badge { letter-spacing:.8px; border-radius:0; }
+.prog-name { font-size:1.25rem; }
+.faculty-card { border-radius:2px; box-shadow:none; }
+.faculty-card.is-center { transform:none; box-shadow:none; }
+.faculty-card.is-center:hover { transform:translateY(-2px); }
+.faculty-img img { filter:none; }
+footer { background:#241a17; }
+.footer-grid { border-bottom-color:rgba(255,255,255,.14); }
+@media (max-width:900px) {
+  .hero { min-height:0; }
+  .hero-left { padding-top:6.7rem; }
+  .hero-right { min-height:clamp(280px,65vw,430px); height:auto; }
+  .hero-editorial-panel { padding:2.5rem; }
+  .hero-editorial-panel::before { inset:14px; }
+  .editorial-heading { font-size:clamp(2.5rem,9vw,4rem); }
+  .hero-stats { gap:1.1rem .8rem; }
+  .stat { flex:1 1 calc(50% - .8rem); }
+  .marquee-inner { overflow:hidden; white-space:normal; flex-wrap:wrap; row-gap:.4rem; padding:.1rem .5rem; }
+  .marquee-item { font-size:10px; padding:0 .55rem; }
+  .marquee-item::before { margin-right:.55rem; }
+  .about-grid { gap:2rem; }
+  .about-editorial { min-height:300px; }
+  .prog-grid { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:420px) {
+  .hero-left { padding-top:6.25rem; }
+  .hero h1 { font-size:clamp(2.25rem,10vw,2.8rem); }
+  .hero-editorial-panel { padding:2rem 1.5rem; }
+  .editorial-bottom { flex-wrap:wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior:auto; }
+  .fade-up { opacity:1; transform:none; }
+}
+
 </style>
 </head>
 <body>
@@ -478,8 +574,6 @@ section[id] { scroll-margin-top: 76px; }
     <li><a href="#about">About</a></li>
     <li><a href="#programmes">Programmes</a></li>
     <li><a href="#faculty">Faculty</a></li>
-    <li><a href="#research">Research</a></li>
-    <li><a href="#news">News</a></li>
     <li id="nav-auth-item"><button class="nav-login-btn" type="button" onclick="openPortalLogin()">Login</button></li>
     <li><a href="#contact" class="nav-cta">Contact</a></li>
   </ul>
@@ -633,21 +727,20 @@ section[id] { scroll-margin-top: 76px; }
       <a href="#about" class="btn-outline">Learn More</a>
     </div>
     <div class="hero-stats">
-      <div class="stat"><span class="stat-num">2</span><span class="stat-lbl">Academic Disciplines</span></div>
-      <div class="stat"><span class="stat-num">40+</span><span class="stat-lbl">Faculty Members</span></div>
-      <div class="stat"><span class="stat-num">2000+</span><span class="stat-lbl">Alumni Worldwide</span></div>
-      <div class="stat"><span class="stat-num">1998</span><span class="stat-lbl">Established</span></div>
+      <div class="stat"><span class="stat-num">02</span><span class="stat-lbl">Core disciplines</span></div>
+      <div class="stat"><span class="stat-num">MA</span><span class="stat-lbl">English &amp; Economics</span></div>
+      <div class="stat"><span class="stat-num">PhD</span><span class="stat-lbl">Research pathway</span></div>
+      <div class="stat"><span class="stat-num">1998</span><span class="stat-lbl">University established</span></div>
     </div>
   </div>
   <div class="hero-right">
     <div class="hero-img-grid">
-      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#4A0E0E,#8B2E2E)"></div></div>
-      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#6B5B4E,#3D2B1F)"></div></div>
-      <div class="hero-img-cell"><div style="width:100%;height:100%;background:linear-gradient(160deg,#3D2B1F,#6B1A1A)"></div></div>
+      <div class="hero-editorial-panel">
+      <div class="editorial-rule"></div>
+      <span class="editorial-kicker">Study · Question · Understand</span>
+      <p class="editorial-heading">Humanities<br/><em>&amp; Social Sciences</em></p>
+      <div class="editorial-bottom"><span>GGS Indraprastha University</span><span>New Delhi</span></div>
     </div>
-    <div class="hero-overlay-text">
-      <p>"The unexamined life<br/>is not worth living."</p>
-      <span>— Socrates</span>
     </div>
   </div>
 </section>
@@ -679,11 +772,10 @@ section[id] { scroll-margin-top: 76px; }
   <div class="section-inner">
     <div class="about-grid">
       <div class="about-img-wrap fade-up">
-        <div style="height:440px;background:linear-gradient(135deg,var(--maroon-deep) 0%,var(--maroon-light) 60%,var(--gold) 100%);border-radius:2px;display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;padding:2rem">
-            <div style="font-family:'Playfair Display',serif;font-size:5rem;color:rgba(255,255,255,.12);font-weight:700;line-height:1">HSS</div>
-            <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:1.1rem;color:rgba(250,247,242,.6);margin-top:1rem">Est. 1998</div>
-          </div>
+        <div class="about-editorial">
+          <span>University School</span>
+          <strong>Humanities<br/>&amp; Social Sciences</strong>
+          <div class="about-editorial-bottom">GGSIPU <span>·</span> New Delhi <span>·</span> Est. 1998</div>
         </div>
         <div class="about-img-accent"></div>
         <div class="about-img-caption">Nurturing scholars since the university's founding year</div>
@@ -697,22 +789,22 @@ section[id] { scroll-margin-top: 76px; }
         <p class="section-body">Our school offers a vibrant academic environment that integrates rigorous scholarship with contemporary relevance — preparing students to engage deeply with the complex social, cultural, and philosophical questions of our time.</p>
         <div class="about-values">
           <div class="value-card fade-up">
-            <div class="value-icon">📚</div>
+            <div class="value-icon" aria-hidden="true">01</div>
             <div class="value-title">Academic Rigour</div>
             <div class="value-desc">Grounded in classics, enriched by contemporary discourse</div>
           </div>
           <div class="value-card fade-up fade-up-delay-1">
-            <div class="value-icon">🌏</div>
+            <div class="value-icon" aria-hidden="true">02</div>
             <div class="value-title">Social Relevance</div>
             <div class="value-desc">Research that speaks to India's dynamic social landscape</div>
           </div>
           <div class="value-card fade-up fade-up-delay-2">
-            <div class="value-icon">🔬</div>
+            <div class="value-icon" aria-hidden="true">03</div>
             <div class="value-title">Research Culture</div>
             <div class="value-desc">Active PhD programmes and interdisciplinary inquiry</div>
           </div>
           <div class="value-card fade-up fade-up-delay-3">
-            <div class="value-icon">🤝</div>
+            <div class="value-icon" aria-hidden="true">04</div>
             <div class="value-title">Inclusive Ethos</div>
             <div class="value-desc">A welcoming space for diverse perspectives and voices</div>
           </div>
@@ -871,105 +963,7 @@ section[id] { scroll-margin-top: 76px; }
 </section>
 
 <!-- RESEARCH -->
-<section class="research" id="research">
-  <div class="section-inner">
-    <div class="section-label fade-up">Scholarship &amp; Inquiry</div>
-    <h2 class="section-title fade-up fade-up-delay-1">Research <em>Focus Areas</em></h2>
-    <div class="research-grid">
-      <div class="research-areas fade-up">
-        <div class="research-area active">
-          <h4>Gender, Society &amp; Culture</h4>
-          <p>Examining the interplay of gender, caste, class and culture in contemporary Indian society through interdisciplinary lenses.</p>
-        </div>
-        <div class="research-area">
-          <h4>Political Economy &amp; Development</h4>
-          <p>Research on economic inequality, public policy, urban development, and inclusive growth in the Indian subcontinent.</p>
-        </div>
-        <div class="research-area">
-          <h4>Literature, Identity &amp; Diaspora</h4>
-          <p>Exploring how literary texts construct and challenge notions of national identity, belonging, and diaspora experience.</p>
-        </div>
-        <div class="research-area">
-          <h4>Mental Health &amp; Wellbeing</h4>
-          <p>Community-level studies on psychological wellbeing, stigma, counselling interventions and policy implications.</p>
-        </div>
-        <div class="research-area">
-          <h4>Constitutional Democracy &amp; Governance</h4>
-          <p>Analysing evolving democratic institutions, judicial review, and federal structure in India's political system.</p>
-        </div>
-        <div class="research-area">
-          <h4>Environmental Humanities</h4>
-          <p>Cross-disciplinary work on ecology, climate justice, environmental ethics and human-nature relationships.</p>
-        </div>
-      </div>
-      <div class="research-stats-panel fade-up fade-up-delay-1">
-        <h3>Research at a Glance</h3>
-        <div class="r-stat">
-          <span class="r-stat-num">85+</span>
-          <span class="r-stat-label">Research papers published (last 3 years)</span>
-        </div>
-        <div class="r-stat">
-          <span class="r-stat-num">22</span>
-          <span class="r-stat-label">Active PhD scholars</span>
-        </div>
-        <div class="r-stat">
-          <span class="r-stat-num">8</span>
-          <span class="r-stat-label">Funded research projects</span>
-        </div>
-        <div class="r-stat">
-          <span class="r-stat-num">4</span>
-          <span class="r-stat-label">National conferences hosted annually</span>
-        </div>
-        <div class="r-stat">
-          <span class="r-stat-num">3</span>
-          <span class="r-stat-label">International collaborations</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- NEWS -->
-<section id="news">
-  <div class="section-inner">
-    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;gap:1rem">
-      <div>
-        <div class="section-label fade-up">Latest from USHSS</div>
-        <h2 class="section-title fade-up fade-up-delay-1">News &amp; <em>Announcements</em></h2>
-      </div>
-      <a href="#news" class="btn-outline fade-up" style="align-self:flex-end">View All News</a>
-    </div>
-    <div class="news-grid">
-      <div class="news-featured fade-up">
-        <div class="news-featured-img"><div class="news-featured-img-placeholder"><span>Annual Humanities<br/>Conclave 2025</span></div></div>
-        <div class="news-featured-body">
-          <span class="news-tag">Featured · Seminar</span>
-          <div class="news-title">USHSS Hosts Annual Humanities Conclave: "Reimagining India's Social Contract"</div>
-          <div class="news-excerpt">Leading scholars, policymakers, and student researchers gathered for a two-day conclave exploring the future of democratic participation and social equity in post-pandemic India.</div>
-          <div class="news-meta"><span>March 2025</span><span>·</span><span>Seminar Hall, GGSIPU</span></div>
-        </div>
-      </div>
-      <div class="news-sidebar">
-        <div class="news-item fade-up">
-          <div class="news-item-date">14</div>
-          <div class="news-item-body"><span class="news-item-tag">Apr · Admissions</span><div class="news-item-title">M.A. Admissions 2025–26 now open via IPU CET. Last date: May 15, 2025.</div></div>
-        </div>
-        <div class="news-item fade-up fade-up-delay-1">
-          <div class="news-item-date">08</div>
-          <div class="news-item-body"><span class="news-item-tag">Apr · Achievement</span><div class="news-item-title">Dr. Sunita Mehta receives UGC Major Research Project grant of ₹12 lakhs for postcolonial fiction study.</div></div>
-        </div>
-        <div class="news-item fade-up fade-up-delay-2">
-          <div class="news-item-date">02</div>
-          <div class="news-item-body"><span class="news-item-tag">Apr · Placement</span><div class="news-item-title">Three USHSS alumni selected for Indian Administrative Service in UPSC CSE 2024.</div></div>
-        </div>
-        <div class="news-item fade-up fade-up-delay-3">
-          <div class="news-item-date">25</div>
-          <div class="news-item-body"><span class="news-item-tag">Mar · Workshop</span><div class="news-item-title">Research Methodology workshop for PhD scholars: "Qualitative Methods in Social Science" — 3-day intensive.</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- EVENTS -->
 
