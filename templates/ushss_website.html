@@ -94,6 +94,30 @@ nav.scrolled{box-shadow:0 2px 20px rgba(107,26,26,0.08)}
 .portal-reg-select option{background:var(--white);color:var(--ink)}
 .portal-login-card.wide{width:min(560px,100%)}
 
+/* ── SUBTLE EDITORIAL MOTION ── */
+@keyframes heroRiseIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes heroRuleGrow {
+  from { transform: scaleX(0); transform-origin:left; }
+  to { transform: scaleX(1); transform-origin:left; }
+}
+.hero .hero-eyebrow { animation: heroRiseIn .65s .08s both; }
+.hero h1 { animation: heroRiseIn .8s .18s both; }
+.hero .hero-sub { animation: heroRiseIn .75s .3s both; }
+.hero .hero-actions { animation: heroRiseIn .7s .42s both; }
+.hero .hero-stats { animation: heroRiseIn .75s .54s both; }
+.hero .hero-left::after { animation: heroRuleGrow 1s .3s both; }
+.btn-gold, .btn-outline { transition: color .25s, background-color .25s, border-color .25s, transform .25s, box-shadow .25s; }
+.btn-gold:hover, .btn-outline:hover { transform: translateY(-2px); box-shadow: 0 7px 18px rgba(74,14,14,.12); }
+.value-card, .prog-card, .faculty-card { will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .hero .hero-eyebrow, .hero h1, .hero .hero-sub, .hero .hero-actions,
+  .hero .hero-stats, .hero .hero-left::after { animation: none !important; }
+  .btn-gold, .btn-outline { transition: none !important; }
+}
+
 /* ── HERO ── */
 .hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;position:relative;overflow:hidden}
 .hero-left{padding:10rem 3.5rem 5rem;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
