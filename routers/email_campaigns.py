@@ -317,7 +317,7 @@ def cron_dispatch(
     x_cron_secret: Optional[str] = Header(None, alias="x-cron-secret"),
     authorization: Optional[str] = Header(None),
 ):
-    expected = os.environ.get("EMAIL_CRON_SECRET", "")
+    expected = os.environ.get("EMAIL_CRON_SECRET") or os.environ.get("CRON_SECRET", "")
     bearer = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else None
     supplied = x_cron_secret or bearer
     if not expected or not supplied or not hmac.compare_digest(expected, supplied):
