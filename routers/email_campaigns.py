@@ -36,6 +36,18 @@ def _html_document(body_html: str, body_text: str) -> str:
     )
 
 
+def _normalise(value: Optional[str]) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+def _programme_match(actual: Optional[str], wanted: Optional[str]) -> bool:
+    if not wanted:
+        return True
+    a, w = _normalise(actual), _normalise(wanted)
+    aliases = {"ba": ("ba", "bachelorofarts"), "ma": ("ma", "masterofarts")}
+    return any(alias in a for alias in aliases.get(w, (w,)))
+
+
 def _course_match(user: dict, course: Optional[str]) -> bool:
     if not course:
         return True
@@ -141,7 +153,7 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
     for user in users:
         if not user.get("email"):
             continue
-        if body.programme and body.programme.strip().lower() not in str(user.get("programme") or "").lower():
+        if not _programme_match(user.get("programme"), body.programme):
             continue
         if not _course_match(user, body.course):
             continue
