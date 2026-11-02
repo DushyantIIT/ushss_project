@@ -587,7 +587,8 @@ footer { background:#241a17; }
   --ushss-depth-shadow-hover: 0 26px 54px rgba(0,0,0,.19), 0 10px 20px rgba(0,0,0,.11);
 }
 html{scroll-behavior:smooth}
-body{perspective:1400px}
+/* Keep viewport-fixed dialogs anchored to the viewport; perspective on body breaks modal positioning on long pages. */
+body{perspective:none}
 button,.btn,[role="button"],a.button{
   transition:transform .22s ease,box-shadow .22s ease,filter .22s ease,background-color .22s ease;
   transform:translateZ(0);
@@ -679,7 +680,61 @@ footer{background:linear-gradient(135deg,#310a10,#5b101b)}
 @media(max-width:600px){nav{height:62px}.hero{min-height:auto}.hero-left{padding:7rem 1.3rem 2rem}.hero-right{min-height:300px}.hero h1{font-size:2.65rem}.hero-stats{gap:8px}.stat{padding:12px}.stat-num{font-size:1.7rem}section{padding:4.5rem 0}}
 @media(prefers-reduced-motion:reduce){.hero-img-cell img,.value-card,.prog-card,.faculty-card{transition:none}}
 
-</style>
+
+/* ── LOGIN MODAL VISIBILITY / FIXED-VIEWPORT SAFETY ── */
+#portal-login-overlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483000!important;
+  display:none;
+  align-items:center!important;
+  justify-content:center!important;
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+  perspective:none!important;
+  isolation:isolate;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#portal-login-overlay.open{display:flex!important}
+#portal-login-overlay > #portal-login-card{
+  display:block!important;
+  position:relative!important;
+  flex:0 0 auto!important;
+  width:min(430px,calc(100vw - 32px))!important;
+  max-height:calc(100dvh - 32px);
+  overflow-y:auto;
+  margin:auto!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transform:none!important;
+  backface-visibility:visible!important;
+  background:#fbfaf7!important;
+  color:#241513!important;
+  border:1px solid #b58b45!important;
+  border-top:5px solid #65121c!important;
+  border-radius:16px!important;
+  box-shadow:0 28px 80px rgba(20,8,8,.38)!important;
+  z-index:1;
+}
+#portal-login-card :is(h3,p,label,span,div){visibility:visible}
+#portal-login-card .portal-login-title{color:#65121c!important}
+#portal-login-card .portal-login-sub,
+#portal-login-card .portal-label,
+#portal-login-card .portal-login-foot{color:#49372e!important}
+#portal-login-card .portal-input,
+#portal-login-card .portal-reg-select{background:#fff!important;color:#241513!important}
+#portal-login-card button{pointer-events:auto}
+@media(max-width:600px){
+  #portal-login-overlay{align-items:flex-start!important;padding:12px!important}
+  #portal-login-overlay > #portal-login-card{
+    width:100%!important;
+    max-height:none;
+    margin:0 auto!important;
+  }
+}
+\n</style>
 </head>
 <body>
 
