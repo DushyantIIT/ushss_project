@@ -147,8 +147,14 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
             continue
         if body.semester and str(user.get("semester") or "").strip() != str(body.semester).strip():
             continue
-        if body.section and body.section.strip().lower() not in ("all", "none") and str(user.get("section") or "").strip().lower() != body.section.strip().lower():
-            continue
+        if body.section and body.section.strip().lower() != "all":
+            actual_section = str(user.get("section") or "").strip().lower()
+            wanted_section = body.section.strip().lower()
+            if wanted_section == "none":
+                if actual_section:
+                    continue
+            elif actual_section != wanted_section:
+                continue
         recipients.append(user)
 
     if not recipients:
