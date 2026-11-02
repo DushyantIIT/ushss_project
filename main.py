@@ -25,7 +25,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.database import ping_db
 from app.seed import seed
-from routers import auth, admin, student, faculty, cr, password_reset, public, chat
+from routers import auth, admin, student, faculty, cr, password_reset, public, chat, email_campaigns
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -185,6 +185,8 @@ app.include_router(faculty.router,        prefix="/api")
 app.include_router(cr.router,             prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 app.include_router(chat.router,           prefix="/api")
+app.include_router(email_campaigns.router, prefix="/api")
+app.include_router(email_campaigns.cron_router)
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def home(request: Request):
