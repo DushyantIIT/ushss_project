@@ -78,6 +78,106 @@ input,select,textarea{border-radius:10px!important;border-color:#dfd2c1!importan
 .tablewrap{border-radius:14px!important;box-shadow:0 10px 24px rgba(48,24,22,.06)!important}
 th{background:#f2e9dc!important;color:#5b1720!important}
 
+
+/* FINAL USHSS THEME FIX — overrides legacy and redesign hard-coded colours */
+:root[data-ushss-theme="light"]{
+ color-scheme:light;
+ --bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+:root[data-ushss-theme="dark"]{
+ color-scheme:dark;
+ --bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+ --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+ --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+ --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+ --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{
+  color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+  --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+  --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+  --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+  --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+ }
+}
+:root[data-ushss-theme="system"]{
+ color-scheme:light;--bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;--border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;--text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;--maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);--paper:#191B1F;--line:#343941;--cream:#E8E4DC}
+}
+html,body{background:var(--bg)!important;color:var(--text)!important;color-scheme:inherit}
+body,.main,.content,.page-content,.main-content,.dashboard-content,.wrap,.workspace{
+ background-color:var(--bg)!important;color:var(--text)!important;
+}
+.card,.panel,.stat-card,.modal,.modal-content,.table-wrap,.table-container,.content-card,.form-card,.widget,.tile,
+.topbar,.top-bar,.toolbar,.compose,.people,.convos{
+ background-color:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important;
+}
+.card-title,.tb-title,.page-title,h1,h2,h3,h4,h5,h6,p,label,small,td,th,li,
+.muted,.text-muted,.subtitle,.description,.form-label,.field-label{
+ color:var(--text);
+}
+th,thead,.table thead,.table-header{background:var(--surface2)!important;color:var(--ink-mid)!important}
+tr,td{border-color:var(--border)!important}
+input,select,textarea,option{
+ background:var(--surface2)!important;color:var(--text)!important;border-color:var(--border2)!important;
+}
+input::placeholder,textarea::placeholder{color:var(--muted)!important;opacity:1}
+a:not(.btn):not(.button){color:var(--maroon)}
+.btn-primary,.btn-primary:hover{color:#fff!important}
+.sidebar,.sb-head,.dash-welcome,.att-hero,.att-session,.fac-welcome,.live-host-card,
+.head{
+ background:linear-gradient(135deg,#4A0E0E,#6B1A1A 62%,#8B2E2E)!important;
+ color:#fff!important;
+}
+.sidebar *, .sb-head *, .dash-welcome *, .att-hero *, .att-session *,
+.fac-welcome *, .live-host-card *, .head *{color:#fff}
+:root[data-ushss-theme="dark"] .sidebar *,
+:root[data-ushss-theme="dark"] .sb-head *,
+:root[data-ushss-theme="dark"] .dash-welcome *,
+:root[data-ushss-theme="dark"] .att-hero *,
+:root[data-ushss-theme="dark"] .att-session *,
+:root[data-ushss-theme="dark"] .fac-welcome *,
+:root[data-ushss-theme="dark"] .live-host-card *,
+:root[data-ushss-theme="dark"] .head *{color:var(--gold-l)!important}
+:root[data-ushss-theme="light"] .sidebar *,
+:root[data-ushss-theme="light"] .sb-head *,
+:root[data-ushss-theme="light"] .dash-welcome *,
+:root[data-ushss-theme="light"] .att-hero *,
+:root[data-ushss-theme="light"] .att-session *,
+:root[data-ushss-theme="light"] .fac-welcome *,
+:root[data-ushss-theme="light"] .live-host-card *,
+:root[data-ushss-theme="light"] .head *{color:#fff!important}
+#ushss-theme-switch{
+ position:fixed!important;right:16px!important;bottom:82px!important;z-index:100000!important;
+ display:flex!important;align-items:center!important;gap:8px!important;
+ padding:8px 10px!important;border:1px solid var(--border2)!important;border-radius:10px!important;
+ background:var(--surface)!important;color:var(--text)!important;
+ box-shadow:0 4px 18px rgba(0,0,0,.2)!important;font:600 12px 'DM Sans',sans-serif!important;
+ max-width:calc(100vw - 24px)!important;
+}
+#ushss-theme-switch label{color:var(--text)!important;white-space:nowrap}
+#ushss-theme-switch select{
+ width:auto!important;min-width:88px!important;max-width:110px!important;
+ padding:6px 8px!important;background:var(--surface2)!important;color:var(--text)!important;
+ border:1px solid var(--border2)!important;border-radius:7px!important;font:inherit!important;
+}
+@media(max-width:760px){
+ #ushss-theme-switch{right:12px!important;bottom:82px!important;padding:7px 9px!important;gap:6px!important}
+ #ushss-theme-switch label{font-size:11px!important}
+ #ushss-theme-switch select{min-width:82px!important;font-size:12px!important}
+}
+
 </style>
 </head>
 <body>
@@ -131,5 +231,7 @@ async function retry(id){if(!confirm("Retry all failed deliveries in this campai
 async function viewDeliveries(id){const box=document.getElementById("deliveries");box.textContent="Loading delivery records…";try{const r=await api("/api/admin/emails/deliveries?campaign_id="+id),rows=r.deliveries||[];box.innerHTML=rows.length?'<div class="tablewrap"><table><thead><tr><th>Recipient</th><th>Email</th><th>Status</th><th>Attempts</th><th>Last error</th></tr></thead><tbody>'+rows.map(d=>'<tr><td>'+esc(d.recipient_name)+'</td><td>'+esc(d.recipient_email)+'</td><td><span class="pill '+esc(d.status)+'">'+esc(d.status)+'</span></td><td>'+Number(d.attempts||0)+'</td><td>'+esc(d.last_error||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="empty">No delivery records.</div>';}catch(e){box.textContent="Could not load deliveries: "+e.message;}}
 loadAll();
 </script>
+
+<script>(function(){var key='ushss_global_theme';function apply(v){if(['light','dark','system'].indexOf(v)<0)v='system';document.documentElement.setAttribute('data-ushss-theme',v);try{localStorage.setItem(key,v)}catch(e){}var s=document.getElementById('ushss-theme-choice');if(s)s.value=v}var initial='system';try{initial=localStorage.getItem(key)||'system'}catch(e){}apply(initial);(document.readyState==='loading'?function(fn){document.addEventListener('DOMContentLoaded',fn)}:function(fn){fn()})(function(){if(document.getElementById('ushss-theme-switch'))return;var box=document.createElement('div');box.id='ushss-theme-switch';box.innerHTML='<label for="ushss-theme-choice">Appearance</label><select id="ushss-theme-choice" aria-label="Choose appearance"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>';document.body.appendChild(box);var s=document.getElementById('ushss-theme-choice');s.value=document.documentElement.getAttribute('data-ushss-theme')||'system';s.addEventListener('change',function(){apply(this.value)})})})();</script>
 </body>
 </html>
