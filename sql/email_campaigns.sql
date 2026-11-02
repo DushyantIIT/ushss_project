@@ -65,4 +65,4 @@ revoke all on public.email_deliveries from anon, authenticated;
 grant all on public.email_templates to service_role;
 grant all on public.email_campaigns to service_role;
 grant all on public.email_deliveries to service_role;
-grant usage, select on all sequences in schema public to service_role;
+grant usage, select on sequence public.email_templates_id_seq, public.email_campaigns_id_seq, public.email_deliveries_id_seq to service_role;
