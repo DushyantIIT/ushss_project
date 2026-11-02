@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone
 from html import escape
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, EmailStr, Field
@@ -84,6 +85,7 @@ class CampaignInput(BaseModel):
     section: Optional[str] = None
     scheduled_at: Optional[datetime] = None
     template_id: Optional[int] = None
+    idempotency_key: str = Field(default_factory=lambda: str(uuid4()), max_length=64)
 
 
 @router.get("/templates")
@@ -135,6 +137,12 @@ def send_test_email(body: TestEmailInput, admin: dict = Depends(require_admin)):
 
 @router.post("/campaigns", status_code=201)
 def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
+    existing_campaign = sb.table("email_campaigns").select("*").eq("idempotency_key", body.idempotency_key).limit(1).execute()
+    if existing_campaign.data:
+        existing = existing_campaign.data[0]
+        deliveries = sb.table("email_deliveries").select("id").eq("campaign_id", existing["id"]).execute().data or []
+        return {"campaign": existing, "recipient_count": len(deliveries), "duplicate": True}
+
     subject, body_text, body_html = body.subject, body.body_text, body.body_html
     if body.template_id:
         template = sb.table("email_templates").select("*").eq("id", body.template_id).limit(1).execute()
@@ -147,7 +155,14 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
 
     query = sb.table("users").select("id,email,full_name,programme,domain,department,semester,section,role,status,is_active")
     query = query.eq("role", "student").eq("is_active", True).eq("status", "approved")
-    users = query.execute().data or []
+    users = []
+    offset = 0
+    while True:
+        page = query.range(offset, offset + 999).execute().data or []
+        users.extend(page)
+        if len(page) < 1000:
+            break
+        offset += 1000
 
     recipients = []
     for user in users:
@@ -185,7 +200,7 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
         },
         "scheduled_at": scheduled_at.astimezone(timezone.utc).isoformat(),
         "status": "scheduled", "created_by": admin["id"],
-        "recipient_count": len(recipients),
+        "recipient_count": len(recipients), "idempotency_key": body.idempotency_key,
     }
     created = sb.table("email_campaigns").insert(campaign_row).execute()
     if not created.data:
@@ -214,7 +229,14 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
 def list_campaigns(admin: dict = Depends(require_admin)):
     campaigns = sb.table("email_campaigns").select("*").order("created_at", desc=True).limit(50).execute().data or []
     for campaign in campaigns:
-        rows = sb.table("email_deliveries").select("status").eq("campaign_id", campaign["id"]).execute().data or []
+        rows = []
+        offset = 0
+        while True:
+            page = sb.table("email_deliveries").select("status").eq("campaign_id", campaign["id"]).range(offset, offset + 999).execute().data or []
+            rows.extend(page)
+            if len(page) < 1000:
+                break
+            offset += 1000
         campaign["delivery_stats"] = {
             status: sum(1 for row in rows if row.get("status") == status)
             for status in ("pending", "sending", "sent", "failed")
@@ -291,7 +313,14 @@ def _dispatch_due_campaigns(limit: int = 30):
             if claimed >= limit:
                 break
 
-        remaining = sb.table("email_deliveries").select("id,status").eq("campaign_id", campaign["id"]).execute().data or []
+        remaining = []
+        offset = 0
+        while True:
+            page = sb.table("email_deliveries").select("id,status").eq("campaign_id", campaign["id"]).range(offset, offset + 999).execute().data or []
+            remaining.extend(page)
+            if len(page) < 1000:
+                break
+            offset += 1000
         states = [row.get("status") for row in remaining]
         if states and all(state == "sent" for state in states):
             final_status = "sent"
