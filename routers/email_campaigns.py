@@ -140,8 +140,7 @@ def create_campaign(body: CampaignInput, admin: dict = Depends(require_admin)):
     existing_campaign = sb.table("email_campaigns").select("*").eq("idempotency_key", body.idempotency_key).limit(1).execute()
     if existing_campaign.data:
         existing = existing_campaign.data[0]
-        deliveries = sb.table("email_deliveries").select("id").eq("campaign_id", existing["id"]).execute().data or []
-        return {"campaign": existing, "recipient_count": len(deliveries), "duplicate": True}
+        return {"campaign": existing, "recipient_count": existing.get("recipient_count", 0), "duplicate": True}
 
     subject, body_text, body_html = body.subject, body.body_text, body.body_html
     if body.template_id:
