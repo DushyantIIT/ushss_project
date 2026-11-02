@@ -64,6 +64,24 @@ a:focus-visible,button:focus-visible,[role="button"]:focus-visible{
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 
+
+/* ── USHSS VISUAL REDESIGN v2: dimensional messaging workspace ── */
+body{background:radial-gradient(ellipse at 90% 0%,rgba(215,173,98,.16),transparent 28%),linear-gradient(135deg,#f7f4ef,#ece8e1)!important}
+.wrap{max-width:1500px!important;padding:24px!important}
+.head{border-radius:20px!important;background:linear-gradient(115deg,#3d0b14,#721b27 65%,#8b3439)!important;box-shadow:0 20px 45px rgba(55,12,18,.22)!important;color:#fff!important;padding:22px 26px!important}
+.layout{gap:18px!important}
+.panel{border:1px solid #e9dfd2!important;border-radius:20px!important;background:linear-gradient(145deg,#fffefa,#f8f2e9)!important;box-shadow:0 16px 38px rgba(48,24,22,.1)!important;overflow:hidden}
+.panel h2{background:rgba(242,233,220,.75)!important;color:#64131d!important;padding:17px 20px!important;border-bottom:1px solid #e7ddd0!important}
+.people,.convos{padding:12px!important}
+.item{border-radius:12px!important;transition:transform .2s,background .2s!important}
+.item:hover,.item.active{transform:translateX(3px)!important;background:#f4eadc!important}
+.messages{background:linear-gradient(180deg,#fbf8f2,#f3eee6)!important;border-radius:14px!important}
+.msg{border-radius:16px 16px 16px 5px!important;box-shadow:0 7px 16px rgba(40,20,16,.07)!important}
+.msg.mine{border-radius:16px 16px 5px 16px!important;background:linear-gradient(135deg,#751d28,#4d1019)!important;box-shadow:0 9px 18px rgba(75,13,22,.16)!important}
+.compose{border-radius:15px!important;background:#fff!important;box-shadow:0 8px 22px rgba(40,20,16,.08)!important}
+input,button{border-radius:10px!important}
+button{box-shadow:0 7px 16px rgba(69,16,23,.12)!important}
+
 </style></head><body><main class="wrap">
 <header class="head"><div><h1 style="font-size:22px;margin:0">USHSS Chats</h1><div class="muted">Class and faculty conversations with access controls</div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="themeChoice" style="font-size:13px;color:inherit">Theme</label><select id="themeChoice" aria-label="Choose chat theme" style="padding:9px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--ink)"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select><button class="secondary" onclick="location.href='/dashboard/'+(localStorage.getItem('ushss_role')||'student')">Back to portal</button></div></header>
 <div class="status" id="status">Loading your permitted contacts…</div>
