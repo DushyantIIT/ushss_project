@@ -23,6 +23,7 @@ create table if not exists public.email_campaigns (
   status text not null default 'scheduled'
     check (status in ('scheduled','sending','sent','failed','cancelled')),
   recipient_count integer not null default 0 check (recipient_count >= 0),
+  idempotency_key text not null unique,
   created_by bigint references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
   sent_at timestamptz
