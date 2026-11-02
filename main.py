@@ -196,6 +196,10 @@ def home(request: Request):
 def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html")
 
+@app.api_route("/dashboard/admin/emails", methods=["GET", "HEAD"], include_in_schema=False)
+def admin_emails_page(request: Request):
+    return templates.TemplateResponse(request, "admin_emails.html")
+
 @app.api_route("/dashboard/admin/pending-requests", methods=["GET", "HEAD"], include_in_schema=False)
 def admin_pending_requests_page(request: Request):
     return templates.TemplateResponse(request, "admin_pending_requests.html")
