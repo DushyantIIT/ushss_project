@@ -9,6 +9,61 @@
 :root[data-theme="dark"] .messages{background:linear-gradient(180deg,#211e1a,#191714)}:root[data-theme="dark"] .item:hover,:root[data-theme="dark"] .item.active{background:#352d22}:root[data-theme="dark"] input{background:#211e1a;color:var(--ink)}:root[data-theme="dark"] .msg.mine{background:#783030;border-color:#783030}:root[data-theme="dark"] button.secondary:hover{background:#352d22}:root[data-theme="dark"] .head{background:linear-gradient(135deg,#241010,#541b1b 68%,#783030)}
 :root[data-theme="system"]{color-scheme:light dark}
 @media(prefers-color-scheme:dark){:root[data-theme="system"]{--bg:#151311;--surface:#211e1a;--surface2:#2b2621;--surface3:#393229;--border:#40382f;--border2:#5a4d3f;--maroon:#9c4545;--maroon-d:#321717;--maroon-l:#b85d5d;--gold:#d7b65c;--gold-l:#f0d58b;--ink:#f3eee7;--ink-mid:#e5d9cb;--muted:#b3a596;--shadow:0 2px 12px rgba(0,0,0,.2)}:root[data-theme="system"] .messages{background:linear-gradient(180deg,#211e1a,#191714)}:root[data-theme="system"] .item:hover,:root[data-theme="system"] .item.active{background:#352d22}:root[data-theme="system"] input{background:#211e1a;color:var(--ink)}:root[data-theme="system"] .msg.mine{background:#783030;border-color:#783030}:root[data-theme="system"] button.secondary:hover{background:#352d22}:root[data-theme="system"] .head{background:linear-gradient(135deg,#241010,#541b1b 68%,#783030)}}
+
+/* USHSS dimensional interface layer */
+:root{
+  --ushss-depth-shadow: 0 18px 42px rgba(0,0,0,.13), 0 5px 12px rgba(0,0,0,.08);
+  --ushss-depth-shadow-hover: 0 26px 54px rgba(0,0,0,.19), 0 10px 20px rgba(0,0,0,.11);
+}
+html{scroll-behavior:smooth}
+body{perspective:1400px}
+button,.btn,[role="button"],a.button{
+  transition:transform .22s ease,box-shadow .22s ease,filter .22s ease,background-color .22s ease;
+  transform:translateZ(0);
+}
+button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{
+  transform:translateY(-2px) translateZ(8px);
+  box-shadow:0 10px 22px rgba(0,0,0,.18);
+  filter:saturate(1.08);
+}
+button:active:not(:disabled),.btn:active,[role="button"]:active,a.button:active{
+  transform:translateY(1px) scale(.985);
+  box-shadow:0 3px 8px rgba(0,0,0,.14);
+}
+[class*="card"],[class*="panel"],[class*="stat"],[class*="tile"],[class*="widget"],.hero-content,.hero-card{
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease,border-color .28s ease;
+}
+[class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+  transform:translateY(-3px) rotateX(.45deg);
+  box-shadow:var(--ushss-depth-shadow-hover);
+}
+main,section,.container,.wrap,.dashboard,.page-content{transform-style:preserve-3d}
+header,.topbar,.navbar,.sidebar,.side-nav{
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+input,select,textarea{
+  transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;
+}
+input:focus,select:focus,textarea:focus{
+  transform:translateZ(5px);
+  box-shadow:0 0 0 3px rgba(201,168,76,.16),0 8px 18px rgba(0,0,0,.08);
+}
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid var(--gold,#D89E28);
+  outline-offset:3px;
+}
+@media (hover:none),(max-width:760px){
+  [class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+    transform:none;box-shadow:var(--ushss-depth-shadow);
+  }
+  button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
 </style></head><body><main class="wrap">
 <header class="head"><div><h1 style="font-size:22px;margin:0">USHSS Chats</h1><div class="muted">Class and faculty conversations with access controls</div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="themeChoice" style="font-size:13px;color:inherit">Theme</label><select id="themeChoice" aria-label="Choose chat theme" style="padding:9px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--ink)"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select><button class="secondary" onclick="location.href='/dashboard/'+(localStorage.getItem('ushss_role')||'student')">Back to portal</button></div></header>
 <div class="status" id="status">Loading your permitted contacts…</div>
