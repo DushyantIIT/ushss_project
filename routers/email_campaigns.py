@@ -311,9 +311,15 @@ def dispatch_now(admin: dict = Depends(require_admin)):
     return _dispatch_due_campaigns(30)
 
 
+@cron_router.get("/api/email/dispatch")
 @cron_router.post("/api/email/dispatch")
-def cron_dispatch(x_cron_secret: Optional[str] = Header(None, alias="x-cron-secret")):
+def cron_dispatch(
+    x_cron_secret: Optional[str] = Header(None, alias="x-cron-secret"),
+    authorization: Optional[str] = Header(None),
+):
     expected = os.environ.get("EMAIL_CRON_SECRET", "")
-    if not expected or not x_cron_secret or not hmac.compare_digest(expected, x_cron_secret):
+    bearer = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else None
+    supplied = x_cron_secret or bearer
+    if not expected or not supplied or not hmac.compare_digest(expected, supplied):
         raise HTTPException(401, "Invalid scheduler credential.")
     return _dispatch_due_campaigns(30)
