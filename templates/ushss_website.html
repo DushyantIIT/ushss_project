@@ -853,6 +853,29 @@ footer a:hover{display:inline-block;transform:translateX(4px)}
   #portal-login-card .portal-reg-grid .full{grid-column:1!important}
 }
 
+:root[data-ushss-theme="light"],:root[data-ushss-theme="system"]{color-scheme:light;--cream:#FBFAF7;--cream-dark:#F1EEE7;--ink:#160F08;--ink-mid:#362316;--ink-muted:#5E4C3D;--white:#FFFFFF;--border:#DED7CA;--maroon:#881818;--maroon-deep:#5C0D0D;--maroon-light:#A82828;--gold:#B58B45;--gold-light:#E3C98F}
+:root[data-ushss-theme="dark"]{color-scheme:dark;--cream:#111214;--cream-dark:#1B1E23;--ink:#F3EEE7;--ink-mid:#E5D9CB;--ink-muted:#B3A596;--white:#191B1F;--border:#414650;--maroon:#A65353;--maroon-deep:#351719;--maroon-light:#C16B6B;--gold:#D7B65C;--gold-light:#F0D58B}
+@media(prefers-color-scheme:dark){:root[data-ushss-theme="system"]{color-scheme:dark;--cream:#111214;--cream-dark:#1B1E23;--ink:#F3EEE7;--ink-mid:#E5D9CB;--ink-muted:#B3A596;--white:#191B1F;--border:#414650;--maroon:#A65353;--maroon-deep:#351719;--maroon-light:#C16B6B;--gold:#D7B65C;--gold-light:#F0D58B}}
+html,body{background:var(--cream)!important;color:var(--ink)!important}
+nav{background:color-mix(in srgb,var(--cream) 94%,transparent)!important;border-color:var(--border)!important}
+.nav-links a,.nav-title span:last-child{color:var(--ink-mid)}
+.nav-login-btn,.value-card,.faculty-card,.faculty-arrow,.portal-login-card,.portal-role-tab,.portal-input,.portal-reg-select{background:var(--white);color:var(--ink);border-color:var(--border)}
+.hero h1,.section-title{color:var(--maroon-deep)}.hero-sub,.section-body,.value-desc{color:var(--ink-muted)}
+:root[data-ushss-theme="dark"] .hero{background:linear-gradient(125deg,#191B1F 0%,#242126 54%,#30251F 100%)}
+:root[data-ushss-theme="dark"] .programmes{background:#241519}
+:root[data-ushss-theme="dark"] .about-values .value-card,:root[data-ushss-theme="dark"] .faculty-card,:root[data-ushss-theme="dark"] .portal-login-card{background:#191B1F;color:var(--ink);border-color:var(--border)}
+:root[data-ushss-theme="dark"] .portal-login-title,:root[data-ushss-theme="dark"] .portal-label{color:var(--ink)}
+:root[data-ushss-theme="dark"] .portal-login-sub,:root[data-ushss-theme="dark"] .portal-login-foot{color:var(--ink-muted)}
+:root[data-ushss-theme="dark"] .portal-input,:root[data-ushss-theme="dark"] .portal-reg-select{background:#22252A;color:#F3EEE7;border-color:#545B66}
+:root[data-ushss-theme="dark"] .portal-reg-select option{background:#22252A;color:#F3EEE7}
+:root[data-ushss-theme="dark"] .nav-login-btn{background:#191B1F;color:#F3EEE7;border-color:#545B66}
+.portal-login-overlay{overflow-y:auto;overscroll-behavior:contain}
+.portal-login-card{max-height:calc(100dvh - 2rem);overflow-y:auto;overscroll-behavior:contain}
+#ushss-theme-switch{position:fixed;left:14px;right:auto;bottom:calc(14px + env(safe-area-inset-bottom));z-index:100000;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--white);color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.2);font:600 12px 'DM Sans',sans-serif;max-width:calc(100vw - 24px)}
+#ushss-theme-switch label{color:var(--ink);white-space:nowrap}
+#ushss-theme-switch select{min-width:82px;max-width:108px;min-height:36px;padding:7px 8px;background:var(--cream-dark);color:var(--ink);border:1px solid var(--border);border-radius:8px;font:inherit}
+@media(max-width:760px){.portal-login-overlay{align-items:flex-start;padding:10px;padding-top:max(10px,env(safe-area-inset-top))}.portal-login-card{width:100%;max-height:calc(100dvh - 20px);padding:1.25rem 1rem}.portal-reg-grid{grid-template-columns:1fr}#ushss-theme-switch{left:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:7px 8px}body{padding-bottom:64px}}
+
 </style>
 </head>
 <body>
@@ -1999,6 +2022,7 @@ checkExistingAuth();
 document.addEventListener("DOMContentLoaded", checkExistingAuth);
 </script>
 <button id="back-to-top" type="button" aria-label="Back to top" onclick="window.scrollTo(0,0)">↑</button><script>const backTopButton=document.getElementById("back-to-top");window.addEventListener("scroll",function(){backTopButton.classList.toggle("visible",window.scrollY>500)},{passive:true});</script>
+<script>(function(){var key='ushss_global_theme',valid=['light','dark','system'];function read(){try{var v=localStorage.getItem(key);return valid.indexOf(v)>=0?v:'system'}catch(e){return 'system'}}function apply(v,save){if(valid.indexOf(v)<0)v='system';document.documentElement.setAttribute('data-ushss-theme',v);if(save){try{localStorage.setItem(key,v)}catch(e){}}var s=document.getElementById('ushss-theme-choice');if(s&&s.value!==v)s.value=v}apply(read(),false);function mount(){if(!document.body||document.getElementById('ushss-theme-switch'))return;var box=document.createElement('div');box.id='ushss-theme-switch';var label=document.createElement('label');label.htmlFor='ushss-theme-choice';label.textContent='Appearance';var select=document.createElement('select');select.id='ushss-theme-choice';select.setAttribute('aria-label','Choose appearance');[['system','System'],['light','Light'],['dark','Dark']].forEach(function(p){var o=document.createElement('option');o.value=p[0];o.textContent=p[1];select.appendChild(o)});box.appendChild(label);box.appendChild(select);document.body.appendChild(box);select.value=read();select.addEventListener('change',function(){apply(this.value,true)})}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();window.addEventListener('storage',function(e){if(e.key===key)apply(read(),false)})})();</script>
 </body>
 </html>
 
