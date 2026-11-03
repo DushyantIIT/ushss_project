@@ -1356,7 +1356,7 @@ async function loadAdminProfile() {
     const u = data.user || data;
     function getCleanInitials(str) {
       if (!str || str === '—') return 'AD';
-      const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\\.?\\s+/i, '').trim();
+      const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
       const words = clean.split(/\\s+/).filter(Boolean);
       if (!words.length) return 'AD';
       if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
