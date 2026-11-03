@@ -817,7 +817,43 @@ footer a:hover{display:inline-block;transform:translateX(4px)}
     margin:0 auto!important;
   }
 }
-\n</style>
+\n
+/* Mobile login and registration: keep the entire form reachable on short screens */
+#portal-login-overlay{
+  height:100dvh!important;max-height:100dvh!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:16px 12px max(16px,env(safe-area-inset-bottom))!important;
+}
+#portal-login-overlay > #portal-login-card{
+  max-height:calc(100dvh - 32px)!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  flex:0 0 auto!important;margin:auto!important;
+}
+#portal-login-card .portal-login-title{color:#65121c!important}
+#portal-login-card .portal-login-sub,
+#portal-login-card .portal-label,
+#portal-login-card .portal-login-foot{color:#49372e!important}
+#portal-login-card .portal-input,
+#portal-login-card .portal-reg-select,
+#portal-login-card .portal-reg-select option{
+  background:#fff!important;color:#241513!important;
+}
+@media(max-width:600px){
+  #portal-login-overlay{
+    align-items:flex-start!important;
+    padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))!important;
+  }
+  #portal-login-overlay > #portal-login-card{
+    width:100%!important;max-height:calc(100dvh - 24px)!important;
+    margin:0 auto!important;padding:1.35rem 1.1rem!important;
+  }
+  #portal-login-card .portal-reg-grid{grid-template-columns:1fr!important}
+  #portal-login-card .portal-reg-grid .full{grid-column:1!important}
+}
+
+</style>
 </head>
 <body>
 
