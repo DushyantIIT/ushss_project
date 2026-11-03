@@ -237,12 +237,41 @@ def favicon():
 
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
-    content = "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /api/\n"
+    content = (
+        "User-agent: *\\n"
+        "Allow: /\\n"
+        "Disallow: /dashboard/\\n"
+        "Disallow: /api/\\n"
+        "Disallow: /waiting\\n"
+        "Disallow: /rejected\\n"
+        "Disallow: /health\\n"
+        "Disallow: /docs\\n"
+        "Disallow: /redoc\\n"
+        "Disallow: /openapi.json\\n"
+        "Sitemap: https://ushss-project-o9w2.vercel.app/sitemap.xml\\n"
+    )
     return PlainTextResponse(content, media_type="text/plain")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://ushss-project-o9w2.vercel.app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>"""
+    return Response(content=content, media_type="application/xml")
 
 @app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():
     vpath = os.path.join(os.path.dirname(__file__), "static", "googleda3d4b79bd268fbe.html")
+    return FileResponse(vpath)
+
+@app.get("/google04a974a47bde0ffa.html", include_in_schema=False)
+def google_search_console_verification():
+    vpath = BASE_DIR / "google04a974a47bde0ffa.html"
     return FileResponse(vpath)
 
 @app.get("/health", tags=["System"])
