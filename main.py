@@ -249,10 +249,10 @@ PUBLIC_SITE_URL = "https://ushss-project-o9w2.vercel.app"
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
     content = (
-        "User-agent: *\\n"
-        "Allow: /\\n"
-        "Disallow: /api/\\n"
-        f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\\n"
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\n"
     )
     return PlainTextResponse(content, media_type="text/plain")
 
