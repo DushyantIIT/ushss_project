@@ -581,6 +581,104 @@ footer { background:#241a17; }
 }
 
 
+/* USHSS dimensional interface layer */
+:root{
+  --ushss-depth-shadow: 0 18px 42px rgba(0,0,0,.13), 0 5px 12px rgba(0,0,0,.08);
+  --ushss-depth-shadow-hover: 0 26px 54px rgba(0,0,0,.19), 0 10px 20px rgba(0,0,0,.11);
+}
+html{scroll-behavior:smooth}
+body{perspective:none;
+  transform:translateZ(0);
+}
+button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{
+  transform:translateY(-2px) translateZ(8px);
+  box-shadow:0 10px 22px rgba(0,0,0,.18);
+  filter:saturate(1.08);
+}
+button:active:not(:disabled),.btn:active,[role="button"]:active,a.button:active{
+  transform:translateY(1px) scale(.985);
+  box-shadow:0 3px 8px rgba(0,0,0,.14);
+}
+[class*="card"],[class*="panel"],[class*="stat"],[class*="tile"],[class*="widget"],.hero-content,.hero-card{
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease,border-color .28s ease;
+}
+[class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+  transform:translateY(-3px) rotateX(.45deg);
+  box-shadow:var(--ushss-depth-shadow-hover);
+}
+main,section,.container,.wrap,.dashboard,.page-content{transform-style:preserve-3d}
+header,.topbar,.navbar,.sidebar,.side-nav{
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+input,select,textarea{
+  transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;
+}
+input:focus,select:focus,textarea:focus{
+  transform:translateZ(5px);
+  box-shadow:0 0 0 3px rgba(201,168,76,.16),0 8px 18px rgba(0,0,0,.08);
+}
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid var(--gold,#D89E28);
+  outline-offset:3px;
+}
+@media (hover:none),(max-width:760px){
+  [class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+    transform:none;box-shadow:var(--ushss-depth-shadow);
+  }
+  button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+
+/* ── USHSS VISUAL REDESIGN v2: editorial 3D campus experience ── */
+:root{--ushss-3d-ink:#241513;--ushss-3d-wine:#65121c;--ushss-3d-red:#8e2430;--ushss-3d-gold:#d7ad62;--ushss-3d-paper:#fbf7ef;--ushss-3d-shadow:0 22px 55px rgba(48,20,17,.14),0 5px 14px rgba(48,20,17,.08)}
+body{background:radial-gradient(ellipse at 82% 12%,rgba(215,173,98,.16),transparent 28%),linear-gradient(180deg,#fbf8f2 0%,#f4eee5 100%);color:var(--ushss-3d-ink)}
+nav{height:76px;margin:14px 3%;width:94%;padding:0 28px;border:1px solid rgba(255,255,255,.72);border-radius:18px;background:rgba(255,252,246,.84);box-shadow:0 12px 35px rgba(50,20,18,.09);backdrop-filter:blur(18px)}
+.hero{min-height:calc(100vh - 90px);margin:0 3% 34px;border-radius:30px;overflow:hidden;background:linear-gradient(125deg,#fffaf2 0%,#f5ead9 54%,#ead9c3 100%);box-shadow:0 28px 75px rgba(58,23,20,.16);isolation:isolate}
+.hero::before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;right:35%;top:-260px;background:radial-gradient(circle,rgba(215,173,98,.25),transparent 68%);pointer-events:none;z-index:-1}
+.hero-left{padding:9rem 4rem 4rem}
+.hero h1{font-size:clamp(3rem,5.5vw,5.2rem);letter-spacing:-1.8px;text-shadow:0 3px 0 rgba(255,255,255,.8)}
+.hero-sub{font-size:1.28rem;max-width:510px}
+.hero-right{margin:22px 22px 22px 0;border-radius:23px;overflow:hidden;box-shadow:0 28px 55px rgba(38,15,13,.25);transform:perspective(1200px) rotateY(-3deg) rotateX(1deg);transform-origin:center}
+.hero-img-grid{border-radius:23px;overflow:hidden;gap:7px}
+.hero-img-cell img{transition:transform .8s cubic-bezier(.2,.7,.2,1),filter .5s}
+.hero:hover .hero-img-cell img{transform:scale(1.035)}
+.hero-img-cell::after{background:linear-gradient(145deg,rgba(72,12,18,.18),rgba(45,12,15,.48))}
+.hero-overlay-text{padding:22px 25px;border:1px solid rgba(255,255,255,.24);border-radius:16px;background:rgba(45,12,15,.34);backdrop-filter:blur(12px)}
+.hero-left::after{right:-1px}
+.hero-stats{gap:1rem;margin-top:3.2rem;padding-top:1.7rem;border:0}
+.stat{min-width:112px;padding:17px 19px;border:1px solid rgba(126,74,51,.14);border-radius:15px;background:rgba(255,255,255,.64);box-shadow:0 10px 25px rgba(68,35,25,.07);transform:translateZ(18px)}
+.stat-num{font-size:2.25rem}
+.btn-gold,.btn-outline{padding:15px 28px;border-radius:9px;font-weight:700;box-shadow:0 10px 22px rgba(80,20,24,.14)}
+.btn-gold{background:linear-gradient(135deg,#8d2630,#5e111b);border:1px solid rgba(255,255,255,.22)}
+.btn-gold:hover{background:linear-gradient(135deg,#a63740,#6c1420);transform:translateY(-4px);box-shadow:0 18px 28px rgba(80,20,24,.22)}
+.btn-outline{background:rgba(255,255,255,.45);border-width:1px;backdrop-filter:blur(8px)}
+section{padding:7rem 0}
+.section-inner{max-width:1240px}
+.value-card,.prog-card,.faculty-card{border-radius:16px;box-shadow:0 12px 30px rgba(47,20,17,.08);transform:translateZ(0);transition:transform .35s,box-shadow .35s,border-color .35s}
+.value-card{padding:1.6rem;background:linear-gradient(145deg,#fff,#faf4ea);border-color:rgba(126,74,51,.16)}
+.value-card:hover,.faculty-card:hover{transform:translateY(-9px) rotateX(2deg);box-shadow:0 24px 44px rgba(47,20,17,.16)}
+.programmes{background:radial-gradient(ellipse at 90% 0%,rgba(215,173,98,.2),transparent 35%),linear-gradient(135deg,#4b0d16,#741b27 55%,#3e0b14)}
+.prog-grid{gap:14px;background:transparent;overflow:visible}
+.prog-card{border:1px solid rgba(245,219,177,.17);border-radius:17px;background:linear-gradient(145deg,rgba(255,255,255,.105),rgba(255,255,255,.025));box-shadow:0 18px 36px rgba(25,4,8,.2);padding:2.2rem}
+.prog-card:hover{transform:translateY(-8px) rotateX(2deg);box-shadow:0 28px 48px rgba(15,2,5,.3);background:linear-gradient(145deg,rgba(255,255,255,.17),rgba(255,255,255,.05))}
+.faculty-card{border-radius:17px;box-shadow:0 14px 32px rgba(47,20,17,.11)}
+.faculty-img{height:245px}
+.about-img-wrap img{border-radius:18px;box-shadow:18px 20px 0 rgba(215,173,98,.22),var(--ushss-3d-shadow)}
+.about-img-accent{border-radius:18px}
+.about-img-caption{right:-1rem;border-radius:12px;box-shadow:0 14px 28px rgba(40,9,13,.22)}
+.marquee-strip{box-shadow:0 8px 20px rgba(55,12,18,.14)}
+footer{background:linear-gradient(135deg,#310a10,#5b101b)}
+@media(max-width:900px){nav{margin:8px 2%;width:96%;padding:0 14px}.hero{margin:0 2% 20px;border-radius:20px}.hero-left{padding:8rem 2rem 2rem}.hero-right{margin:0 14px 14px;min-height:360px;transform:none}.hero-stats{flex-wrap:wrap}.stat{flex:1 1 100px}}
+@media(max-width:600px){nav{height:62px}.hero{min-height:auto}.hero-left{padding:7rem 1.3rem 2rem}.hero-right{min-height:300px}.hero h1{font-size:2.65rem}.hero-stats{gap:8px}.stat{padding:12px}.stat-num{font-size:1.7rem}section{padding:4.5rem 0}}
+@media(prefers-reduced-motion:reduce){.hero-img-cell img,.value-card,.prog-card,.faculty-card{transition:none}}
+
+
+
 /* ── LOGIN MODAL VISIBILITY / FIXED-VIEWPORT SAFETY ── */
 #portal-login-overlay{
   position:fixed!important;
