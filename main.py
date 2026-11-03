@@ -226,7 +226,7 @@ def waiting_page(request: Request):
 def rejected_page(request: Request):
     return templates.TemplateResponse(request, "rejected.html")
 
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
