@@ -1338,25 +1338,11 @@ function logoutAdmin() {
 
 async function loadAdminProfile() {
   const token = getAdminToken();
-  if (!token) {
-    window.location.replace("/");
-    return false;
-  }
-
-  // Never trust a stale localStorage user object for authorization.
-  // The server-side admin endpoint is the source of truth for the role.
+  if (!token) { window.location.replace("/"); return false; }
+  // Verify only the signed-in administrator; do not download every active user.
   try {
-    const res = await fetch("/api/admin/users?is_active=true", { headers: authHeaders() });
-    if (res.status === 401) {
-      logoutAdmin();
-      return false;
-    }
-    if (res.status === 403) {
-      // The server rejected this identity for admin access. Clear cached credentials
-      // and fail closed rather than rendering an admin interface after denial.
-      logoutAdmin();
-      return false;
-    }
+    const res = await fetch("/api/admin/me", { headers: authHeaders() });
+    if (res.status === 401 || res.status === 403) { logoutAdmin(); return false; }
     if (!res.ok) {
       console.error("Admin profile validation failed with HTTP", res.status);
       const message = document.createElement("div");
@@ -1366,33 +1352,33 @@ async function loadAdminProfile() {
       document.body.appendChild(message);
       return false;
     }
-
-    const rawUser = localStorage.getItem("ushss_user");
-    if (rawUser) {
-      const u = JSON.parse(rawUser);
-      function getCleanInitials(str) {
-        if (!str || str === '—') return 'AD';
-        const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\.?\s+/i, '').trim();
-        const words = clean.split(/\s+/).filter(Boolean);
-        if (!words.length) return 'AD';
-        if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-        return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
-      }
-      const nameEl = document.getElementById("sb-admin-name");
-      const roleEl = document.getElementById("sb-admin-role");
-      const avatarEl = document.getElementById("sb-admin-avatar");
-      if (nameEl) nameEl.textContent = u.full_name || u.username || "Administrator";
-      if (roleEl) roleEl.textContent = `${u.role || "admin"} · ${u.username || ""}${u.is_super_admin ? " (Super Admin)" : ""}`;
-      if (avatarEl) avatarEl.textContent = getCleanInitials(u.full_name || u.username || "AD");
+    const data = await res.json();
+    const u = data.user || data;
+    function getCleanInitials(str) {
+      if (!str || str === '—') return 'AD';
+      const clean = String(str).replace(/^(dr|mr|mrs|ms|prof|er|shri|smt|sir)\\.?\\s+/i, '').trim();
+      const words = clean.split(/\\s+/).filter(Boolean);
+      if (!words.length) return 'AD';
+      if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+      return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
     }
+    const nameEl = document.getElementById("sb-admin-name");
+    const roleEl = document.getElementById("sb-admin-role");
+    const avatarEl = document.getElementById("sb-admin-avatar");
+    if (nameEl) nameEl.textContent = u.full_name || u.username || "Administrator";
+    if (roleEl) roleEl.textContent = `${u.role || "admin"} · ${u.username || ""}${u.is_super_admin ? " (Super Admin)" : ""}`;
+    if (avatarEl) avatarEl.textContent = getCleanInitials(u.full_name || u.username || "AD");
     return true;
   } catch (e) {
-    // A temporary network failure must not destroy an otherwise valid session.
-    console.warn("Profile validation network error:", e);
-    return true;
+    console.error("Admin profile validation failed:", e);
+    const message = document.createElement("div");
+    message.setAttribute("role", "alert");
+    message.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#f8f5ef;color:#6b1a1a;padding:24px;text-align:center;font:16px sans-serif";
+    message.textContent = "Unable to verify admin access. Please check your connection and refresh.";
+    document.body.appendChild(message);
+    return false;
   }
 }
-
 /* ══════════════════════════════════════════
    PENDING REGISTRATION REQUESTS SYSTEM
 ══════════════════════════════════════════ */
@@ -2714,22 +2700,25 @@ window.addEventListener("keydown",e=>{
 });
 
 /* INIT */
-loadAdminProfile();
 async function initAdminDashboard(){
-  loadAdminProfile();
-  // Load each data source independently so one temporary Supabase/API failure
-  // cannot freeze the entire Admin dashboard.
+  // Render as soon as the one lightweight authorization check succeeds.
+  const authorized = await loadAdminProfile();
+  if (!authorized) return;
+  showPage("dashboard");
+
+  // Fetch dashboard data after first paint; no data request blocks the UI.
   const safe = async (label, fn, fallback) => {
     try { return await fn(); }
     catch(e) { console.error("Admin "+label+" load failed:", e); return fallback; }
   };
-  await Promise.all([
+  Promise.all([
     safe("users", () => fetchAdminUsers(), []),
     safe("dashboard data", () => fetchAdminDashboardData(), {}),
     safe("pending requests", () => fetchPendingRequests(), [])
-  ]);
-  updateBadges();
-  showPage("dashboard");
+  ]).then(() => {
+    updateBadges();
+    if (currentPage === "dashboard") showPage("dashboard");
+  });
 }
 initAdminDashboard();
 
@@ -3407,7 +3396,7 @@ function exportAtt() {
       // focus, scroll position, and any in-progress interaction.
     } catch(e) { console.debug('Admin live sync will retry:',e); }
     finally { syncing=false; }
-  }, 10000);
+  }, 30000);
 })();
 
 </script>
