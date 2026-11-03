@@ -679,6 +679,91 @@ footer{background:linear-gradient(135deg,#310a10,#5b101b)}
 
 
 
+
+/* ── FULL-HOMEPAGE 3D EXPERIENCE ── */
+:root{
+  --ushss-page-depth:0 18px 42px rgba(49,18,18,.12),0 5px 13px rgba(49,18,18,.07);
+  --ushss-page-depth-hover:0 30px 62px rgba(49,18,18,.2),0 12px 24px rgba(49,18,18,.1);
+}
+body{
+  background:
+    radial-gradient(ellipse at 8% 18%,rgba(215,173,98,.13),transparent 26%),
+    radial-gradient(ellipse at 94% 54%,rgba(101,18,28,.07),transparent 30%),
+    linear-gradient(180deg,#fbf8f2 0%,#f5eee4 48%,#fbf7ef 100%);
+}
+nav{
+  transform:translateZ(0);
+  transition:transform .3s ease,box-shadow .3s ease,background .3s ease;
+}
+nav:hover{box-shadow:0 18px 42px rgba(50,20,18,.15);transform:translateY(-2px)}
+nav a{transition:transform .22s ease,color .22s ease}
+nav a:hover{transform:translateY(-2px)}
+.hero{position:relative;transform-style:preserve-3d;box-shadow:0 32px 85px rgba(58,23,20,.2),0 8px 22px rgba(58,23,20,.08)}
+.hero-left{position:relative;z-index:2}
+.hero h1{text-shadow:0 2px 0 #fff,0 8px 22px rgba(75,28,22,.12)}
+.hero-right{transform:perspective(1300px) rotateY(-4deg) rotateX(2deg) translateZ(22px);transition:transform .5s ease,box-shadow .5s ease}
+.hero:hover .hero-right{transform:perspective(1300px) rotateY(-1deg) rotateX(0deg) translateY(-5px) translateZ(30px);box-shadow:0 38px 70px rgba(38,15,13,.3)}
+.hero-stats .stat{transition:transform .3s ease,box-shadow .3s ease}
+.hero-stats .stat:hover{transform:translateY(-7px) translateZ(22px) rotateX(3deg);box-shadow:0 20px 34px rgba(68,35,25,.16)}
+section:not(.hero){position:relative;isolation:isolate}
+section:not(.hero)::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(145deg,rgba(255,255,255,.26),transparent 42%,rgba(215,173,98,.045));
+}
+.section-inner{position:relative;transform-style:preserve-3d}
+section h2,section h3{ text-shadow:0 2px 0 rgba(255,255,255,.48),0 7px 18px rgba(47,20,17,.08)}
+.about-grid,.contact-grid,.gallery-grid,.prog-grid{perspective:1200px;transform-style:preserve-3d}
+.value-card,.prog-card,.faculty-card,.gallery-grid img,.about-img-wrap,.contact-grid>div{
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  box-shadow:var(--ushss-page-depth);
+  transition:transform .38s cubic-bezier(.2,.7,.2,1),box-shadow .38s ease,filter .38s ease;
+}
+.value-card:hover,.prog-card:hover,.faculty-card:hover{
+  transform:translateY(-10px) rotateX(3deg) rotateY(-1deg) translateZ(18px);
+  box-shadow:var(--ushss-page-depth-hover);
+  filter:saturate(1.04);
+}
+.about-img-wrap{transform:perspective(1100px) rotateY(3deg) rotateX(1deg);filter:drop-shadow(0 20px 25px rgba(45,16,16,.12))}
+.about-img-wrap:hover{transform:perspective(1100px) rotateY(0deg) rotateX(0deg) translateY(-7px) translateZ(14px)}
+.about-img-wrap img,.gallery-grid img,.faculty-img img{transition:transform .55s ease,filter .55s ease}
+.about-img-wrap:hover img,.gallery-grid a:hover img,.gallery-grid img:hover{transform:scale(1.045);filter:saturate(1.1)}
+.value-card{border:1px solid rgba(126,74,51,.18);background:linear-gradient(145deg,#fff 0%,#faf2e6 100%)}
+.prog-card{transform:translateZ(4px);background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.035));}
+.faculty-card{overflow:hidden}
+.faculty-card:hover .faculty-img img{transform:scale(1.06)}
+.gallery-grid img{border-radius:15px;box-shadow:0 15px 32px rgba(42,15,15,.15)}
+.contact-grid>div{border-radius:18px}
+input,select,textarea{box-shadow:inset 0 2px 5px rgba(45,20,16,.045),0 5px 14px rgba(45,20,16,.05)}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px rgba(201,168,76,.18),0 12px 24px rgba(45,20,16,.1)}
+button,.btn-gold,.btn-outline,.form-submit,.nav-portal-btn{
+  transition:transform .25s ease,box-shadow .25s ease,filter .25s ease;
+}
+.btn-gold:hover,.btn-outline:hover,.form-submit:hover,.nav-portal-btn:hover{
+  transform:translateY(-4px) translateZ(8px);
+  box-shadow:0 16px 30px rgba(65,16,23,.23);
+}
+.marquee-strip{transform:translateZ(0);box-shadow:0 12px 28px rgba(55,12,18,.18)}
+footer{position:relative;box-shadow:0 -18px 45px rgba(35,7,12,.14)}
+footer a{transition:transform .2s ease,color .2s ease}
+footer a:hover{display:inline-block;transform:translateX(4px)}
+#back-to-top{box-shadow:0 12px 28px rgba(49,12,19,.25);transition:transform .25s ease,box-shadow .25s ease}
+#back-to-top:hover{transform:translateY(-5px) translateZ(8px);box-shadow:0 18px 36px rgba(49,12,19,.32)}
+@media(max-width:900px){
+ .hero-right{transform:none}
+ .hero:hover .hero-right{transform:translateY(-3px)}
+ .about-img-wrap{transform:none}
+}
+@media(hover:none),(max-width:760px){
+ .value-card:hover,.prog-card:hover,.faculty-card:hover,.about-img-wrap:hover{transform:none;box-shadow:var(--ushss-page-depth)}
+ .hero:hover .hero-right{transform:none}
+ .hero-stats .stat:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+ nav,.hero-right,.hero-stats .stat,.value-card,.prog-card,.faculty-card,.about-img-wrap,.gallery-grid img,button,.btn-gold,.btn-outline{transition:none!important}
+}
+
+
 /* ── LOGIN MODAL VISIBILITY / FIXED-VIEWPORT SAFETY ── */
 #portal-login-overlay{
   position:fixed!important;
