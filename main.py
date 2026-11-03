@@ -238,17 +238,17 @@ def favicon():
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
     content = (
-        "User-agent: *\\n"
-        "Allow: /\\n"
-        "Disallow: /dashboard/\\n"
-        "Disallow: /api/\\n"
-        "Disallow: /waiting\\n"
-        "Disallow: /rejected\\n"
-        "Disallow: /health\\n"
-        "Disallow: /docs\\n"
-        "Disallow: /redoc\\n"
-        "Disallow: /openapi.json\\n"
-        "Sitemap: https://ushss-project-o9w2.vercel.app/sitemap.xml\\n"
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /dashboard/\n"
+        "Disallow: /api/\n"
+        "Disallow: /waiting\n"
+        "Disallow: /rejected\n"
+        "Disallow: /health\n"
+        "Disallow: /docs\n"
+        "Disallow: /redoc\n"
+        "Disallow: /openapi.json\n"
+        "Sitemap: https://ushss-project-o9w2.vercel.app/sitemap.xml\n"
     )
     return PlainTextResponse(content, media_type="text/plain")
 
