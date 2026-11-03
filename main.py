@@ -175,6 +175,9 @@ async def add_security_headers(request: Request, call_next):
         "base-uri 'self'; "
         "form-action 'self';"
     )
+    path = request.url.path.rstrip("/") or "/"
+    if path.startswith("/dashboard") or path in {"/waiting", "/rejected", "/health"}:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return response
 
 app.include_router(public.router,         prefix="/api")
@@ -240,7 +243,6 @@ def robots_txt():
     content = (
         "User-agent: *\n"
         "Allow: /\n"
-        "Disallow: /dashboard/\n"
         "Disallow: /api/\n"
         "Disallow: /waiting\n"
         "Disallow: /rejected\n"
