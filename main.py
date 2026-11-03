@@ -158,6 +158,9 @@ async def vercel_path_correction(request: Request, call_next):
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
+    # Keep authenticated portal pages and non-public utility pages out of search.
+    if request.url.path.startswith(("/dashboard/", "/api/")) or request.url.path in {"/waiting", "/rejected"}:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -232,7 +235,7 @@ def waiting_page(request: Request):
 def rejected_page(request: Request):
     return templates.TemplateResponse(request, "rejected.html")
 
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
@@ -241,10 +244,32 @@ def favicon():
     svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#17365D"/><path d="M16 15h32v5H21v10h23v5H21v14h-5z" fill="#fff"/><path d="M28 35h20v5H28z" fill="#D7B56D"/></svg>"""
     return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
 
+PUBLIC_SITE_URL = "https://ushss-project-o9w2.vercel.app"
+
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
-    content = "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /api/\n"
+    content = (
+        "User-agent: *\\n"
+        "Allow: /\\n"
+        "Disallow: /api/\\n"
+        f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\\n"
+    )
     return PlainTextResponse(content, media_type="text/plain")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
+    # Only the public homepage is intended for indexing. Portal and API URLs are excluded.
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f'<url><loc>{PUBLIC_SITE_URL}/</loc></url>'
+        '</urlset>'
+    )
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 @app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():
