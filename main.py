@@ -25,7 +25,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.database import ping_db
 from app.seed import seed
-from routers import auth, admin, student, faculty, cr, password_reset, public, chat
+from routers import auth, admin, student, faculty, cr, password_reset, public, chat, email_campaigns
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -158,6 +158,9 @@ async def vercel_path_correction(request: Request, call_next):
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
+    # Keep authenticated portal pages and non-public utility pages out of search.
+    if request.url.path.startswith(("/dashboard/", "/api/")) or request.url.path in {"/waiting", "/rejected"}:
+        response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -185,6 +188,8 @@ app.include_router(faculty.router,        prefix="/api")
 app.include_router(cr.router,             prefix="/api")
 app.include_router(password_reset.router, prefix="/api")
 app.include_router(chat.router,           prefix="/api")
+app.include_router(email_campaigns.router, prefix="/api")
+app.include_router(email_campaigns.cron_router)
 
 @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def home(request: Request):
@@ -193,6 +198,10 @@ def home(request: Request):
 @app.api_route("/dashboard/admin", methods=["GET", "HEAD"], include_in_schema=False)
 def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html")
+
+@app.api_route("/dashboard/admin/emails", methods=["GET", "HEAD"], include_in_schema=False)
+def admin_emails_page(request: Request):
+    return templates.TemplateResponse(request, "admin_emails.html")
 
 @app.api_route("/dashboard/admin/pending-requests", methods=["GET", "HEAD"], include_in_schema=False)
 def admin_pending_requests_page(request: Request):
@@ -226,7 +235,7 @@ def waiting_page(request: Request):
 def rejected_page(request: Request):
     return templates.TemplateResponse(request, "rejected.html")
 
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
@@ -235,10 +244,32 @@ def favicon():
     svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#17365D"/><path d="M16 15h32v5H21v10h23v5H21v14h-5z" fill="#fff"/><path d="M28 35h20v5H28z" fill="#D7B56D"/></svg>"""
     return Response(content=svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
 
+PUBLIC_SITE_URL = "https://ushss-project-o9w2.vercel.app"
+
 @app.get("/robots.txt", include_in_schema=False)
 def robots_txt():
-    content = "User-agent: *\nAllow: /\nDisallow: /dashboard/\nDisallow: /api/\n"
+    content = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        f"Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\n"
+    )
     return PlainTextResponse(content, media_type="text/plain")
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap_xml():
+    # Only the public homepage is intended for indexing. Portal and API URLs are excluded.
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f'<url><loc>{PUBLIC_SITE_URL}/</loc></url>'
+        '</urlset>'
+    )
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 @app.get("/googleda3d4b79bd268fbe.html", include_in_schema=False)
 def google_verification():

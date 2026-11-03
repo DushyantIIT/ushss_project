@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>USHSS | Email Campaigns</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f1eb;--paper:#fff;--ink:#282522;--muted:#756f67;--maroon:#741b24;--gold:#d5a84b;--line:#e7e0d5;--green:#217a50;--red:#b43c3c;--blue:#315e91}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px 'DM Sans',sans-serif}.top{background:#171719;color:#f7f0e5;padding:18px max(20px,calc((100% - 1180px)/2));display:flex;align-items:center;gap:16px}.brand{font:700 21px 'Playfair Display',serif;color:#e6c16b}.top small{color:#bdb5a9}.top a{margin-left:auto;color:#f3d78c;text-decoration:none}.wrap{max-width:1180px;margin:28px auto;padding:0 18px}.heading{display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}.heading h1{font:700 30px 'Playfair Display',serif;margin:0 0 5px}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 4px 18px #24180a08}.card h2{font:700 18px 'Playfair Display',serif;margin:0 0 5px}.hint{font-size:12px;color:var(--muted);margin-bottom:16px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#6f655c}input,select,textarea{width:100%;border:1px solid #d9d1c5;border-radius:7px;padding:10px 11px;background:#fff;color:#252525;font:14px 'DM Sans',sans-serif}textarea{resize:vertical;min-height:150px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.btn{border:0;border-radius:7px;padding:10px 14px;font:600 13px 'DM Sans',sans-serif;cursor:pointer;background:var(--maroon);color:#fff}.btn.gold{background:#e5c16f;color:#4b2714}.btn.light{background:#f2eee7;color:#4b4035;border:1px solid var(--line)}.btn.danger{background:#f9e8e6;color:var(--red);border:1px solid #efd1cd}.btn:disabled{opacity:.55;cursor:wait}.status{font-size:12px;color:var(--muted);align-self:center}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:680px}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:top}th{background:#f8f5ef;color:#6e6257;text-transform:uppercase;letter-spacing:.5px;font-size:10px}tr:last-child td{border-bottom:0}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#f3eee5;font-size:11px}.pill.sent{background:#e7f4eb;color:var(--green)}.pill.failed{background:#fae9e7;color:var(--red)}.pill.scheduled,.pill.sending{background:#fff3d8;color:#8b621b}.empty{padding:18px;color:var(--muted);font-size:13px}.template{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding:10px 0}.template:last-child{border-bottom:0}.template strong{display:block}.template small{color:var(--muted)}.subhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.notice{background:#fff7e7;border:1px solid #ecd9aa;color:#6b4d16;border-radius:8px;padding:11px 13px;font-size:12px;margin:12px 0}.back{font-size:12px}@media(max-width:850px){.grid{grid-template-columns:1fr}}@media(max-width:560px){.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.wrap{margin-top:18px}.heading h1{font-size:25px}}
+
+/* USHSS dimensional interface layer */
+:root{
+  --ushss-depth-shadow: 0 18px 42px rgba(0,0,0,.13), 0 5px 12px rgba(0,0,0,.08);
+  --ushss-depth-shadow-hover: 0 26px 54px rgba(0,0,0,.19), 0 10px 20px rgba(0,0,0,.11);
+}
+html{scroll-behavior:smooth}
+body{perspective:none;
+  transform:translateZ(0);
+}
+button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{
+  transform:translateY(-2px) translateZ(8px);
+  box-shadow:0 10px 22px rgba(0,0,0,.18);
+  filter:saturate(1.08);
+}
+button:active:not(:disabled),.btn:active,[role="button"]:active,a.button:active{
+  transform:translateY(1px) scale(.985);
+  box-shadow:0 3px 8px rgba(0,0,0,.14);
+}
+[class*="card"],[class*="panel"],[class*="stat"],[class*="tile"],[class*="widget"],.hero-content,.hero-card{
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease,border-color .28s ease;
+}
+[class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+  transform:translateY(-3px) rotateX(.45deg);
+  box-shadow:var(--ushss-depth-shadow-hover);
+}
+main,section,.container,.wrap,.dashboard,.page-content{transform-style:preserve-3d}
+header,.topbar,.navbar,.sidebar,.side-nav{
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+input,select,textarea{
+  transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;
+}
+input:focus,select:focus,textarea:focus{
+  transform:translateZ(5px);
+  box-shadow:0 0 0 3px rgba(201,168,76,.16),0 8px 18px rgba(0,0,0,.08);
+}
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid var(--gold,#D89E28);
+  outline-offset:3px;
+}
+@media (hover:none),(max-width:760px){
+  [class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+    transform:none;box-shadow:var(--ushss-depth-shadow);
+  }
+  button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+
+/* ── USHSS VISUAL REDESIGN v2: campaign studio ── */
+body{background:radial-gradient(ellipse at 85% 0%,rgba(215,173,98,.16),transparent 30%),linear-gradient(135deg,#f8f5ef,#eee8df)!important}
+.top{border-radius:20px!important;background:linear-gradient(115deg,#3d0b14,#721b27 65%,#8b3439)!important;box-shadow:0 20px 45px rgba(55,12,18,.22)!important;padding:22px 28px!important}
+.wrap{max-width:1320px!important}
+.heading{margin:30px 0 22px!important}
+.heading h1{letter-spacing:-.7px!important}
+.grid{gap:20px!important}
+.card{border:1px solid #e9dfd2!important;border-radius:20px!important;background:linear-gradient(145deg,#fffefa,#f8f2e9)!important;box-shadow:0 16px 38px rgba(48,24,22,.1)!important;padding:24px!important}
+.card h2{color:#64131d!important}
+input,select,textarea{border-radius:10px!important;border-color:#dfd2c1!important;background:#fffefa!important}
+.btn{border-radius:10px!important;box-shadow:0 8px 17px rgba(69,16,23,.12)!important}
+.btn.gold{background:linear-gradient(135deg,#8d2630,#5e111b)!important}
+.tablewrap{border-radius:14px!important;box-shadow:0 10px 24px rgba(48,24,22,.06)!important}
+th{background:#f2e9dc!important;color:#5b1720!important}
+
+
+
+/* FINAL USHSS THEME FIX — overrides legacy and redesign hard-coded colours */
+:root[data-ushss-theme="light"]{
+ color-scheme:light;
+ --bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+:root[data-ushss-theme="dark"]{
+ color-scheme:dark;
+ --bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+ --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+ --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+ --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+ --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{
+  color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+  --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+  --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+  --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+  --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+ }
+}
+:root[data-ushss-theme="system"]{
+ color-scheme:light;--bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;--border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;--text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;--maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);--paper:#191B1F;--line:#343941;--cream:#E8E4DC}
+}
+html,body{background:var(--bg)!important;color:var(--text)!important;color-scheme:inherit}
+body,.main,.content,.page-content,.main-content,.dashboard-content,.wrap,.workspace{
+ background-color:var(--bg)!important;color:var(--text)!important;
+}
+.card,.panel,.stat-card,.modal,.modal-content,.table-wrap,.table-container,.content-card,.form-card,.widget,.tile,
+.topbar,.top-bar,.toolbar,.compose,.people,.convos{
+ background-color:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important;
+}
+.card-title,.tb-title,.page-title,h1,h2,h3,h4,h5,h6,p,label,small,td,th,li,
+.muted,.text-muted,.subtitle,.description,.form-label,.field-label{
+ color:var(--text);
+}
+th,thead,.table thead,.table-header{background:var(--surface2)!important;color:var(--ink-mid)!important}
+tr,td{border-color:var(--border)!important}
+input,select,textarea,option{
+ background:var(--surface2)!important;color:var(--text)!important;border-color:var(--border2)!important;
+}
+input::placeholder,textarea::placeholder{color:var(--muted)!important;opacity:1}
+a:not(.btn):not(.button){color:var(--maroon)}
+.btn-primary,.btn-primary:hover{color:#fff!important}
+.sidebar,.sb-head,.dash-welcome,.att-hero,.att-session,.fac-welcome,.live-host-card,
+.head{
+ background:linear-gradient(135deg,#4A0E0E,#6B1A1A 62%,#8B2E2E)!important;
+ color:#fff!important;
+}
+.sidebar *, .sb-head *, .dash-welcome *, .att-hero *, .att-session *,
+.fac-welcome *, .live-host-card *, .head *{color:#fff}
+:root[data-ushss-theme="dark"] .sidebar *,
+:root[data-ushss-theme="dark"] .sb-head *,
+:root[data-ushss-theme="dark"] .dash-welcome *,
+:root[data-ushss-theme="dark"] .att-hero *,
+:root[data-ushss-theme="dark"] .att-session *,
+:root[data-ushss-theme="dark"] .fac-welcome *,
+:root[data-ushss-theme="dark"] .live-host-card *,
+:root[data-ushss-theme="dark"] .head *{color:var(--gold-l)!important}
+:root[data-ushss-theme="light"] .sidebar *,
+:root[data-ushss-theme="light"] .sb-head *,
+:root[data-ushss-theme="light"] .dash-welcome *,
+:root[data-ushss-theme="light"] .att-hero *,
+:root[data-ushss-theme="light"] .att-session *,
+:root[data-ushss-theme="light"] .fac-welcome *,
+:root[data-ushss-theme="light"] .live-host-card *,
+:root[data-ushss-theme="light"] .head *{color:#fff!important}
+#ushss-theme-switch{
+ position:fixed!important;right:16px!important;bottom:82px!important;z-index:100000!important;
+ display:flex!important;align-items:center!important;gap:8px!important;
+ padding:8px 10px!important;border:1px solid var(--border2)!important;border-radius:10px!important;
+ background:var(--surface)!important;color:var(--text)!important;
+ box-shadow:0 4px 18px rgba(0,0,0,.2)!important;font:600 12px 'DM Sans',sans-serif!important;
+ max-width:calc(100vw - 24px)!important;
+}
+#ushss-theme-switch label{color:var(--text)!important;white-space:nowrap}
+#ushss-theme-switch select{
+ width:auto!important;min-width:88px!important;max-width:110px!important;
+ padding:6px 8px!important;background:var(--surface2)!important;color:var(--text)!important;
+ border:1px solid var(--border2)!important;border-radius:7px!important;font:inherit!important;
+}
+@media(max-width:760px){
+ #ushss-theme-switch{right:12px!important;bottom:82px!important;padding:7px 9px!important;gap:6px!important}
+ #ushss-theme-switch label{font-size:11px!important}
+ #ushss-theme-switch select{min-width:82px!important;font-size:12px!important}
+}
+
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">USHSS</div><div><strong>Administration</strong><br><small>Email communication centre</small></div><a href="/dashboard/admin">← Back to Admin Dashboard</a></header>
+<main class="wrap">
+ <div class="heading"><div><h1>Email Campaigns</h1><div class="muted">Create, schedule and monitor student email communication.</div></div><button class="btn gold" id="dispatch" onclick="dispatchDue()">▶ Process due emails</button></div>
+ <div class="notice">Scheduled campaigns are queued in Supabase. Automatic delivery at the scheduled time requires a scheduler to call <strong>/api/email/dispatch</strong> with the configured <strong>x-cron-secret</strong> header. You can also process due campaigns manually here.</div>
+ <div class="grid">
+  <section>
+   <div class="card">
+    <h2>Create a campaign</h2><div class="hint">Only active, approved student accounts matching the filters are included.</div>
+    <div class="fields">
+     <div class="field"><label for="name">Campaign name</label><input id="name" placeholder="Semester examination notice"></div>
+     <div class="field"><label for="template">Use saved template</label><select id="template" onchange="applyTemplate(this.value)"><option value="">Choose a template…</option></select></div>
+     <div class="field"><label for="programme">Programme</label><select id="programme"><option value="">All programmes</option><option value="BA">BA</option><option value="MA">MA</option></select></div>
+     <div class="field"><label for="course">Course</label><select id="course"><option value="">All courses</option><option value="English">English</option><option value="Economics">Economics</option></select></div>
+     <div class="field"><label for="semester">Semester</label><select id="semester"><option value="">All semesters</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+     <div class="field"><label for="section">Section</label><select id="section"><option value="">All sections</option><option value="A">Section A</option><option value="B">Section B</option><option value="None">No section</option></select></div>
+     <div class="field"><label for="subject">Email subject</label><input id="subject" placeholder="Important announcement"></div>
+     <div class="field"><label for="schedule">Schedule date & time (your local time)</label><input id="schedule" type="datetime-local"><small class="muted">Leave blank to queue immediately.</small></div>
+     <div class="field full"><label for="body">Message</label><textarea id="body" placeholder="Write your email message here…"></textarea></div>
+    </div>
+    <div class="actions"><button class="btn" onclick="createCampaign()">＋ Create campaign</button><button class="btn light" onclick="sendTest()">Send test email</button><button class="btn light" onclick="saveTemplate()">Save as template</button><span class="status" id="form-status"></span></div>
+   </div>
+   <div class="card"><div class="subhead"><div><h2>Campaign history</h2><div class="hint">Sent, pending, scheduled and failed deliveries.</div></div><button class="btn light" onclick="loadAll()">↻ Refresh</button></div><div id="campaigns" class="empty">Loading campaigns…</div></div>
+  </section>
+  <section>
+   <div class="card"><h2>Saved templates</h2><div class="hint">Reusable message templates with USHSS branding.</div><div id="templates" class="empty">Loading templates…</div></div>
+   <div class="card"><h2>Delivery records</h2><div class="hint">Open a campaign to view recipient-level delivery results.</div><div id="deliveries" class="empty">No campaign selected.</div></div>
+  </section>
+ </div>
+</main>
+<script>
+const token=localStorage.getItem("ushss_token");let currentUser=null,templates=[],campaigns=[];let campaignRequestKey=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+"-"+Math.random();
+try{currentUser=JSON.parse(localStorage.getItem("ushss_user")||"null")}catch(e){}
+if(!token||!currentUser||currentUser.role!=="admin"){location.replace("/");}
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+async function api(path,options={}){const res=await fetch(path,{...options,headers:{Authorization:"Bearer "+token,...(options.headers||{})}});let data={};try{data=await res.json()}catch(e){}if(!res.ok)throw new Error(data.detail||data.message||("Request failed ("+res.status+")"));return data;}
+function message(text){document.getElementById("form-status").textContent=text||"";}
+async function loadAll(){try{const results=await Promise.all([api("/api/admin/emails/templates"),api("/api/admin/emails/campaigns")]);templates=results[0].templates||[];campaigns=results[1].campaigns||[];renderTemplates();renderCampaigns();}catch(e){document.getElementById("campaigns").textContent="Could not load email data: "+e.message;}}
+function renderTemplates(){const select=document.getElementById("template");select.innerHTML='<option value="">Choose a template…</option>'+templates.filter(t=>t.is_active!==false).map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join("");const box=document.getElementById("templates");box.innerHTML=templates.length?templates.map(t=>'<div class="template"><div><strong>'+esc(t.name)+'</strong><small>'+esc(t.subject)+'</small></div><div><button class="btn light" onclick="applyTemplate('+t.id+')">Use</button> <button class="btn light" onclick="editTemplate('+t.id+')">Edit</button> <button class="btn danger" onclick="deleteTemplate('+t.id+')">Delete</button></div></div>').join(""):'<div class="empty">No saved templates yet.</div>';}
+function renderCampaigns(){const box=document.getElementById("campaigns");if(!campaigns.length){box.innerHTML='<div class="empty">No campaigns created yet.</div>';return;}box.innerHTML='<div class="tablewrap"><table><thead><tr><th>Campaign</th><th>Audience</th><th>Schedule</th><th>Status</th><th>Sent / Failed / Pending</th><th>Actions</th></tr></thead><tbody>'+campaigns.map(c=>{const s=c.delivery_stats||{},a=c.target_filters||{};const audience=[a.programme,a.course,a.semester?"Sem "+a.semester:"",a.section?"Sec "+a.section:""].filter(Boolean).join(" · ")||"All students";return '<tr><td><strong>'+esc(c.name)+'</strong><br><small>'+esc(c.subject)+'</small></td><td>'+esc(audience)+'</td><td>'+esc(String(c.scheduled_at||"").replace("T"," ").slice(0,16))+'</td><td><span class="pill '+esc(c.status)+'">'+esc(c.status)+'</span></td><td>'+Number(s.sent||0)+' / '+Number(s.failed||0)+' / '+Number(s.pending||0)+'</td><td><button class="btn light" onclick="viewDeliveries('+c.id+')">View</button> '+(s.failed?'<button class="btn gold" onclick="retry('+c.id+')">Retry</button>':'')+'</td></tr>';}).join("")+'</tbody></table></div>';}
+function applyTemplate(id){const t=templates.find(x=>String(x.id)===String(id));if(!t)return;document.getElementById("subject").value=t.subject||"";document.getElementById("body").value=t.body_text||t.body_html||"";}
+async function saveTemplate(){const name=prompt("Name this email template:");if(!name)return;const subject=document.getElementById("subject").value.trim();if(!subject)return alert("Enter a subject first.");try{await api("/api/admin/emails/templates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,subject,body_text:document.getElementById("body").value,is_active:true})});await loadAll();alert("Template saved.");}catch(e){alert(e.message);}}
+async function editTemplate(id){const t=templates.find(x=>Number(x.id)===Number(id));if(!t)return;const name=prompt("Template name:",t.name||"");if(name===null)return;const subject=prompt("Email subject:",t.subject||"");if(subject===null)return;const body_text=prompt("Message text:",t.body_text||"");if(body_text===null)return;try{await api("/api/admin/emails/templates/"+id,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,subject,body_text,body_html:t.body_html||"",is_active:t.is_active!==false})});await loadAll();alert("Template updated.");}catch(e){alert(e.message);}}
+async function deleteTemplate(id){if(!confirm("Delete this template?"))return;try{await api("/api/admin/emails/templates/"+id,{method:"DELETE"});await loadAll();}catch(e){alert(e.message);}}
+async function sendTest(){const to=prompt("Enter the email address for the test message:");if(!to)return;const subject=document.getElementById("subject").value.trim();if(!subject)return alert("Enter an email subject first.");try{await api("/api/admin/emails/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to,subject,body_text:document.getElementById("body").value})});alert("Test email sent to "+to);}catch(e){alert("Test email failed: "+e.message);}}
+async function createCampaign(){const name=document.getElementById("name").value.trim(),subject=document.getElementById("subject").value.trim(),body=document.getElementById("body").value;if(!name||!subject||!body)return alert("Enter campaign name, subject and message.");const raw=document.getElementById("schedule").value;const payload={name,subject,body_text:body,programme:document.getElementById("programme").value||null,course:document.getElementById("course").value||null,semester:document.getElementById("semester").value||null,section:document.getElementById("section").value||null,scheduled_at:raw?new Date(raw).toISOString():null,idempotency_key:campaignRequestKey};message("Preparing student recipient list…");try{const r=await api("/api/admin/emails/campaigns",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});message(r.recipient_count+" recipients queued.");alert("Campaign created for "+r.recipient_count+" students.");campaignRequestKey=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+"-"+Math.random();await loadAll();}catch(e){message("");alert(e.message);}}
+async function dispatchDue(){const b=document.getElementById("dispatch");b.disabled=true;try{const r=await api("/api/admin/emails/dispatch",{method:"POST"});alert("Processed "+r.claimed+" emails: "+r.sent+" sent, "+r.failed+" failed.");await loadAll();}catch(e){alert(e.message);}finally{b.disabled=false;}}
+async function retry(id){if(!confirm("Retry all failed deliveries in this campaign?"))return;try{const r=await api("/api/admin/emails/campaigns/"+id+"/retry",{method:"POST"});alert(r.queued_for_retry+" deliveries queued for retry.");await loadAll();}catch(e){alert(e.message);}}
+async function viewDeliveries(id){const box=document.getElementById("deliveries");box.textContent="Loading delivery records…";try{const r=await api("/api/admin/emails/deliveries?campaign_id="+id),rows=r.deliveries||[];box.innerHTML=rows.length?'<div class="tablewrap"><table><thead><tr><th>Recipient</th><th>Email</th><th>Status</th><th>Attempts</th><th>Last error</th></tr></thead><tbody>'+rows.map(d=>'<tr><td>'+esc(d.recipient_name)+'</td><td>'+esc(d.recipient_email)+'</td><td><span class="pill '+esc(d.status)+'">'+esc(d.status)+'</span></td><td>'+Number(d.attempts||0)+'</td><td>'+esc(d.last_error||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="empty">No delivery records.</div>';}catch(e){box.textContent="Could not load deliveries: "+e.message;}}
+loadAll();
+</script>
+
+<script>(function(){var key='ushss_global_theme';function apply(v){if(['light','dark','system'].indexOf(v)<0)v='system';document.documentElement.setAttribute('data-ushss-theme',v);try{localStorage.setItem(key,v)}catch(e){}var s=document.getElementById('ushss-theme-choice');if(s)s.value=v}var initial='system';try{initial=localStorage.getItem(key)||'system'}catch(e){}apply(initial);(document.readyState==='loading'?function(fn){document.addEventListener('DOMContentLoaded',fn)}:function(fn){fn()})(function(){if(document.getElementById('ushss-theme-switch'))return;var box=document.createElement('div');box.id='ushss-theme-switch';box.innerHTML='<label for="ushss-theme-choice">Appearance</label><select id="ushss-theme-choice" aria-label="Choose appearance"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>';document.body.appendChild(box);var s=document.getElementById('ushss-theme-choice');s.value=document.documentElement.getAttribute('data-ushss-theme')||'system';s.addEventListener('change',function(){apply(this.value)})})})();</script>
+</body>
+</html>

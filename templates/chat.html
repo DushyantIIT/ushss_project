@@ -9,6 +9,184 @@
 :root[data-theme="dark"] .messages{background:linear-gradient(180deg,#211e1a,#191714)}:root[data-theme="dark"] .item:hover,:root[data-theme="dark"] .item.active{background:#352d22}:root[data-theme="dark"] input{background:#211e1a;color:var(--ink)}:root[data-theme="dark"] .msg.mine{background:#783030;border-color:#783030}:root[data-theme="dark"] button.secondary:hover{background:#352d22}:root[data-theme="dark"] .head{background:linear-gradient(135deg,#241010,#541b1b 68%,#783030)}
 :root[data-theme="system"]{color-scheme:light dark}
 @media(prefers-color-scheme:dark){:root[data-theme="system"]{--bg:#151311;--surface:#211e1a;--surface2:#2b2621;--surface3:#393229;--border:#40382f;--border2:#5a4d3f;--maroon:#9c4545;--maroon-d:#321717;--maroon-l:#b85d5d;--gold:#d7b65c;--gold-l:#f0d58b;--ink:#f3eee7;--ink-mid:#e5d9cb;--muted:#b3a596;--shadow:0 2px 12px rgba(0,0,0,.2)}:root[data-theme="system"] .messages{background:linear-gradient(180deg,#211e1a,#191714)}:root[data-theme="system"] .item:hover,:root[data-theme="system"] .item.active{background:#352d22}:root[data-theme="system"] input{background:#211e1a;color:var(--ink)}:root[data-theme="system"] .msg.mine{background:#783030;border-color:#783030}:root[data-theme="system"] button.secondary:hover{background:#352d22}:root[data-theme="system"] .head{background:linear-gradient(135deg,#241010,#541b1b 68%,#783030)}}
+
+/* USHSS dimensional interface layer */
+:root{
+  --ushss-depth-shadow: 0 18px 42px rgba(0,0,0,.13), 0 5px 12px rgba(0,0,0,.08);
+  --ushss-depth-shadow-hover: 0 26px 54px rgba(0,0,0,.19), 0 10px 20px rgba(0,0,0,.11);
+}
+html{scroll-behavior:smooth}
+body{perspective:none;
+  transform:translateZ(0);
+}
+button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{
+  transform:translateY(-2px) translateZ(8px);
+  box-shadow:0 10px 22px rgba(0,0,0,.18);
+  filter:saturate(1.08);
+}
+button:active:not(:disabled),.btn:active,[role="button"]:active,a.button:active{
+  transform:translateY(1px) scale(.985);
+  box-shadow:0 3px 8px rgba(0,0,0,.14);
+}
+[class*="card"],[class*="panel"],[class*="stat"],[class*="tile"],[class*="widget"],.hero-content,.hero-card{
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease,border-color .28s ease;
+}
+[class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+  transform:translateY(-3px) rotateX(.45deg);
+  box-shadow:var(--ushss-depth-shadow-hover);
+}
+main,section,.container,.wrap,.dashboard,.page-content{transform-style:preserve-3d}
+header,.topbar,.navbar,.sidebar,.side-nav{
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+input,select,textarea{
+  transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease;
+}
+input:focus,select:focus,textarea:focus{
+  transform:translateZ(5px);
+  box-shadow:0 0 0 3px rgba(201,168,76,.16),0 8px 18px rgba(0,0,0,.08);
+}
+a:focus-visible,button:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid var(--gold,#D89E28);
+  outline-offset:3px;
+}
+@media (hover:none),(max-width:760px){
+  [class*="card"]:hover,[class*="panel"]:hover,[class*="stat"]:hover,[class*="tile"]:hover,[class*="widget"]:hover{
+    transform:none;box-shadow:var(--ushss-depth-shadow);
+  }
+  button:hover:not(:disabled),.btn:hover,[role="button"]:hover,a.button:hover{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+
+/* ── USHSS VISUAL REDESIGN v2: dimensional messaging workspace ── */
+body{background:radial-gradient(ellipse at 90% 0%,rgba(215,173,98,.16),transparent 28%),linear-gradient(135deg,#f7f4ef,#ece8e1)!important}
+.wrap{max-width:1500px!important;padding:24px!important}
+.head{border-radius:20px!important;background:linear-gradient(115deg,#3d0b14,#721b27 65%,#8b3439)!important;box-shadow:0 20px 45px rgba(55,12,18,.22)!important;color:#fff!important;padding:22px 26px!important}
+.layout{gap:18px!important}
+.panel{border:1px solid #e9dfd2!important;border-radius:20px!important;background:linear-gradient(145deg,#fffefa,#f8f2e9)!important;box-shadow:0 16px 38px rgba(48,24,22,.1)!important;overflow:hidden}
+.panel h2{background:rgba(242,233,220,.75)!important;color:#64131d!important;padding:17px 20px!important;border-bottom:1px solid #e7ddd0!important}
+.people,.convos{padding:12px!important}
+.item{border-radius:12px!important;transition:transform .2s,background .2s!important}
+.item:hover,.item.active{transform:translateX(3px)!important;background:#f4eadc!important}
+.messages{background:linear-gradient(180deg,#fbf8f2,#f3eee6)!important;border-radius:14px!important}
+.msg{border-radius:16px 16px 16px 5px!important;box-shadow:0 7px 16px rgba(40,20,16,.07)!important}
+.msg.mine{border-radius:16px 16px 5px 16px!important;background:linear-gradient(135deg,#751d28,#4d1019)!important;box-shadow:0 9px 18px rgba(75,13,22,.16)!important}
+.compose{border-radius:15px!important;background:#fff!important;box-shadow:0 8px 22px rgba(40,20,16,.08)!important}
+input,button{border-radius:10px!important}
+button{box-shadow:0 7px 16px rgba(69,16,23,.12)!important}
+
+
+
+/* FINAL USHSS THEME FIX — overrides legacy and redesign hard-coded colours */
+:root[data-ushss-theme="light"]{
+ color-scheme:light;
+ --bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+:root[data-ushss-theme="dark"]{
+ color-scheme:dark;
+ --bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+ --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+ --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+ --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+ --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{
+  color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;
+  --border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;
+  --text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;
+  --maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);
+  --paper:#191B1F;--line:#343941;--cream:#E8E4DC;
+ }
+}
+:root[data-ushss-theme="system"]{
+ color-scheme:light;--bg:#FAF7F2;--surface:#FFFFFF;--surface2:#F0EBE0;--surface3:#E8E0D2;
+ --border:#D4C4A8;--border2:#BDA987;--ink:#1A1209;--ink-mid:#3D2B1F;
+ --text:#1A1209;--muted:#625143;--maroon:#6B1A1A;--maroon-d:#4A0E0E;
+ --maroon-l:#8B2E2E;--gold:#C9A84C;--gold-l:#E8C97A;--gold-pale:#FDF8EC;
+ --paper:#FFFFFF;--line:#D4C4A8;--cream:#F5F0E8;
+}
+@media(prefers-color-scheme:dark){
+ :root[data-ushss-theme="system"]{color-scheme:dark;--bg:#111214;--surface:#191B1F;--surface2:#22252A;--surface3:#2B2F35;--border:#343941;--border2:#545B66;--ink:#F3EEE7;--ink-mid:#E5D9CB;--text:#E8E4DC;--muted:#B3A596;--maroon:#9C4545;--maroon-d:#321717;--maroon-l:#B85D5D;--gold:#D7B65C;--gold-l:#F0D58B;--gold-pale:rgba(215,182,92,.12);--paper:#191B1F;--line:#343941;--cream:#E8E4DC}
+}
+html,body{background:var(--bg)!important;color:var(--text)!important;color-scheme:inherit}
+body,.main,.content,.page-content,.main-content,.dashboard-content,.wrap,.workspace{
+ background-color:var(--bg)!important;color:var(--text)!important;
+}
+.card,.panel,.stat-card,.modal,.modal-content,.table-wrap,.table-container,.content-card,.form-card,.widget,.tile,
+.topbar,.top-bar,.toolbar,.compose,.people,.convos{
+ background-color:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important;
+}
+.card-title,.tb-title,.page-title,h1,h2,h3,h4,h5,h6,p,label,small,td,th,li,
+.muted,.text-muted,.subtitle,.description,.form-label,.field-label{
+ color:var(--text);
+}
+th,thead,.table thead,.table-header{background:var(--surface2)!important;color:var(--ink-mid)!important}
+tr,td{border-color:var(--border)!important}
+input,select,textarea,option{
+ background:var(--surface2)!important;color:var(--text)!important;border-color:var(--border2)!important;
+}
+input::placeholder,textarea::placeholder{color:var(--muted)!important;opacity:1}
+a:not(.btn):not(.button){color:var(--maroon)}
+.btn-primary,.btn-primary:hover{color:#fff!important}
+.sidebar,.sb-head,.dash-welcome,.att-hero,.att-session,.fac-welcome,.live-host-card,
+.head{
+ background:linear-gradient(135deg,#4A0E0E,#6B1A1A 62%,#8B2E2E)!important;
+ color:#fff!important;
+}
+.sidebar *, .sb-head *, .dash-welcome *, .att-hero *, .att-session *,
+.fac-welcome *, .live-host-card *, .head *{color:#fff}
+:root[data-ushss-theme="dark"] .sidebar *,
+:root[data-ushss-theme="dark"] .sb-head *,
+:root[data-ushss-theme="dark"] .dash-welcome *,
+:root[data-ushss-theme="dark"] .att-hero *,
+:root[data-ushss-theme="dark"] .att-session *,
+:root[data-ushss-theme="dark"] .fac-welcome *,
+:root[data-ushss-theme="dark"] .live-host-card *,
+:root[data-ushss-theme="dark"] .head *{color:var(--gold-l)!important}
+:root[data-ushss-theme="light"] .sidebar *,
+:root[data-ushss-theme="light"] .sb-head *,
+:root[data-ushss-theme="light"] .dash-welcome *,
+:root[data-ushss-theme="light"] .att-hero *,
+:root[data-ushss-theme="light"] .att-session *,
+:root[data-ushss-theme="light"] .fac-welcome *,
+:root[data-ushss-theme="light"] .live-host-card *,
+:root[data-ushss-theme="light"] .head *{color:#fff!important}
+#ushss-theme-switch{
+ position:fixed!important;right:16px!important;bottom:82px!important;z-index:100000!important;
+ display:flex!important;align-items:center!important;gap:8px!important;
+ padding:8px 10px!important;border:1px solid var(--border2)!important;border-radius:10px!important;
+ background:var(--surface)!important;color:var(--text)!important;
+ box-shadow:0 4px 18px rgba(0,0,0,.2)!important;font:600 12px 'DM Sans',sans-serif!important;
+ max-width:calc(100vw - 24px)!important;
+}
+#ushss-theme-switch label{color:var(--text)!important;white-space:nowrap}
+#ushss-theme-switch select{
+ width:auto!important;min-width:88px!important;max-width:110px!important;
+ padding:6px 8px!important;background:var(--surface2)!important;color:var(--text)!important;
+ border:1px solid var(--border2)!important;border-radius:7px!important;font:inherit!important;
+}
+@media(max-width:760px){
+ #ushss-theme-switch{right:12px!important;bottom:82px!important;padding:7px 9px!important;gap:6px!important}
+ #ushss-theme-switch label{font-size:11px!important}
+ #ushss-theme-switch select{min-width:82px!important;font-size:12px!important}
+}
+
+:root[data-ushss-theme="dark"] .messages{background:var(--surface2)!important}
+:root[data-ushss-theme="light"] .messages{background:var(--surface2)!important}
+.msg{background:var(--surface2)!important;color:var(--text)!important;border-color:var(--border)!important}
+.msg.mine{background:#6B1A1A!important;color:#fff!important;border-color:#6B1A1A!important}
+:root[data-ushss-theme="dark"] .msg.mine{background:#783030!important;color:var(--gold-l)!important;border-color:#783030!important}
+
 </style></head><body><main class="wrap">
 <header class="head"><div><h1 style="font-size:22px;margin:0">USHSS Chats</h1><div class="muted">Class and faculty conversations with access controls</div></div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label for="themeChoice" style="font-size:13px;color:inherit">Theme</label><select id="themeChoice" aria-label="Choose chat theme" style="padding:9px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--ink)"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select><button class="secondary" onclick="location.href='/dashboard/'+(localStorage.getItem('ushss_role')||'student')">Back to portal</button></div></header>
 <div class="status" id="status">Loading your permitted contacts…</div>
@@ -16,8 +194,8 @@
 <section class="panel"><h2 id="chatTitle">Choose a conversation</h2><div class="messages" id="messages"></div><form class="compose" id="sendForm"><input id="message" maxlength="4000" placeholder="Write a message…" autocomplete="off" required><button id="sendBtn">Send</button></form></section></div>
 </main><script>
 const token=localStorage.getItem('ushss_token');let current=null;let poll=null;
-function setTheme(theme){if(!['system','light','dark'].includes(theme))theme='system';document.documentElement.dataset.theme=theme;try{localStorage.setItem('ushss_chat_theme',theme)}catch(e){}const picker=document.getElementById('themeChoice');if(picker)picker.value=theme}
-(function(){let saved='system';try{saved=localStorage.getItem('ushss_chat_theme')||'system'}catch(e){}setTheme(saved)})();
+function setTheme(theme){if(!['system','light','dark'].includes(theme))theme='system';document.documentElement.dataset.theme=theme;document.documentElement.dataset.ushssTheme=theme;document.documentElement.setAttribute('data-ushss-theme',theme);try{localStorage.setItem('ushss_global_theme',theme);localStorage.setItem('ushss_chat_theme',theme)}catch(e){}const picker=document.getElementById('themeChoice');if(picker)picker.value=theme}
+(function(){let saved='system';try{saved=localStorage.getItem('ushss_global_theme')||localStorage.getItem('ushss_chat_theme')||'system'}catch(e){}setTheme(saved)})();
 const el=id=>document.getElementById(id);\nel('themeChoice').addEventListener('change',e=>setTheme(e.target.value));
 function status(s){el('status').textContent=s}
 function headers(json=false){return {'Authorization':'Bearer '+token,...(json?{'Content-Type':'application/json'}:{})}}

@@ -127,6 +127,12 @@ Relevant indexes and Row Level Security are enabled in Supabase.
 
 Run database changes through Supabase migrations/SQL, not through a hidden local SQLite database.
 
+## Automated Email Campaigns
+
+The admin email manager is available at `/dashboard/admin/emails`. It supports programme/course/semester/section targeting, scheduled campaigns, SMTP test messages, reusable templates, delivery tracking and manual retries. Existing registration approval/rejection emails continue to use SMTP.
+
+Before using it, run `sql/email_campaigns.sql` in Supabase and configure SMTP plus `EMAIL_CRON_SECRET` in Vercel. Configure an authenticated scheduler to call `GET /api/email/dispatch` at the frequency supported by your hosting plan. See [docs/email-campaigns.md](docs/email-campaigns.md) for Gmail / university SMTP settings, scheduler setup and operational limits.
+
 ## Testing
 
 With valid Supabase environment variables:

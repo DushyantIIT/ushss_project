@@ -53,6 +53,13 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 VALID_ROLES = ("student", "faculty", "cr", "admin")
 
+
+@router.get("/me", summary="Get the current administrator profile")
+def current_admin_profile(admin: dict = Depends(require_admin)):
+    """Return only the authenticated admin's profile for fast dashboard boot."""
+    fields = ("id", "username", "full_name", "email", "role", "is_super_admin", "is_active", "last_login")
+    return {"user": {key: admin.get(key) for key in fields}}
+
 def _audit(admin_id: int, action: str, detail: str, ip: str = None):
     row = {"user_id": admin_id, "action": action, "detail": detail}
     if ip:
