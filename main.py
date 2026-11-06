@@ -250,7 +250,7 @@ def robots_txt():
         "Disallow: /docs\n"
         "Disallow: /redoc\n"
         "Disallow: /openapi.json\n"
-        "Sitemap: https://ushss-project-dushyantiits-projects.vercel.app/sitemap.xml\n"
+        "Sitemap: https://ushss-project-o9w2.vercel.app/sitemap.xml\n"
     )
     return PlainTextResponse(content, media_type="text/plain")
 
@@ -259,7 +259,7 @@ def sitemap_xml():
     content = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ushss-project-dushyantiits-projects.vercel.app/</loc>
+    <loc>https://ushss-project-o9w2.vercel.app/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
