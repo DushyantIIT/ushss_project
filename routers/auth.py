@@ -14,7 +14,6 @@ from app.rate_limit import (
     record_login_failure,
     clear_login_failures,
 )
-from fastapi import Depends
 
 # Retry only idempotent Supabase reads. Never retry writes or authentication
 # attempts, because their side effects/semantics may not be safe to repeat.
