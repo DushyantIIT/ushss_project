@@ -3,11 +3,10 @@
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
-from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
 from app.database import sb
-from app.deps import oauth2_scheme
-from app.security import create_access_token, decode_token, IS_DEV
+from app.deps import get_current_user
+from app.security import create_access_token, IS_DEV
 from app.rate_limit import (
     rate_limit,
     get_client_ip,
@@ -15,6 +14,7 @@ from app.rate_limit import (
     record_login_failure,
     clear_login_failures,
 )
+from fastapi import Depends
 
 # Retry only idempotent Supabase reads. Never retry writes or authentication
 # attempts, because their side effects/semantics may not be safe to repeat.
@@ -206,15 +206,16 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
-@router.post("/change-password")
-def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_scheme)):
-    try: payload=decode_token(token)
-    except JWTError: raise HTTPException(401,"Your session has expired. Please log in again.")
-    uid=payload.get("id")
-    res=sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id",uid).limit(1).execute()
+@router.post(
+    "/change-password",
+    dependencies=[Depends(rate_limit("change_password", max_calls=5, window_seconds=900))],
+)
+def change_password(body: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    # get_current_user validates signature, token purpose, account status and
+    # current database role/state; a pending/reset token is not a login session.
+    res=sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id",user["id"]).limit(1).execute()
     if not res.data: raise HTTPException(401,"User account not found")
     user=res.data[0]
-    if not user.get("is_active",True) or (user.get("status") or "approved")!="approved": raise HTTPException(403,"Your account is not active")
     if not user.get("supabase_uid"): raise HTTPException(500,"This account has no linked Auth identity")
     if body.new_password!=body.confirm_password: raise HTTPException(400,"New passwords do not match")
     if body.current_password==body.new_password: raise HTTPException(400,"New password must be different from the current password")
