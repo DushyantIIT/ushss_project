@@ -103,8 +103,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS or [],
     allow_credentials=bool(CORS_ORIGINS),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -163,8 +163,15 @@ async def add_security_headers(request: Request, call_next):
         response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(self)"
+    response.headers["X-DNS-Prefetch-Control"] = "off"
+    # Portal HTML and authenticated API responses may contain personal/student data.
+    # Prevent shared browsers and intermediary caches from retaining those responses.
+    if request.url.path.startswith(("/dashboard/", "/api/")) or request.url.path in {"/waiting", "/rejected"}:
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
     if _IS_PROD:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Content-Security-Policy"] = (
@@ -174,9 +181,11 @@ async def add_security_headers(request: Request, call_next):
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' data: https: blob:; "
         "connect-src 'self' https:; "
+        "object-src 'none'; "
         "frame-ancestors 'self'; "
         "base-uri 'self'; "
         "form-action 'self';"
+        + (" upgrade-insecure-requests;" if _IS_PROD else "")
     )
     return response
 
