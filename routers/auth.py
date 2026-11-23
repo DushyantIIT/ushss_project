@@ -57,7 +57,7 @@ class LoginResponse(BaseModel):
     redirect_url: str
     user: dict
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit("login", max_calls=20, window_seconds=60))])
 def login(body: LoginRequest, request: Request):
     client_ip = get_client_ip(request)
     check_login_rate_limit(body.username, client_ip)
@@ -119,8 +119,6 @@ def login(body: LoginRequest, request: Request):
     if not user.get("is_active", True):
         record_login_failure(body.username, client_ip)
         raise HTTPException(401, "Invalid username or password")
-
-    auth_uid = user.get("supabase_uid")
 
     # Authenticate password with Supabase Auth
     authenticated = False
