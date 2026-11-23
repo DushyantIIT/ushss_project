@@ -559,7 +559,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-item" onclick="showPage('pending-requests')" data-page="pending-requests"><span class="icon">⏳</span> Pending Registrations<span class="nav-badge" id="badge-pending" style="display:none;background:var(--amber);color:#fff">0</span></div>
 
     <div class="nav-section-title">Website Management</div>
-    <div class="nav-item" onclick="showPage('homepage')" data-page="homepage"><span class="icon">🌐</span> Homepage Editor</div>
+    <div class="nav-item" onclick="showPage('homepage')" data-page="homepage"><span class="icon">🌐</span> Website Builder</div>
 
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
@@ -1383,7 +1383,7 @@ function renderPendingRequests() {
 ══════════════════════════════════════════ */
 let currentPage="dashboard", editingId=null, deleteId=null, deleteCallback=null;
 const pageTitles={
-  homepage:["Homepage Editor","USHSS / Admin / Website / Homepage"],
+  homepage:["Website Builder","USHSS / Admin / Website / Builder"],
   dashboard:["Dashboard","USHSS / Admin / Overview"],
   student:["Students","USHSS / Admin / Users / Students"],
   students:["Students","USHSS / Admin / Users / Students"],
