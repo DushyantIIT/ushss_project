@@ -48,6 +48,7 @@ from pydantic import BaseModel, EmailStr, Field
 from app.database import sb
 from app.deps import require_admin, require_super_admin
 from app.email_utils import send_approval_email, send_rejection_email
+from app.rate_limit import rate_limit
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -621,7 +622,8 @@ class PasswordResetBody(BaseModel):
 
 @router.post(
     "/reset-password",
-    summary="Reset any user's password"
+    summary="Reset any user's password",
+    dependencies=[Depends(rate_limit("admin_reset_password", max_calls=5, window_seconds=900))],
 )
 def reset_password(
     body: PasswordResetBody,
