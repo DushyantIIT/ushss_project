@@ -73,6 +73,60 @@ def _audit(admin_id: int, action: str, detail: str, ip: str = None):
 
 
 # 
+
+# Admin-managed homepage CMS. Drafts stay private until explicitly published.
+from app.homepage_content import DEFAULT_HOMEPAGE_CONTENT, validate_homepage_content
+
+@router.get("/homepage", summary="Get editable homepage content")
+def get_homepage_content(admin: dict = Depends(require_admin)):
+    res = sb.table("homepage_content").select("*").eq("slug", "home").limit(1).execute()
+    row = (res.data or [None])[0]
+    draft = row.get("draft_content") if row else None
+    published = row.get("published_content") if row else None
+    return {
+        "draft": validate_homepage_content(draft or published or DEFAULT_HOMEPAGE_CONTENT),
+        "published": validate_homepage_content(published or DEFAULT_HOMEPAGE_CONTENT),
+        "has_unpublished_changes": bool(row and draft and draft != published),
+        "updated_at": row.get("updated_at") if row else None,
+    }
+
+@router.put("/homepage", summary="Save homepage draft")
+def save_homepage_draft(payload: dict, admin: dict = Depends(require_admin)):
+    try:
+        content = validate_homepage_content(payload)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    existing = sb.table("homepage_content").select("id").eq("slug", "home").limit(1).execute()
+    row = {"slug": "home", "draft_content": content, "updated_by": admin.get("id"),
+           "updated_at": datetime.now(timezone.utc).isoformat()}
+    if existing.data:
+        sb.table("homepage_content").update(row).eq("slug", "home").execute()
+    else:
+        row["published_content"] = DEFAULT_HOMEPAGE_CONTENT
+        sb.table("homepage_content").insert(row).execute()
+    _audit(int(admin.get("id") or 0), "HOMEPAGE_DRAFT_SAVED", "Saved public homepage draft")
+    return {"success": True, "draft": content}
+
+@router.post("/homepage/publish", summary="Publish homepage draft")
+def publish_homepage_draft(admin: dict = Depends(require_admin)):
+    existing = sb.table("homepage_content").select("*").eq("slug", "home").limit(1).execute()
+    row = (existing.data or [None])[0]
+    now = datetime.now(timezone.utc).isoformat()
+    if not row:
+        content = DEFAULT_HOMEPAGE_CONTENT
+        sb.table("homepage_content").insert({
+            "slug": "home", "draft_content": content, "published_content": content,
+            "updated_by": admin.get("id"), "published_by": admin.get("id"), "published_at": now,
+        }).execute()
+    else:
+        content = validate_homepage_content(row.get("draft_content") or row.get("published_content") or DEFAULT_HOMEPAGE_CONTENT)
+        sb.table("homepage_content").update({
+            "published_content": content, "published_by": admin.get("id"), "published_at": now,
+        }).eq("slug", "home").execute()
+    _audit(int(admin.get("id") or 0), "HOMEPAGE_PUBLISHED", "Published public homepage content")
+    return {"success": True, "published": content}
+
+
 #  USERS
 # 
 
