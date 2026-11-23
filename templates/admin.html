@@ -1421,7 +1421,7 @@ function renderPage(page) {
   try {
     try { updateBadges(); } catch(e) { console.warn("Admin badge refresh failed:", e); }
     if(page==="homepage") { c.innerHTML=renderHomepageEditor(); loadHomepageEditor(); }
-    if(page==="dashboard") c.innerHTML=renderDashboard();
+    else if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") { c.innerHTML=renderTimetable(); loadOfferedSubjects(); }
     else if(page==="subjects-taught") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
