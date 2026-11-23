@@ -9,6 +9,8 @@ create table if not exists public.ushss_rate_limit_buckets (
 );
 
 alter table public.ushss_rate_limit_buckets enable row level security;
+create index if not exists ushss_rate_limit_buckets_started_idx
+    on public.ushss_rate_limit_buckets (bucket_started_at);
 revoke all on table public.ushss_rate_limit_buckets from public, anon, authenticated;
 grant all on table public.ushss_rate_limit_buckets to service_role;
 
