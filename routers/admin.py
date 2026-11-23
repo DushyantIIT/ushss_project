@@ -53,6 +53,14 @@ router = APIRouter(prefix="/admin", tags=["Admin"])
 
 VALID_ROLES = ("student", "faculty", "cr", "admin")
 
+# Never expose authentication-provider identifiers or legacy password material
+# through dashboard APIs, even to authenticated administrators.
+_SENSITIVE_USER_FIELDS = {"password_hash", "supabase_uid"}
+
+def _safe_admin_user(row: dict) -> dict:
+    return {key: value for key, value in row.items() if key not in _SENSITIVE_USER_FIELDS}
+
+
 def _audit(admin_id: int, action: str, detail: str, ip: str = None):
     row = {"user_id": admin_id, "action": action, "detail": detail}
     if ip:
@@ -136,7 +144,7 @@ def list_users(
                  s in (u.get("full_name") or "").lower() or
                  s in (u.get("username") or "").lower() or
                  s in (u.get("email") or "").lower()]
-    return {"users": users, "total": len(users)}
+    return {"users": [_safe_admin_user(user) for user in users], "total": len(users)}
 
 
 @router.get("/users/{uid}", summary="Get single user")
@@ -144,7 +152,7 @@ def get_user(uid: int, admin: dict = Depends(require_admin)):
     res = sb.table("users").select("*").eq("id", uid).limit(1).execute()
     if not res.data:
         raise HTTPException(404, "User not found")
-    return res.data[0]
+    return _safe_admin_user(res.data[0])
 
 
 @router.post("/users", status_code=201, summary="Create a user")
@@ -218,7 +226,7 @@ def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         raise HTTPException(502, "Could not complete user creation. Please try again.")
 
     _audit(admin["id"], "CREATE_USER", f"Created {body.role} '{body.username}'")
-    return res.data[0]
+    return _safe_admin_user(res.data[0])
 
 
 @router.put("/users/{uid}", summary="Update a user")
@@ -294,7 +302,7 @@ def update_user(uid: int, body: UserUpdate, admin: dict = Depends(require_admin)
         row = sb.table("users").select("*").eq("id", uid).limit(1).execute().data[0]
 
     _audit(admin["id"], "UPDATE_USER", f"Updated user id={uid}")
-    return row
+    return _safe_admin_user(row)
 
 
 @router.delete("/users/{uid}",summary="Delete a user")
