@@ -1443,58 +1443,84 @@ function renderPage(page) {
 
 let homepageDraft = null;
 const homepageFields = ["hero_eyebrow","hero_title","hero_accent","hero_subtitle","hero_primary_label","hero_primary_target","hero_secondary_label","hero_secondary_target","hero_image_url","about_label","about_title","about_body","contact_heading","contact_body"];
+function cmsEsc(v){return String(v??"").replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});}
+function cmsField(label,key,value,multi){
+ return '<label class="form-group"><span class="form-label">'+cmsEsc(label)+'</span>'+
+ (multi?'<textarea class="form-textarea" rows="3" data-cms-field="'+key+'">'+cmsEsc(value)+'</textarea>':'<input class="form-input" data-cms-field="'+key+'" value="'+cmsEsc(value)+'"/>')+'</label>';
+}
 function renderHomepageEditor(){
+ const d=homepageDraft||{}, b=d.builder||{}, theme=b.theme||{}, custom=b.custom_sections||[], nav=b.nav_links||[], foot=b.footer_links||[];
  const fields=[
-  ["hero_eyebrow","Hero eyebrow","text"],["hero_title","Hero main heading","text"],["hero_accent","Hero highlighted heading","text"],
-  ["hero_subtitle","Hero description","textarea"],["hero_primary_label","Primary button label","text"],["hero_primary_target","Primary button link","text"],
-  ["hero_secondary_label","Secondary button label","text"],["hero_secondary_target","Secondary button link","text"],["hero_image_url","Hero image URL (HTTPS)","text"],
-  ["about_label","About label","text"],["about_title","About heading","text"],["about_body","About description","textarea"],
-  ["contact_heading","Contact heading","text"],["contact_body","Contact description","textarea"]
+  ["Hero eyebrow","hero_eyebrow"],["Hero heading","hero_title"],["Hero highlighted text","hero_accent"],
+  ["Hero description","hero_subtitle",1],["Primary button label","hero_primary_label"],["Primary button link","hero_primary_target"],
+  ["Secondary button label","hero_secondary_label"],["Secondary button link","hero_secondary_target"],["Hero image URL (HTTPS)","hero_image_url"],
+  ["About label","about_label"],["About heading","about_title"],["About description","about_body",1],
+  ["Contact heading","contact_heading"],["Contact description","contact_body",1]
  ];
- const inputs=fields.map(function(item){
-  const key=item[0],label=item[1],type=item[2];
-  return '<label class="form-group"><span class="form-label">'+label+'</span>'+
-   (type==="textarea"?'<textarea class="form-textarea" rows="3" data-home-field="'+key+'"></textarea>':'<input class="form-input" data-home-field="'+key+'" type="text"/>')+'</label>';
- }).join("");
+ const inputs=fields.map(x=>cmsField(x[0],x[1],d[x[1]],!!x[2])).join("");
  const sections=["home","about","programmes","faculty","gallery","contact"];
- const checks=sections.map(function(key){return '<label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" data-home-section="'+key+'" checked/><span style="text-transform:capitalize">'+key+'</span></label>';}).join("");
- return '<div class="sec-head"><div><div class="sec-label">Website Management</div><div class="sec-title">Homepage Editor</div><div class="card-sub" style="margin-top:6px">Edit the public homepage without changing code. Drafts stay private until published.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="loadHomepageEditor()">↻ Reload</button><button class="btn btn-primary" onclick="saveHomepageDraft()">Save Draft</button><button class="btn btn-gold" onclick="publishHomepageDraft()">Publish Changes</button></div></div>'+
- '<div class="card" style="margin-bottom:16px"><div class="card-title">Page content</div><div class="card-sub" style="margin:5px 0 18px">Edit headings, descriptions, buttons and the hero image URL.</div><div class="form-grid">'+inputs+'</div></div>'+
- '<div class="card"><div class="card-title">Homepage sections</div><div class="card-sub" style="margin:5px 0 16px">Choose which sections appear on the public homepage.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'+checks+'</div><div id="homepage-cms-status" class="card-sub" style="margin-top:16px">Loading saved homepage content…</div></div>';
+ const checks=sections.map(key=>'<label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" data-home-section="'+key+'" '+(d.sections?.[key]===false?'':'checked')+'/><span style="text-transform:capitalize">'+key+'</span></label>').join("");
+ const navHtml=nav.map((x,i)=>'<div class="form-grid" style="margin:10px 0"><label class="form-group"><span class="form-label">Menu label</span><input class="form-input" data-nav-label="'+i+'" value="'+cmsEsc(x.label)+'"/></label><label class="form-group"><span class="form-label">Link</span><input class="form-input" data-nav-url="'+i+'" value="'+cmsEsc(x.url)+'"/></label><button class="btn btn-danger btn-sm" onclick="removeCmsLink('+i+')">Remove</button></div>').join("");
+ const footHtml=foot.map((x,i)=>'<div class="form-grid" style="margin:10px 0"><label class="form-group"><span class="form-label">Footer link label</span><input class="form-input" data-foot-label="'+i+'" value="'+cmsEsc(x.label)+'"/></label><label class="form-group"><span class="form-label">Link</span><input class="form-input" data-foot-url="'+i+'" value="'+cmsEsc(x.url)+'"/></label><button class="btn btn-danger btn-sm" onclick="removeFooterLink('+i+')">Remove</button></div>').join("");
+ const customHtml=custom.map((x,i)=>'<div class="card" style="margin:12px 0;padding:16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><strong>Section '+(i+1)+'</strong><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="moveCmsSection('+i+',-1)" '+(i===0?'disabled':'')+'>↑</button><button class="btn btn-ghost btn-sm" onclick="moveCmsSection('+i+',1)" '+(i===custom.length-1?'disabled':'')+'>↓</button><button class="btn btn-danger btn-sm" onclick="removeCmsSection('+i+')">Remove</button></div></div><div class="form-grid" style="margin-top:12px">'+
+ cmsField("Section ID (unique lowercase slug)","custom-id-"+i,x.id)+cmsField("Small label","custom-eyebrow-"+i,x.eyebrow)+
+ cmsField("Heading","custom-title-"+i,x.title)+cmsField("Image URL (HTTPS)","custom-image-"+i,x.image_url)+
+ cmsField("Description","custom-body-"+i,x.body,true)+cmsField("Button label (optional)","custom-button-label-"+i,x.button_label)+
+ cmsField("Button link (optional)","custom-button-url-"+i,x.button_url)+
+ '<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-custom-visible="'+i+'" '+(x.visible===false?'':'checked')+'/>Show this section</label></div></div>').join("");
+ return '<div class="sec-head"><div><div class="sec-label">Website Management</div><div class="sec-title">Website Builder</div><div class="card-sub" style="margin-top:6px">Control the public website. Changes remain private until you publish.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="loadHomepageEditor()">↻ Reload</button><button class="btn btn-primary" onclick="saveHomepageDraft()">Save Draft</button><button class="btn btn-gold" onclick="publishHomepageDraft()">Publish Website</button></div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-title">Brand and appearance</div><div class="card-sub" style="margin:5px 0 18px">Set the website name, tagline and colour palette.</div><div class="form-grid">'+
+ cmsField("Website title","builder-site-title",b.site_title)+cmsField("Tagline","builder-tagline",b.tagline)+
+ '<label class="form-group"><span class="form-label">Primary colour</span><input class="form-input" type="color" data-theme="primary" value="'+cmsEsc(theme.primary||"#881818")+'"/></label>'+
+ '<label class="form-group"><span class="form-label">Accent colour</span><input class="form-input" type="color" data-theme="accent" value="'+cmsEsc(theme.accent||"#D89E28")+'"/></label>'+
+ '<label class="form-group"><span class="form-label">Background colour</span><input class="form-input" type="color" data-theme="background" value="'+cmsEsc(theme.background||"#FCFAF6")+'"/></label>'+
+ '<label class="form-group"><span class="form-label">Text colour</span><input class="form-input" type="color" data-theme="text" value="'+cmsEsc(theme.text||"#160F08")+'"/></label></div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-title">Header and navigation</div><div class="card-sub">Add, rename, reorder or remove public menu links.</div>'+navHtml+'<button class="btn btn-ghost btn-sm" onclick="addCmsLink()">＋ Add menu link</button></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-title">Homepage sections</div><div class="card-sub" style="margin:5px 0 16px">Edit the existing hero, About and Contact content, and show or hide built-in sections.</div><div class="form-grid">'+inputs+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:16px">'+checks+'</div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-title">Custom sections</div><div class="card-sub">Create additional content sections, add images and links, change their order, or remove them. Up to 15 sections.</div>'+customHtml+'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="addCmsSection()">＋ Add new section</button></div>'+
+ '<div class="card"><div class="card-title">Footer</div><div class="form-grid" style="margin-top:12px">'+cmsField("Footer heading","builder-footer-heading",b.footer_heading)+cmsField("Footer description","builder-footer-text",b.footer_text,true)+'</div>'+footHtml+'<button class="btn btn-ghost btn-sm" onclick="addFooterLink()">＋ Add footer link</button><div id="homepage-cms-status" class="card-sub" style="margin-top:16px">Loading website content…</div></div>';
 }
 async function loadHomepageEditor(){
  try{
   const data=await adminApiJson("/api/admin/homepage");
   homepageDraft=data.draft||{};
-  homepageFields.forEach(function(key){const el=document.querySelector('[data-home-field="'+key+'"]');if(el)el.value=homepageDraft[key]||"";});
-  document.querySelectorAll("[data-home-section]").forEach(function(el){el.checked=homepageDraft.sections?.[el.dataset.homeSection]!==false;});
+  const c=document.getElementById("content");if(c&&currentPage==="homepage")c.innerHTML=renderHomepageEditor();
   const status=document.getElementById("homepage-cms-status");
   if(status)status.textContent=data.has_unpublished_changes?"Unpublished draft changes are saved.":"Showing current published content or initial defaults.";
- }catch(e){toast(e.message||"Could not load homepage content","error");}
+ }catch(e){toast(e.message||"Could not load website content","error");}
 }
 function collectHomepageDraft(){
- const out=Object.assign({},homepageDraft||{});
- out.sections=Object.assign({},(homepageDraft||{}).sections||{});
- homepageFields.forEach(function(key){const el=document.querySelector('[data-home-field="'+key+'"]');if(el)out[key]=el.value.trim();});
- document.querySelectorAll("[data-home-section]").forEach(function(el){out.sections[el.dataset.homeSection]=el.checked;});
- return out;
+ const out=Object.assign({},homepageDraft||{}), b=JSON.parse(JSON.stringify(out.builder||{}));
+ homepageFields.forEach(key=>{const el=document.querySelector('[data-cms-field="'+key+'"]');if(el)out[key]=el.value.trim();});
+ out.sections=Object.assign({},out.sections||{});
+ document.querySelectorAll("[data-home-section]").forEach(el=>out.sections[el.dataset.homeSection]=el.checked);
+ b.site_title=document.querySelector('[data-cms-field="builder-site-title"]')?.value.trim()||"";
+ b.tagline=document.querySelector('[data-cms-field="builder-tagline"]')?.value.trim()||"";
+ b.footer_heading=document.querySelector('[data-cms-field="builder-footer-heading"]')?.value.trim()||"";
+ b.footer_text=document.querySelector('[data-cms-field="builder-footer-text"]')?.value.trim()||"";
+ b.theme=Object.assign({},b.theme||{});document.querySelectorAll("[data-theme]").forEach(el=>b.theme[el.dataset.theme]=el.value);
+ b.nav_links=(b.nav_links||[]).map((x,i)=>({label:document.querySelector('[data-nav-label="'+i+'"]')?.value.trim()||"",url:document.querySelector('[data-nav-url="'+i+'"]')?.value.trim()||""}));
+ b.footer_links=(b.footer_links||[]).map((x,i)=>({label:document.querySelector('[data-foot-label="'+i+'"]')?.value.trim()||"",url:document.querySelector('[data-foot-url="'+i+'"]')?.value.trim()||""}));
+ b.custom_sections=(b.custom_sections||[]).map((x,i)=>({id:document.querySelector('[data-cms-field="custom-id-'+i+'"]')?.value.trim()||x.id,eyebrow:document.querySelector('[data-cms-field="custom-eyebrow-'+i+'"]')?.value.trim()||"",title:document.querySelector('[data-cms-field="custom-title-'+i+'"]')?.value.trim()||"",image_url:document.querySelector('[data-cms-field="custom-image-'+i+'"]')?.value.trim()||"",body:document.querySelector('[data-cms-field="custom-body-'+i+'"]')?.value.trim()||"",button_label:document.querySelector('[data-cms-field="custom-button-label-'+i+'"]')?.value.trim()||"",button_url:document.querySelector('[data-cms-field="custom-button-url-'+i+'"]')?.value.trim()||"",visible:document.querySelector('[data-custom-visible="'+i+'"]')?.checked!==false}));
+ out.builder=b;return out;
 }
+function mutateCms(mutator){homepageDraft=collectHomepageDraft();mutator(homepageDraft.builder);const c=document.getElementById("content");if(c)c.innerHTML=renderHomepageEditor();}
+function addCmsLink(){mutateCms(b=>{b.nav_links=b.nav_links||[];if(b.nav_links.length<12)b.nav_links.push({label:"New link",url:"#home"});});}
+function removeCmsLink(i){mutateCms(b=>b.nav_links.splice(i,1));}
+function addFooterLink(){mutateCms(b=>{b.footer_links=b.footer_links||[];if(b.footer_links.length<12)b.footer_links.push({label:"New link",url:"#home"});});}
+function removeFooterLink(i){mutateCms(b=>b.footer_links.splice(i,1));}
+function addCmsSection(){mutateCms(b=>{b.custom_sections=b.custom_sections||[];if(b.custom_sections.length<15)b.custom_sections.push({id:"custom-section-"+(Date.now().toString(36)),eyebrow:"",title:"New section",body:"Add your content here.",image_url:"",button_label:"",button_url:"",visible:true});});}
+function removeCmsSection(i){if(!confirm("Remove this section from the draft?"))return;mutateCms(b=>b.custom_sections.splice(i,1));}
+function moveCmsSection(i,delta){mutateCms(b=>{const a=b.custom_sections,j=i+delta;if(j>=0&&j<a.length)[a[i],a[j]]=[a[j],a[i]];});}
 async function saveHomepageDraft(){
- try{
-  homepageDraft=collectHomepageDraft();
-  await adminApiJson("/api/admin/homepage",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(homepageDraft)});
-  const status=document.getElementById("homepage-cms-status");if(status)status.textContent="Draft saved. The public homepage has not changed yet.";
-  toast("Homepage draft saved","success");return true;
- }catch(e){toast(e.message||"Could not save homepage draft","error");return false;}
+ try{homepageDraft=collectHomepageDraft();await adminApiJson("/api/admin/homepage",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(homepageDraft)});const s=document.getElementById("homepage-cms-status");if(s)s.textContent="Draft saved. Public visitors still see the published version.";toast("Website draft saved","success");return true;}
+ catch(e){toast(e.message||"Could not save website draft","error");return false;}
 }
 async function publishHomepageDraft(){
- if(!confirm("Publish these homepage changes for everyone?"))return;
+ if(!confirm("Publish these website changes for everyone?"))return;
  if(!await saveHomepageDraft())return;
- try{
-  await adminApiJson("/api/admin/homepage/publish",{method:"POST"});
-  const status=document.getElementById("homepage-cms-status");if(status)status.textContent="Published successfully. The public homepage now shows these changes.";
-  toast("Homepage changes published","success");
- }catch(e){toast(e.message||"Could not publish homepage","error");}
+ try{await adminApiJson("/api/admin/homepage/publish",{method:"POST"});const s=document.getElementById("homepage-cms-status");if(s)s.textContent="Published successfully. Your public website now reflects these changes.";toast("Website changes published","success");}
+ catch(e){toast(e.message||"Could not publish website","error");}
 }
 
 function renderStudentSubjectRegister(){
