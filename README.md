@@ -154,3 +154,8 @@ Do not enable that setting in production.
 - [ ] Change/remove demo credentials before public launch
 - [ ] Use HTTPS
 - [ ] Keep database backups enabled
+
+
+## Homepage CMS
+
+Administrators can edit the public homepage from **Admin → Homepage Editor**. Changes are saved as drafts and become public only after selecting **Publish Changes**. Apply the SQL migration in `supabase/migrations/20261123_homepage_content_cms.sql` before enabling this feature in a deployed environment. The CMS stores published content separately from drafts and keeps direct database access restricted to the server-side service role.
