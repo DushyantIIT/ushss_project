@@ -1902,26 +1902,56 @@ document.addEventListener("DOMContentLoaded", checkExistingAuth);
  try{
   const response=await fetch("/api/public/homepage",{headers:{"Accept":"application/json"}});
   if(!response.ok)return;
-  const data=await response.json();
+  const data=await response.json(), builder=data.builder||{}, theme=builder.theme||{};
   const setText=function(selector,value){const el=document.querySelector(selector);if(el&&typeof value==="string"&&value)el.textContent=value;};
   setText(".hero-eyebrow",data.hero_eyebrow);
   const heroTitle=document.querySelector(".hero h1");
-  if(heroTitle){heroTitle.textContent=(data.hero_title||"Where Ideas")+" "+(data.hero_accent||"Shape Society");}
+  if(heroTitle){heroTitle.replaceChildren(document.createTextNode((data.hero_title||"Where Ideas")+" "));const em=document.createElement("em");em.textContent=data.hero_accent||"Shape Society";heroTitle.appendChild(em);}
   setText(".hero-sub",data.hero_subtitle);
   const heroButtons=document.querySelectorAll(".hero-actions a");
   if(heroButtons[0]){heroButtons[0].textContent=data.hero_primary_label||"Explore Programmes";heroButtons[0].setAttribute("href",data.hero_primary_target||"#programmes");}
   if(heroButtons[1]){heroButtons[1].textContent=data.hero_secondary_label||"Learn More";heroButtons[1].setAttribute("href",data.hero_secondary_target||"#about");}
-  setText("#about .section-label",data.about_label);
-  setText("#about .section-title",data.about_title);
+  setText("#about .section-label",data.about_label);setText("#about .section-title",data.about_title);
   const aboutBody=document.querySelector("#about .section-body");if(aboutBody&&data.about_body)aboutBody.textContent=data.about_body;
-  setText("#contact .contact-info h3",data.contact_heading);
-  setText("#contact .contact-info .section-body",data.contact_body);
+  setText("#contact .contact-info h3",data.contact_heading);setText("#contact .contact-info .section-body",data.contact_body);
   if(data.hero_image_url){const heroImage=document.querySelector(".hero-right");if(heroImage){heroImage.style.backgroundImage="url('"+data.hero_image_url.replace(/'/g,"%27")+"')";heroImage.style.backgroundSize="cover";heroImage.style.backgroundPosition="center";}}
   const sectionMap={home:"#home",about:"#about",programmes:"#programmes",faculty:"#faculty",gallery:"#gallery",contact:"#contact"};
-  Object.entries(sectionMap).forEach(function(entry){const el=document.querySelector(entry[1]);if(el&&data.sections&&data.sections[entry[0]]===false)el.hidden=true;});
- }catch(error){console.warn("Homepage CMS content could not be applied:",error);}
+  Object.entries(sectionMap).forEach(([key,selector])=>{const el=document.querySelector(selector);if(el&&data.sections&&data.sections[key]===false)el.hidden=true;});
+  if(builder.site_title){document.title=builder.site_title;}
+  if(theme.primary)document.documentElement.style.setProperty("--maroon",theme.primary);
+  if(theme.accent)document.documentElement.style.setProperty("--gold",theme.accent);
+  if(theme.background)document.documentElement.style.setProperty("--cream",theme.background);
+  if(theme.text)document.documentElement.style.setProperty("--ink",theme.text);
+  const nav=document.querySelector(".nav-links"), auth=document.getElementById("nav-auth-item");
+  if(nav&&Array.isArray(builder.nav_links)){
+   nav.querySelectorAll("a").forEach(a=>a.remove());
+   builder.nav_links.forEach(item=>{if(!item.label||!item.url)return;const li=document.createElement("li"),a=document.createElement("a");a.textContent=item.label;a.href=item.url;li.appendChild(a);nav.insertBefore(li,auth||null);});
+  }
+  const footerBrand=document.querySelector(".footer-brand");
+  if(footerBrand){const ps=footerBrand.querySelectorAll("p");if(ps[0]&&builder.tagline)ps[0].textContent=builder.tagline;if(ps[1]&&builder.footer_text)ps[1].textContent=builder.footer_text;}
+  if(Array.isArray(builder.footer_links)&&builder.footer_links.length){
+   const grid=document.querySelector("footer .footer-grid");if(grid){const col=document.createElement("div");col.className="footer-col";const h=document.createElement("h4");h.textContent=builder.footer_heading||"More";col.appendChild(h);const ul=document.createElement("ul");builder.footer_links.forEach(item=>{const li=document.createElement("li"),a=document.createElement("a");a.textContent=item.label;a.href=item.url;if(/^https:\/\//.test(item.url)){a.target="_blank";a.rel="noopener noreferrer";}li.appendChild(a);ul.appendChild(li);});col.appendChild(ul);grid.appendChild(col);}
+  }
+  const footer=document.querySelector("footer");
+  if(footer&&Array.isArray(builder.custom_sections)){
+   builder.custom_sections.forEach(item=>{
+    if(item.visible===false)return;
+    const section=document.createElement("section");section.id=item.id;section.className="cms-custom-section";section.style.cssText="padding:5rem 0;background:var(--cream);color:var(--ink)";
+    const inner=document.createElement("div");inner.className="section-inner";
+    if(item.eyebrow){const eyebrow=document.createElement("div");eyebrow.className="section-label";eyebrow.textContent=item.eyebrow;inner.appendChild(eyebrow);}
+    const title=document.createElement("h2");title.className="section-title";title.textContent=item.title;inner.appendChild(title);
+    const divider=document.createElement("div");divider.className="divider";inner.appendChild(divider);
+    const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:2rem;align-items:center";
+    const body=document.createElement("p");body.className="section-body";body.style.whiteSpace="pre-line";body.textContent=item.body||"";row.appendChild(body);
+    if(item.image_url){const img=document.createElement("img");img.src=item.image_url;img.alt=item.title||"USHSS";img.loading="lazy";img.style.cssText="width:100%;max-height:420px;object-fit:cover;border-radius:8px";row.appendChild(img);}
+    inner.appendChild(row);
+    if(item.button_label&&item.button_url){const a=document.createElement("a");a.textContent=item.button_label;a.href=item.button_url;a.className="btn-gold";a.style.cssText="display:inline-flex;margin-top:1.5rem;padding:12px 20px;text-decoration:none";if(/^https:\/\//.test(item.button_url)){a.target="_blank";a.rel="noopener noreferrer";}inner.appendChild(a);}
+    section.appendChild(inner);footer.parentNode.insertBefore(section,footer);
+   });
+  }
+ }catch(error){console.warn("Website content could not be applied:",error);}
 })();
-</script>
+</script>>
 
 </body>
 </html>
