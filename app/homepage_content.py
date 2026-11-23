@@ -1,7 +1,7 @@
 """Shared defaults and validation for the public homepage CMS."""
 from copy import deepcopy
 
-SECTION_IDS = ("home", "about", "programmes", "faculty", "news", "events", "gallery", "contact")
+SECTION_IDS = ("home", "about", "programmes", "faculty", "gallery", "contact")
 DEFAULT_HOMEPAGE_CONTENT = {
     "hero_eyebrow": "University School of Humanities & Social Sciences",
     "hero_title": "Where Ideas",
