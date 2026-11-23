@@ -1917,7 +1917,7 @@ document.addEventListener("DOMContentLoaded", checkExistingAuth);
   setText("#contact .contact-info h3",data.contact_heading);
   setText("#contact .contact-info .section-body",data.contact_body);
   if(data.hero_image_url){const heroImage=document.querySelector(".hero-right");if(heroImage){heroImage.style.backgroundImage="url('"+data.hero_image_url.replace(/'/g,"%27")+"')";heroImage.style.backgroundSize="cover";heroImage.style.backgroundPosition="center";}}
-  const sectionMap={home:"#home",about:"#about",programmes:"#programmes",faculty:"#faculty",news:"#news",events:"#events",gallery:"#gallery",contact:"#contact"};
+  const sectionMap={home:"#home",about:"#about",programmes:"#programmes",faculty:"#faculty",gallery:"#gallery",contact:"#contact"};
   Object.entries(sectionMap).forEach(function(entry){const el=document.querySelector(entry[1]);if(el&&data.sections&&data.sections[entry[0]]===false)el.hidden=true;});
  }catch(error){console.warn("Homepage CMS content could not be applied:",error);}
 })();
