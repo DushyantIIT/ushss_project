@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 
 from app.database import sb
 from app.deps import require_admin
+from app.rate_limit import rate_limit
 from app.security import (
     create_access_token,
     decode_token,
@@ -76,6 +77,7 @@ class ResetConfirmBody(BaseModel):
 @router.post(
     "/request",
     summary="[Admin] Generate a password reset token",
+    dependencies=[Depends(rate_limit("admin_reset_request", max_calls=10, window_seconds=900))],
 )
 def request_reset(
     body: ResetRequestBody,
@@ -161,6 +163,7 @@ def request_reset(
 @router.post(
     "/confirm",
     summary="[Admin] Confirm a password reset",
+    dependencies=[Depends(rate_limit("admin_reset_confirm", max_calls=10, window_seconds=900))],
 )
 def confirm_reset(
     body: ResetConfirmBody,

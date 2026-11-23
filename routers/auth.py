@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import JWTError
 from pydantic import BaseModel, EmailStr, Field
 from app.database import sb
-from app.deps import oauth2_scheme
+from app.deps import get_current_user, oauth2_scheme
 from app.security import create_access_token, decode_token, IS_DEV
 from app.rate_limit import (
     rate_limit,
@@ -57,7 +57,7 @@ class LoginResponse(BaseModel):
     redirect_url: str
     user: dict
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit("login", max_calls=20, window_seconds=60))])
 def login(body: LoginRequest, request: Request):
     client_ip = get_client_ip(request)
     check_login_rate_limit(body.username, client_ip)
@@ -120,8 +120,6 @@ def login(body: LoginRequest, request: Request):
         record_login_failure(body.username, client_ip)
         raise HTTPException(401, "Invalid username or password")
 
-    auth_uid = user.get("supabase_uid")
-
     # Authenticate password with Supabase Auth
     authenticated = False
     try:
@@ -129,14 +127,8 @@ def login(body: LoginRequest, request: Request):
         authenticated = bool(getattr(ar, "session", None))
     except Exception as e:
         print(f"SUPABASE SIGNIN ERROR: username={body.username!r} type={type(e).__name__} detail={str(e)[:240]!r}")
-        # If sign-in failed possibly due to unconfirmed email, attempt confirmed sign-in
-        if auth_uid and "confirm" in str(e).lower():
-            try:
-                sb.auth.admin.update_user_by_id(auth_uid, {"email_confirm": True, "phone_confirm": True})
-                rr = sb.auth.sign_in_with_password({"email": user["email"], "password": body.password})
-                authenticated = bool(getattr(rr, "session", None))
-            except Exception as repair:
-                print(f"LOGIN AUTH REPAIR FAILED: {type(repair).__name__}")
+        # Never change Auth verification state during a login attempt.
+        # Account verification/approval is handled only by the controlled admin workflow.
         if IS_DEV and not authenticated and user.get("password_hash"):
             try:
                 import bcrypt
@@ -206,12 +198,14 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
 
-@router.post("/change-password")
-def change_password(body: ChangePasswordRequest, token: str = Depends(oauth2_scheme)):
-    try: payload=decode_token(token)
-    except JWTError: raise HTTPException(401,"Your session has expired. Please log in again.")
-    uid=payload.get("id")
-    res=sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id",uid).limit(1).execute()
+@router.post(
+    "/change-password",
+    dependencies=[Depends(rate_limit("change_password", max_calls=5, window_seconds=900))],
+)
+def change_password(body: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    # Only a fully approved, active access session may change its own password.
+    # get_current_user rejects pending-registration and password-reset tokens.
+    res=sb.table("users").select("id,username,email,is_active,status,supabase_uid").eq("id",user["id"]).limit(1).execute()
     if not res.data: raise HTTPException(401,"User account not found")
     user=res.data[0]
     if not user.get("is_active",True) or (user.get("status") or "approved")!="approved": raise HTTPException(403,"Your account is not active")
