@@ -1456,7 +1456,7 @@ function renderHomepageEditor(){
   return '<label class="form-group"><span class="form-label">'+label+'</span>'+
    (type==="textarea"?'<textarea class="form-textarea" rows="3" data-home-field="'+key+'"></textarea>':'<input class="form-input" data-home-field="'+key+'" type="text"/>')+'</label>';
  }).join("");
- const sections=["home","about","programmes","faculty","news","events","gallery","contact"];
+ const sections=["home","about","programmes","faculty","gallery","contact"];
  const checks=sections.map(function(key){return '<label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" data-home-section="'+key+'" checked/><span style="text-transform:capitalize">'+key+'</span></label>';}).join("");
  return '<div class="sec-head"><div><div class="sec-label">Website Management</div><div class="sec-title">Homepage Editor</div><div class="card-sub" style="margin-top:6px">Edit the public homepage without changing code. Drafts stay private until published.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="loadHomepageEditor()">↻ Reload</button><button class="btn btn-primary" onclick="saveHomepageDraft()">Save Draft</button><button class="btn btn-gold" onclick="publishHomepageDraft()">Publish Changes</button></div></div>'+
  '<div class="card" style="margin-bottom:16px"><div class="card-title">Page content</div><div class="card-sub" style="margin:5px 0 18px">Edit headings, descriptions, buttons and the hero image URL.</div><div class="form-grid">'+inputs+'</div></div>'+
