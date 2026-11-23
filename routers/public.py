@@ -19,6 +19,18 @@ from app.rate_limit import rate_limit, get_client_ip
 router = APIRouter(prefix="/public", tags=["Public Website"])
 
 
+
+@router.get("/homepage", summary="Get published public homepage content")
+def get_public_homepage():
+    from app.homepage_content import DEFAULT_HOMEPAGE_CONTENT, validate_homepage_content
+    try:
+        res = sb.table("homepage_content").select("published_content").eq("slug", "home").limit(1).execute()
+        row = (res.data or [None])[0]
+        return validate_homepage_content((row or {}).get("published_content") or DEFAULT_HOMEPAGE_CONTENT)
+    except Exception as e:
+        print("PUBLIC HOMEPAGE ERROR:", e)
+        return DEFAULT_HOMEPAGE_CONTENT
+
 @router.get("/faculty", summary="Get public faculty directory")
 def get_public_faculty():
     try:

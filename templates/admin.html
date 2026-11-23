@@ -558,6 +558,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="nav-item" data-page="admin"><span class="icon">🔑</span> Admins<span class="nav-badge" id="badge-admin">0</span></div>
     <div class="nav-item" onclick="showPage('pending-requests')" data-page="pending-requests"><span class="icon">⏳</span> Pending Registrations<span class="nav-badge" id="badge-pending" style="display:none;background:var(--amber);color:#fff">0</span></div>
 
+    <div class="nav-section-title">Website Management</div>
+    <div class="nav-item" onclick="showPage('homepage')" data-page="homepage"><span class="icon">🌐</span> Homepage Editor</div>
+
     <div class="nav-section-title">Academic Control</div>
     <div class="nav-item" onclick="showPage('timetable')" data-page="timetable"><span class="icon">🗓️</span> Timetable Manager</div>
     <div class="nav-item" onclick="showPage('subjects-taught')" data-page="subjects-taught"><span class="icon">📖</span> Subjects Taught</div>
@@ -1380,6 +1383,7 @@ function renderPendingRequests() {
 ══════════════════════════════════════════ */
 let currentPage="dashboard", editingId=null, deleteId=null, deleteCallback=null;
 const pageTitles={
+  homepage:["Homepage Editor","USHSS / Admin / Website / Homepage"],
   dashboard:["Dashboard","USHSS / Admin / Overview"],
   student:["Students","USHSS / Admin / Users / Students"],
   students:["Students","USHSS / Admin / Users / Students"],
@@ -1416,7 +1420,8 @@ function renderPage(page) {
   if(!c) return;
   try {
     try { updateBadges(); } catch(e) { console.warn("Admin badge refresh failed:", e); }
-    if(page==="dashboard") c.innerHTML=renderDashboard();
+    if(page==="homepage") { c.innerHTML=renderHomepageEditor(); loadHomepageEditor(); }
+    else if(page==="dashboard") c.innerHTML=renderDashboard();
     else if(page==="pending-requests") c.innerHTML=renderPendingRequests();
     else if(page==="timetable") { c.innerHTML=renderTimetable(); loadOfferedSubjects(); }
     else if(page==="subjects-taught") { c.innerHTML=renderSubjectsOffered(); loadOfferedSubjects(); }
@@ -1433,6 +1438,63 @@ function renderPage(page) {
     console.error("Admin page render failed:", page, e);
     c.innerHTML = `<div class="card"><div class="card-title">This tab could not be loaded</div><div class="card-sub" style="margin-top:8px">The dashboard recovered from a browser-cache or data error. Please click the tab again.</div><div style="margin-top:14px"><button class="btn btn-primary" onclick="renderPage('${page}')">↻ Reload Tab</button></div></div>`;
   }
+}
+
+
+let homepageDraft = null;
+const homepageFields = ["hero_eyebrow","hero_title","hero_accent","hero_subtitle","hero_primary_label","hero_primary_target","hero_secondary_label","hero_secondary_target","hero_image_url","about_label","about_title","about_body","contact_heading","contact_body"];
+function renderHomepageEditor(){
+ const fields=[
+  ["hero_eyebrow","Hero eyebrow","text"],["hero_title","Hero main heading","text"],["hero_accent","Hero highlighted heading","text"],
+  ["hero_subtitle","Hero description","textarea"],["hero_primary_label","Primary button label","text"],["hero_primary_target","Primary button link","text"],
+  ["hero_secondary_label","Secondary button label","text"],["hero_secondary_target","Secondary button link","text"],["hero_image_url","Hero image URL (HTTPS)","text"],
+  ["about_label","About label","text"],["about_title","About heading","text"],["about_body","About description","textarea"],
+  ["contact_heading","Contact heading","text"],["contact_body","Contact description","textarea"]
+ ];
+ const inputs=fields.map(function(item){
+  const key=item[0],label=item[1],type=item[2];
+  return '<label class="form-group"><span class="form-label">'+label+'</span>'+
+   (type==="textarea"?'<textarea class="form-textarea" rows="3" data-home-field="'+key+'"></textarea>':'<input class="form-input" data-home-field="'+key+'" type="text"/>')+'</label>';
+ }).join("");
+ const sections=["home","about","programmes","faculty","gallery","contact"];
+ const checks=sections.map(function(key){return '<label style="display:flex;gap:9px;align-items:center;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px"><input type="checkbox" data-home-section="'+key+'" checked/><span style="text-transform:capitalize">'+key+'</span></label>';}).join("");
+ return '<div class="sec-head"><div><div class="sec-label">Website Management</div><div class="sec-title">Homepage Editor</div><div class="card-sub" style="margin-top:6px">Edit the public homepage without changing code. Drafts stay private until published.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="loadHomepageEditor()">↻ Reload</button><button class="btn btn-primary" onclick="saveHomepageDraft()">Save Draft</button><button class="btn btn-gold" onclick="publishHomepageDraft()">Publish Changes</button></div></div>'+
+ '<div class="card" style="margin-bottom:16px"><div class="card-title">Page content</div><div class="card-sub" style="margin:5px 0 18px">Edit headings, descriptions, buttons and the hero image URL.</div><div class="form-grid">'+inputs+'</div></div>'+
+ '<div class="card"><div class="card-title">Homepage sections</div><div class="card-sub" style="margin:5px 0 16px">Choose which sections appear on the public homepage.</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'+checks+'</div><div id="homepage-cms-status" class="card-sub" style="margin-top:16px">Loading saved homepage content…</div></div>';
+}
+async function loadHomepageEditor(){
+ try{
+  const data=await adminApiJson("/api/admin/homepage");
+  homepageDraft=data.draft||{};
+  homepageFields.forEach(function(key){const el=document.querySelector('[data-home-field="'+key+'"]');if(el)el.value=homepageDraft[key]||"";});
+  document.querySelectorAll("[data-home-section]").forEach(function(el){el.checked=homepageDraft.sections?.[el.dataset.homeSection]!==false;});
+  const status=document.getElementById("homepage-cms-status");
+  if(status)status.textContent=data.has_unpublished_changes?"Unpublished draft changes are saved.":"Showing current published content or initial defaults.";
+ }catch(e){toast(e.message||"Could not load homepage content","error");}
+}
+function collectHomepageDraft(){
+ const out=Object.assign({},homepageDraft||{});
+ out.sections=Object.assign({},(homepageDraft||{}).sections||{});
+ homepageFields.forEach(function(key){const el=document.querySelector('[data-home-field="'+key+'"]');if(el)out[key]=el.value.trim();});
+ document.querySelectorAll("[data-home-section]").forEach(function(el){out.sections[el.dataset.homeSection]=el.checked;});
+ return out;
+}
+async function saveHomepageDraft(){
+ try{
+  homepageDraft=collectHomepageDraft();
+  await adminApiJson("/api/admin/homepage",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(homepageDraft)});
+  const status=document.getElementById("homepage-cms-status");if(status)status.textContent="Draft saved. The public homepage has not changed yet.";
+  toast("Homepage draft saved","success");return true;
+ }catch(e){toast(e.message||"Could not save homepage draft","error");return false;}
+}
+async function publishHomepageDraft(){
+ if(!confirm("Publish these homepage changes for everyone?"))return;
+ if(!await saveHomepageDraft())return;
+ try{
+  await adminApiJson("/api/admin/homepage/publish",{method:"POST"});
+  const status=document.getElementById("homepage-cms-status");if(status)status.textContent="Published successfully. The public homepage now shows these changes.";
+  toast("Homepage changes published","success");
+ }catch(e){toast(e.message||"Could not publish homepage","error");}
 }
 
 function renderStudentSubjectRegister(){

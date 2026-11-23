@@ -1896,6 +1896,33 @@ checkExistingAuth();
 document.addEventListener("DOMContentLoaded", checkExistingAuth);
 </script>
 <button id="back-to-top" type="button" aria-label="Back to top" onclick="window.scrollTo(0,0)">↑</button><script>const backTopButton=document.getElementById("back-to-top");window.addEventListener("scroll",function(){backTopButton.classList.toggle("visible",window.scrollY>500)},{passive:true});</script>
+
+<script>
+(async function applyPublishedHomepage(){
+ try{
+  const response=await fetch("/api/public/homepage",{headers:{"Accept":"application/json"}});
+  if(!response.ok)return;
+  const data=await response.json();
+  const setText=function(selector,value){const el=document.querySelector(selector);if(el&&typeof value==="string"&&value)el.textContent=value;};
+  setText(".hero-eyebrow",data.hero_eyebrow);
+  const heroTitle=document.querySelector(".hero h1");
+  if(heroTitle){heroTitle.textContent=(data.hero_title||"Where Ideas")+" "+(data.hero_accent||"Shape Society");}
+  setText(".hero-sub",data.hero_subtitle);
+  const heroButtons=document.querySelectorAll(".hero-actions a");
+  if(heroButtons[0]){heroButtons[0].textContent=data.hero_primary_label||"Explore Programmes";heroButtons[0].setAttribute("href",data.hero_primary_target||"#programmes");}
+  if(heroButtons[1]){heroButtons[1].textContent=data.hero_secondary_label||"Learn More";heroButtons[1].setAttribute("href",data.hero_secondary_target||"#about");}
+  setText("#about .section-label",data.about_label);
+  setText("#about .section-title",data.about_title);
+  const aboutBody=document.querySelector("#about .section-body");if(aboutBody&&data.about_body)aboutBody.textContent=data.about_body;
+  setText("#contact .contact-info h3",data.contact_heading);
+  setText("#contact .contact-info .section-body",data.contact_body);
+  if(data.hero_image_url){const heroImage=document.querySelector(".hero-right");if(heroImage){heroImage.style.backgroundImage="url('"+data.hero_image_url.replace(/'/g,"%27")+"')";heroImage.style.backgroundSize="cover";heroImage.style.backgroundPosition="center";}}
+  const sectionMap={home:"#home",about:"#about",programmes:"#programmes",faculty:"#faculty",gallery:"#gallery",contact:"#contact"};
+  Object.entries(sectionMap).forEach(function(entry){const el=document.querySelector(entry[1]);if(el&&data.sections&&data.sections[entry[0]]===false)el.hidden=true;});
+ }catch(error){console.warn("Homepage CMS content could not be applied:",error);}
+})();
+</script>
+
 </body>
 </html>
 
