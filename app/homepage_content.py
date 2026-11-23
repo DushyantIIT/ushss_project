@@ -35,7 +35,7 @@ def validate_homepage_content(value):
         item = value[key]
         if not isinstance(item, str) or len(item) > limit:
             raise ValueError(f"{key} must be text no longer than {limit} characters.")
-        if key.endswith("_target") and item and not (item.startswith("#") or item.startswith("https://") or item.startswith("/")):
+        if key.endswith("_target") and item and not (item.startswith("#") or item.startswith("https://") or (item.startswith("/") and not item.startswith("//")) ):
             raise ValueError(f"{key} must be a local anchor, relative path, or HTTPS URL.")
         if key == "hero_image_url" and item and not item.startswith("https://"):
             raise ValueError("Hero image URL must use HTTPS.")
