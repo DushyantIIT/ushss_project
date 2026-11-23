@@ -669,6 +669,20 @@ class SmartClient:
             )
         return self.real_sb.storage
 
+    def rpc(self, function_name: str, params: dict | None = None):
+        """Expose Supabase RPCs through the SmartClient without bypassing its proxy.
+
+        Production rate limiting uses a Postgres RPC so counters are shared
+        across serverless instances. Keep this call on the server-side
+        service-role client; never route it through a browser/user session.
+        """
+        if self.real_sb is None:
+            raise RuntimeError(
+                "Supabase RPC is unavailable: check SUPABASE_URL and "
+                "SUPABASE_SERVICE_ROLE_KEY."
+            )
+        return self.real_sb.rpc(function_name, params or {})
+
     def table(self, name: str):
         return TableQueryBuilder(name, self.real_sb)
 
